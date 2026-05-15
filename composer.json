@@ -40,13 +40,20 @@
         }
     },
     "scripts": {
+        "setup:env": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "setup:validate-db": [
+            "@php -r \"\\$env = file_exists('.env') ? file_get_contents('.env') : ''; if (str_contains(\\$env, 'DB_USERNAME=seu_usuario_supabase') || str_contains(\\$env, 'DB_PASSWORD=sua_senha_supabase')) { fwrite(STDERR, 'Configure as credenciais reais do Supabase no arquivo .env antes de continuar.'.PHP_EOL); exit(1); }\""
+        ],
+        "setup:key": [
+            "@php -r \"\\$env = file_exists('.env') ? file_get_contents('.env') : ''; if (! preg_match('/^APP_KEY=.+$/m', \\$env)) { passthru(PHP_BINARY . ' artisan key:generate --ansi --force', \\$exitCode); exit(\\$exitCode); }\""
+        ],
         "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "@php artisan migrate --force",
-            "npm install",
-            "npm run build"
+            "@setup:env",
+            "@setup:validate-db",
+            "@setup:key",
+            "@php artisan migrate --force"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
@@ -79,11 +86,12 @@
             "@php artisan boost:update --ansi"
         ],
         "post-root-package-install": [
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+            "@setup:env"
         ],
         "post-create-project-cmd": [
-            "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@setup:env",
+            "@setup:validate-db",
+            "@setup:key",
             "@php artisan migrate --graceful --ansi"
         ],
         "pre-package-uninstall": [

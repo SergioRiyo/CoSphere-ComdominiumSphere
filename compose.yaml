@@ -1,0 +1,50 @@
+services:
+  setup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cosphere_setup
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - vendor:/var/www/html/vendor
+      - node_modules:/var/www/html/node_modules
+    command: sh /var/www/html/docker-setup.sh
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cosphere_app
+    working_dir: /var/www/html
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+      - vendor:/var/www/html/vendor
+      - node_modules:/var/www/html/node_modules
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    command: php artisan serve --host=0.0.0.0 --port=8000
+
+  vite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cosphere_vite
+    working_dir: /var/www/html
+    ports:
+      - "5174:5174"
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
+volumes:
+  vendor:
+  node_modules:
