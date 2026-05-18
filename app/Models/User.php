@@ -26,9 +26,16 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
         ];
+    }
+
+    public function units(){
+        return $this->belongsToMany(User::class,'user_unit')
+        ->withPivot('classification', 'status')
+        ->withTimestamps();
     }
 }
