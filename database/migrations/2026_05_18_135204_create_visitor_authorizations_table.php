@@ -45,6 +45,7 @@ return new class extends Migration
             $table->timestamp('authorized_date')->nullable();
 
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

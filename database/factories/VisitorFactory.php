@@ -10,15 +10,14 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class VisitorFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = Visitor::class;
+
     public function definition(): array
     {
         return [
-            //
+            'name' => fake()->name(),
+            'cpf' => fake()->unique()->numerify('###.###.###-##'),
+            'phone' => fake()->phoneNumber(),
         ];
     }
 }

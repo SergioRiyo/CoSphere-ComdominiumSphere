@@ -12,4 +12,9 @@ class Unit extends Model
       public function users(){
         
       }
+
+      public function visitorAuthorizations()
+      {
+          return $this->hasMany(VisitorAuthorization::class);
+      }
 }

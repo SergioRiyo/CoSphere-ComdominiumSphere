@@ -38,4 +38,14 @@ class User extends Authenticatable
         ->withPivot('classification', 'status')
         ->withTimestamps();
     }
+
+        public function visitorAuthorizations()
+        {
+            return $this->hasMany(VisitorAuthorization::class, 'resident_id');
+        }
+
+        public function visitorAccesses()
+        {
+            return $this->hasMany(VisitorAccess::class, 'doorman_id');
+        }
 }
