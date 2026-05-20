@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Order;
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -33,19 +35,35 @@ class User extends Authenticatable
         ];
     }
 
-    public function units(){
-        return $this->belongsToMany(User::class,'user_unit')
-        ->withPivot('classification', 'status')
-        ->withTimestamps();
+    public function units()
+    {
+        return $this->belongsToMany(User::class, 'user_unit')
+            ->withPivot('classification', 'status')
+            ->withTimestamps();
     }
 
-        public function visitorAuthorizations()
-        {
-            return $this->hasMany(VisitorAuthorization::class, 'resident_id');
-        }
+    public function visitorAuthorizations()
+    {
+        return $this->hasMany(VisitorAuthorization::class, 'resident_id');
+    }
 
-        public function visitorAccesses()
-        {
-            return $this->hasMany(VisitorAccess::class, 'doorman_id');
-        }
+    public function visitorAccesses()
+    {
+        return $this->hasMany(VisitorAccess::class, 'doorman_id');
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'resident_id');
+    }
+
+    public function receivedOrders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'received_by_id');
+    }
+
+    public function pickedUpOrders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'picked_up_by_id');
+    }
 }
