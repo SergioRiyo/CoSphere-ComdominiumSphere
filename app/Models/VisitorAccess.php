@@ -35,5 +35,4 @@ class VisitorAccess extends Model
     {
         return $this->belongsTo(User::class, 'doorman_id');
     }
-
 }

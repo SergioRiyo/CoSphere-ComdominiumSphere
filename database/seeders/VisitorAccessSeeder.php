@@ -2,16 +2,25 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
+use App\Models\VisitorAccess;
+use App\Models\VisitorAuthorization;
 use Illuminate\Database\Seeder;
 
 class VisitorAccessSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        //
+        if (User::count() === 0) {
+            $this->command->warn('Nenhum usuário encontrado. Crie users antes de gerar acessos.');
+            return;
+        }
+
+        if (VisitorAuthorization::count() === 0) {
+            $this->command->warn('Nenhuma autorização encontrada. Crie visitor_authorizations antes de gerar acessos.');
+            return;
+        }
+
+        VisitorAccess::factory()->count(10)->create();
     }
 }

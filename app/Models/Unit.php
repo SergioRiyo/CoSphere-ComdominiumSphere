@@ -15,6 +15,6 @@ class Unit extends Model
 
       public function visitorAuthorizations()
       {
-          return $this->hasMany(VisitorAuthorization::class);
+          return $this->hasMany(VisitorAuthorization::class, 'unit_id');
       }
 }

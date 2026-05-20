@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use App\Models\VisitorAccess;
+use App\Models\VisitorAuthorization;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -10,15 +12,32 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class VisitorAccessFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
+    protected $model = VisitorAccess::class;
+
     public function definition(): array
     {
+        $entryTime = fake()->dateTimeBetween('-7 days', 'now');
+
         return [
-            //
+            'visitor_authorization_id' => VisitorAuthorization::query()->inRandomOrder()->first()?->getKey()
+                ?? VisitorAuthorization::factory(),
+
+            'doorman_id' => User::query()->inRandomOrder()->first()?->getKey()
+                ?? User::factory(),
+
+            'entry_time' => $entryTime,
+
+            'exit_time' => fake()->boolean(60)
+                ? (clone $entryTime)->modify('+2 hours')
+                : null,
+
+            'validation_status' => fake()->randomElement([
+                'pendente',
+                'validado',
+                'recusado',
+            ]),
+
+            'observations' => fake()->optional()->sentence(),
         ];
     }
 }
