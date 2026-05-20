@@ -11,16 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create("user_unit", function (Blueprint $table) {
+        Schema::create('visitors', function (Blueprint $table) {
             $table->id();
+
             $table->string('name');
-            $table->string('cpf')->unique();
-            $table->string('email')->unique();
-            $table->string('phone')->nullable();
-            $table->string('role')->default('morador'); 
-            $table->string('status')->default('active');
-            $table->string('password');
+            $table->string('cpf', 14)->unique();
+            $table->string('phone');
+
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
@@ -29,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
+        Schema::dropIfExists('visitors');
     }
 };
