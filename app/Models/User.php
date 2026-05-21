@@ -28,7 +28,7 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            
+
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
@@ -65,5 +65,15 @@ class User extends Authenticatable
     public function pickedUpOrders(): HasMany
     {
         return $this->hasMany(Order::class, 'picked_up_by_id');
+    }
+
+    public function reportedIncidents()
+    {
+        return $this->hasMany(Incident::class, 'resident_id');
+    }
+
+    public function managedMaintenanceRequests()
+    {
+        return $this->hasMany(MaintenanceRequest::class, 'admin_id');
     }
 }
