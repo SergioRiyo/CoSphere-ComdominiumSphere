@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -32,6 +33,7 @@ class Order extends Model
         'expected_delivery_date' => 'date',
         'received_at' => 'datetime',
         'picked_up_at' => 'datetime',
+        'status' => OrderStatus::class,
     ];
 
      public function unit(): BelongsTo

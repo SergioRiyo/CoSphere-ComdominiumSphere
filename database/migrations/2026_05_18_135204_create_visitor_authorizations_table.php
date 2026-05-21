@@ -35,12 +35,12 @@ return new class extends Migration
             $table->dateTime('end_date');
 
             $table->enum('status', [
-                'pendente_dados',
-                'ativo',
-                'utilizado',
-                'expirado',
-                'cancelado',
-            ])->default('ativo');
+                'pending_data',
+                'active',
+                'used',
+                'expired',
+                'canceled',
+            ])->default('active');
 
             $table->timestamp('authorized_date')->nullable();
 
