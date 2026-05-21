@@ -26,10 +26,10 @@ return new class extends Migration
             $table->dateTime('exit_time')->nullable();
 
             $table->enum('validation_status', [
-                'pendente',
-                'validado',
-                'recusado',
-            ])->default('pendente');
+                'pending',
+                'validated',
+                'rejected',
+            ])->default('pending');
 
             $table->text('observations')->nullable();
 

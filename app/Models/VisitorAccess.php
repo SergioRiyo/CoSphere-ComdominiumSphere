@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VisitorAccessStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,6 +25,7 @@ class VisitorAccess extends Model
     protected $casts = [
         'entry_time' => 'datetime',
         'exit_time' => 'datetime',
+        'validation_status' => VisitorAccessStatus::class,
     ];
 
     public function visitorAuthorization()

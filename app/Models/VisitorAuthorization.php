@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\VisitorAuthorizationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -30,6 +31,7 @@ class VisitorAuthorization extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'authorized_date' => 'datetime',
+        'status' => VisitorAuthorizationStatus::class,
     ];
 
     public function visitor()
