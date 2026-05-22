@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             VisitorAccessSeeder::class,
             OrderSeeder::class,
             OccurrenceAndMaintenanceSeeder::class,
+            NotificationSeeder::class,
         ]);
     }
 }

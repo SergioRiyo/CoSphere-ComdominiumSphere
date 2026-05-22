@@ -76,4 +76,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(MaintenanceRequest::class, 'admin_id');
     }
+
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class, 'recipient_id');
+    }
 }
