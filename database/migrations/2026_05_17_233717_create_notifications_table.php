@@ -27,7 +27,7 @@ return new class extends Migration
                 NotificationType::System->value,
             ]);
 
-            $table->timestamp('send_at')->nullable();
+            $table->timestamp('sent_at')->nullable();
             $table->boolean('is_read')->default(false);
 
             $table->timestamps();

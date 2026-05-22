@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
+use App\Models\Notification;
 use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
@@ -22,6 +24,7 @@ class VisitorService
 
         return $code;
     }
+
     public function createVisitorAuthorization(array $data): VisitorAuthorization
     {
         return DB::transaction(function () use ($data) {
@@ -44,7 +47,7 @@ class VisitorService
 
             $accessCode = $this->generateVisitorCode();
 
-            return VisitorAuthorization::create([
+            $authorization = VisitorAuthorization::create([
                 'visitor_id' => $visitor->id,
                 'unit_id' => $data['unit_id'],
                 'resident_id' => $data['resident_id'],
@@ -57,6 +60,14 @@ class VisitorService
                 'authorization_date' => now(),
                 'access_code' => $accessCode,
             ]);
+
+            $this->notifyResident(
+                authorization: $authorization,
+                title: 'Visitante autorizado',
+                message: "A autorização de acesso para {$visitor->name} foi criada com sucesso."
+            );
+
+            return $authorization;
         });
     }
 
@@ -68,7 +79,7 @@ class VisitorService
             throw new DomainException('A autorização não foi encontrada.');
         }
 
-        return $this->validateAuthorizationByCode($authorization);
+        return $this->validateAuthorization($authorization);
     }
 
     public function validateAuthorization(VisitorAuthorization $authorization): VisitorAuthorization
@@ -91,10 +102,11 @@ class VisitorService
             throw new DomainException('Autorização aguardando preenchimento de dados.');
         }
 
-        if ($authorization->end_date && $now()->lessThan($authorization->start_date)) {
+        if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
             $authorization->update([
-                'status' => VisitorAuthorizationStatus::PendingData,
+                'status' => VisitorAuthorizationStatus::Expired,
             ]);
+
             throw new DomainException('Autorização expirada.');
         }
 
@@ -134,7 +146,7 @@ class VisitorService
             }
 
             $hasOpenAccess = VisitorAccess::where('visitor_authorization_id', $authorization->id)
-                ->where('validation_status', VisitorAccessStatus::Validated)
+                ->where('validation_status', VisitorAccessStatus::Validated->value)
                 ->whereNull('exit_time')
                 ->exists();
 
@@ -142,7 +154,7 @@ class VisitorService
                 throw new DomainException('Este visitante já possui uma entrada registrada sem saída.');
             }
 
-            return VisitorAccess::create([
+            $access = VisitorAccess::create([
                 'visitor_authorization_id' => $authorization->id,
                 'doorman_id' => $doormanId,
                 'entry_time' => now(),
@@ -150,6 +162,15 @@ class VisitorService
                 'validation_status' => VisitorAccessStatus::Validated,
                 'observations' => $observations,
             ]);
+            $authorization->loadMissing('visitor');
+
+            $this->notifyResident(
+                authorization: $authorization,
+                title: 'Entrada de visitante registrada',
+                message: "O visitante {$authorization->visitor->name} teve a entrada registrada na portaria."
+            );
+
+            return $access;
         });
     }
 
@@ -187,6 +208,14 @@ class VisitorService
                 'status' => VisitorAuthorizationStatus::Used,
             ]);
 
+            $authorization->loadMissing('visitor');
+
+            $this->notifyResident(
+                authorization: $authorization,
+                title: 'Saída de visitante registrada',
+                message: "O visitante {$authorization->visitor->name} teve a saída registrada na portaria."
+            );
+
             return $access->refresh();
         });
     }
@@ -196,13 +225,40 @@ class VisitorService
         int $doormanId,
         ?string $reason = null
     ): VisitorAccess {
-        return VisitorAccess::create([
+        $access = VisitorAccess::create([
             'visitor_authorization_id' => $authorization->id,
             'doorman_id' => $doormanId,
             'entry_time' => null,
             'exit_time' => null,
             'validation_status' => VisitorAccessStatus::Rejected,
             'observations' => $reason,
+        ]);
+
+        $authorization->loadMissing('visitor');
+
+        $visitorName = $authorization->visitor?->name ?? 'visitante';
+
+        $this->notifyResident(
+            authorization: $authorization,
+            title: 'Acesso de visitante negado',
+            message: "O acesso do visitante {$visitorName} foi negado. Motivo: {$reason}"
+        );
+
+        return $access;
+    }
+
+    private function notifyResident(
+        VisitorAuthorization $authorization,
+        string $title,
+        string $message
+    ): Notification {
+        return Notification::create([
+            'recipient_id' => $authorization->resident_id,
+            'title' => $title,
+            'message' => $message,
+            'type' => NotificationType::Visitor,
+            'sent_at' => now(),
+            'is_read' => false,
         ]);
     }
 }
