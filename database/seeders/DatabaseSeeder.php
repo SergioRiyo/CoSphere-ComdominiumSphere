@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             VisitorAuthorizationSeeder::class,
             VisitorAccessSeeder::class,
             OrderSeeder::class,
+            OccurrenceAndMaintenanceSeeder::class,
         ]);
     }
 }

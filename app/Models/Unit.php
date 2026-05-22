@@ -23,4 +23,9 @@ class Unit extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function incidents()
+    {
+        return $this->hasMany(Incident::class);
+    }
 }
