@@ -15,17 +15,17 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('visitor_id')
-            ->constrained('visitors')
-            ->restrictOnDelete();
+                ->constrained('visitors')
+                ->restrictOnDelete();
 
             $table->foreignId('unit_id')
-            ->constrained('units')
-            ->restrictOnDelete();
+                ->constrained('units')
+                ->restrictOnDelete();
 
             $table->foreignId('resident_id')
-            ->constrained('user_unit')
-            ->restrictOnDelete(); //
-            
+                ->constrained('users')
+                ->restrictOnDelete();
+
             $table->string('vehicle_plate', 10)->nullable();
             $table->string('access_code')->unique();
             $table->text('qr_code')->nullable();
