@@ -2,19 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Order;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Unit extends Model
 {
+    use HasFactory;
+
     protected $fillable = [];
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
 
-    public function users() {}
-
-    public function visitorAuthorizations()
+    public function visitorAuthorizations(): HasMany
     {
         return $this->hasMany(VisitorAuthorization::class, 'unit_id');
     }
@@ -24,7 +27,7 @@ class Unit extends Model
         return $this->hasMany(Order::class);
     }
 
-    public function incidents()
+    public function incidents(): HasMany
     {
         return $this->hasMany(Incident::class);
     }

@@ -7,18 +7,22 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Order;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['unit_id', 'name', 'email', 'role', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    protected $attributes = [
+        'role' => 'morador',
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -35,11 +39,14 @@ class User extends Authenticatable
         ];
     }
 
-    public function units()
+    public function unit(): BelongsTo
     {
-        return $this->belongsToMany(User::class, 'user_unit')
-            ->withPivot('classification', 'status')
-            ->withTimestamps();
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
     }
 
     public function visitorAuthorizations()
