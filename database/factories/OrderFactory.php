@@ -12,6 +12,9 @@ class OrderFactory extends Factory
 {
     protected $model = Order::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         $status = fake()->randomElement(OrderStatus::cases());
@@ -28,15 +31,24 @@ class OrderFactory extends Factory
             : null;
 
         return [
-            'unit_id' => Unit::query()->inRandomOrder()->value('id') ?? Unit::factory(),
-            'resident_id' => User::query()->inRandomOrder()->value('id') ?? User::factory(),
+            'unit_id' => fn (): int => Unit::factory()->create()->id,
+            'resident_id' => fn (array $attributes): int => User::factory()->create([
+                'role' => 'morador',
+                'unit_id' => $attributes['unit_id'],
+            ])->id,
 
             'received_by_id' => $receivedAt
-                ? (User::query()->inRandomOrder()->value('id') ?? User::factory())
+                ? fn (): int => User::factory()->create([
+                    'role' => 'porteiro',
+                    'unit_id' => null,
+                ])->id
                 : null,
 
             'picked_up_by_id' => $pickedUpAt
-                ? (User::query()->inRandomOrder()->value('id') ?? User::factory())
+                ? fn (array $attributes): int => User::factory()->create([
+                    'role' => 'morador',
+                    'unit_id' => $attributes['unit_id'],
+                ])->id
                 : null,
 
             'tracking_code' => fake()->optional()->bothify('BR#########??'),
