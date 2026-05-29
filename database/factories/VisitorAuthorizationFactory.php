@@ -18,20 +18,23 @@ class VisitorAuthorizationFactory extends Factory
 {
     protected $model = VisitorAuthorization::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         $startDate = fake()->dateTimeBetween('now', '+7 days');
         $endDate = (clone $startDate)->modify('+8 hours');
 
         return [
-            'visitor_id' => Visitor::query()->inRandomOrder()->first()?->getKey()
-                ?? Visitor::factory(),
+            'visitor_id' => fn (): int => Visitor::factory()->create()->id,
 
-            'unit_id' => Unit::query()->inRandomOrder()->first()?->getKey()
-                ?? Unit::factory(),
+            'unit_id' => fn (): int => Unit::factory()->create()->id,
 
-            'resident_id' => User::query()->inRandomOrder()->first()?->getKey()
-                ?? User::factory(),
+            'resident_id' => fn (array $attributes): int => User::factory()->create([
+                'role' => 'morador',
+                'unit_id' => $attributes['unit_id'],
+            ])->id,
 
             'vehicle_plate' => strtoupper(fake()->bothify('???#?##')),
 

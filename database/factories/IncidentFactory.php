@@ -13,11 +13,17 @@ class IncidentFactory extends Factory
 {
     protected $model = Incident::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
-            'unit_id' => Unit::query()->inRandomOrder()->value('id'),
-            'resident_id' => User::query()->inRandomOrder()->value('id'),
+            'unit_id' => fn (): int => Unit::factory()->create()->id,
+            'resident_id' => fn (array $attributes): int => User::factory()->create([
+                'role' => 'morador',
+                'unit_id' => $attributes['unit_id'],
+            ])->id,
 
             'title' => fake()->randomElement([
                 'Vazamento na área comum',

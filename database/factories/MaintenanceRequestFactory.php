@@ -13,18 +13,19 @@ class MaintenanceRequestFactory extends Factory
 {
     protected $model = MaintenanceRequest::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         return [
-            'incident_id' => Incident::query()->inRandomOrder()->value('id'),
+            'incident_id' => fn (): int => Incident::factory()->create()->id,
 
-            'service_provider_id' => ServiceProvider::query()
-                ->inRandomOrder()
-                ->value('id'),
+            'service_provider_id' => fn (): int => ServiceProvider::factory()->create()->id,
 
-            'admin_id' => User::query()
-                ->inRandomOrder()
-                ->value('id'),
+            'admin_id' => fn (): int => User::factory()->create([
+                'role' => 'admin',
+            ])->id,
 
             'description' => fake()->paragraph(),
 
