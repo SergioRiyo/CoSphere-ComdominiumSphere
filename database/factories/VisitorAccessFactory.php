@@ -14,16 +14,19 @@ class VisitorAccessFactory extends Factory
 {
     protected $model = VisitorAccess::class;
 
+    /**
+     * @return array<string, mixed>
+     */
     public function definition(): array
     {
         $entryTime = fake()->dateTimeBetween('-7 days', 'now');
 
         return [
-            'visitor_authorization_id' => VisitorAuthorization::query()->inRandomOrder()->first()?->getKey()
-                ?? VisitorAuthorization::factory(),
+            'visitor_authorization_id' => fn (): int => VisitorAuthorization::factory()->create()->id,
 
-            'doorman_id' => User::query()->inRandomOrder()->first()?->getKey()
-                ?? User::factory(),
+            'doorman_id' => fn (): int => User::factory()->create([
+                'role' => 'porteiro',
+            ])->id,
 
             'entry_time' => $entryTime,
 
