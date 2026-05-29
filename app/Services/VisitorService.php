@@ -19,7 +19,7 @@ class VisitorService
     public function generateVisitorCode(): string
     {
         do {
-            $code = 'VIS_' . Str::upper(Str::random(8));
+            $code = 'VIS_'.Str::upper(Str::random(8));
         } while (VisitorAuthorization::where('access_code', $code)->exists());
 
         return $code;
@@ -37,11 +37,11 @@ class VisitorService
 
             $visitor = Visitor::updateOrCreate(
                 [
-                    'cpf' => $data['cpf']
+                    'cpf' => $data['cpf'],
                 ],
                 [
                     'name' => $data['name'],
-                    'phone' => $data['phone'] ?? null
+                    'phone' => $data['phone'] ?? null,
                 ]
             );
 
@@ -57,7 +57,7 @@ class VisitorService
                 'end_date' => $endDate,
                 'status' => VisitorAuthorizationStatus::Active->value,
                 'registration_link' => $data['registration_link'] ?? null,
-                'authorization_date' => now(),
+                'authorized_date' => now(),
                 'access_code' => $accessCode,
             ]);
 
@@ -126,24 +126,34 @@ class VisitorService
         int $doormanId,
         ?string $observations = null
     ): VisitorAccess {
-        return DB::transaction(function () use ($accessCode, $doormanId, $observations) {
-            $authorization = VisitorAuthorization::where('access_code', $accessCode)->lockForUpdate()->first();
+        $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();
+
+        if (! $authorization) {
+            throw new DomainException('Código de acesso inválido.');
+        }
+
+        try {
+            $this->validateAuthorization($authorization);
+        } catch (DomainException $exception) {
+            $this->denyAccess(
+                authorization: $authorization,
+                doormanId: $doormanId,
+                reason: $exception->getMessage(),
+            );
+
+            throw $exception;
+        }
+
+        return DB::transaction(function () use ($authorization, $doormanId, $observations) {
+            $authorization = VisitorAuthorization::whereKey($authorization->id)
+                ->lockForUpdate()
+                ->first();
 
             if (! $authorization) {
                 throw new DomainException('Código de acesso inválido.');
             }
 
-            try {
-                $this->validateAuthorization($authorization);
-            } catch (DomainException $exception) {
-                $this->denyAccess(
-                    authorization: $authorization,
-                    doormanId: $doormanId,
-                    reason: $exception->getMessage()
-                );
-
-                throw $exception;
-            }
+            $this->validateAuthorization($authorization);
 
             $hasOpenAccess = VisitorAccess::where('visitor_authorization_id', $authorization->id)
                 ->where('validation_status', VisitorAccessStatus::Validated->value)
