@@ -36,7 +36,7 @@ class Order extends Model
         'status' => OrderStatus::class,
     ];
 
-     public function unit(): BelongsTo
+    public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
