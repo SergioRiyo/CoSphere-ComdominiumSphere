@@ -41,15 +41,16 @@ class VisitorAuthorizationFactory extends Factory
             'end_date' => $endDate,
 
             'status' => fake()->randomElement([
-                'ativo',
-                'utilizado',
-                'expirado',
-                'cancelado',
+                'pending_data',
+                'active',
+                'used',
+                'expired',
+                'canceled',
             ]),
 
             'registration_link' => fake()->url(),
 
-            'authorization_date' => now(),
+            'authorized_date' => now(),
 
             'access_code' => strtoupper(Str::random(10)),
         ];

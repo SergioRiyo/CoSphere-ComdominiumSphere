@@ -6,7 +6,7 @@ services:
     container_name: cosphere_setup
     working_dir: /var/www/html
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:Z
       - vendor:/var/www/html/vendor
       - node_modules:/var/www/html/node_modules
     command: sh /var/www/html/docker-setup.sh
@@ -21,7 +21,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:Z
       - vendor:/var/www/html/vendor
       - node_modules:/var/www/html/node_modules
     depends_on:
@@ -38,7 +38,8 @@ services:
     ports:
       - "5174:5174"
     volumes:
-      - .:/var/www/html
+      - .:/var/www/html:Z
+      - vendor:/var/www/html/vendor
       - node_modules:/var/www/html/node_modules
     command: npm run dev -- --host 0.0.0.0
     depends_on:

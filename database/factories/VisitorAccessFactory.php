@@ -32,9 +32,9 @@ class VisitorAccessFactory extends Factory
                 : null,
 
             'validation_status' => fake()->randomElement([
-                'pendente',
-                'validado',
-                'recusado',
+                'pending',
+                'validated',
+                'rejected',
             ]),
 
             'observations' => fake()->optional()->sentence(),
