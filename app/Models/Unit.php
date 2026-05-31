@@ -10,7 +10,17 @@ class Unit extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = [
+        'block',
+        'number',
+        'type',
+        'complement',
+        'status',
+    ];
+
+    protected $attributes = [
+        'status' => 'active',
+    ];
 
     public function users(): HasMany
     {
