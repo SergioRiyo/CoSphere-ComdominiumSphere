@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
@@ -43,13 +44,7 @@ class VisitorAuthorizationFactory extends Factory
             'start_date' => $startDate,
             'end_date' => $endDate,
 
-            'status' => fake()->randomElement([
-                'pending_data',
-                'active',
-                'used',
-                'expired',
-                'canceled',
-            ]),
+            'status' => fake()->randomElement(VisitorAuthorizationStatus::cases())->value,
 
             'registration_link' => fake()->url(),
 

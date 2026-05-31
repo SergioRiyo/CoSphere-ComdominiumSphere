@@ -10,11 +10,26 @@ class Unit extends Model
 {
     use HasFactory;
 
-    protected $fillable = [];
+    protected $fillable = [
+        'block',
+        'number',
+        'type',
+        'complement',
+        'status',
+    ];
+
+    protected $attributes = [
+        'status' => 'active',
+    ];
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
     }
 
     public function visitorAuthorizations(): HasMany

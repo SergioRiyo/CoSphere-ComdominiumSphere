@@ -17,7 +17,13 @@ class ModelFactoryTest extends TestCase
 
     public function test_reservation_factory_makes_reservation(): void
     {
-        $this->assertInstanceOf(Reservation::class, Reservation::factory()->make());
+        $reservation = Reservation::factory()->make([
+            'common_area_id' => 1,
+            'user_id' => 1,
+            'unit_id' => 1,
+        ]);
+
+        $this->assertInstanceOf(Reservation::class, $reservation);
     }
 
     public function test_unit_factory_makes_unit(): void

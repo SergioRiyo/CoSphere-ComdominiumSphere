@@ -17,6 +17,15 @@ class CommonAreaFactory extends Factory
      */
     public function definition(): array
     {
-        return [];
+        return [
+            'name' => fake()->unique()->words(2, true),
+            'description' => fake()->optional()->sentence(),
+            'available_from' => '08:00',
+            'available_until' => '22:00',
+            'max_reservation_minutes' => 240,
+            'rules' => fake()->sentence(),
+            'is_active' => true,
+            'requires_approval' => true,
+        ];
     }
 }

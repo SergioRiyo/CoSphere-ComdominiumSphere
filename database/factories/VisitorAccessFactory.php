@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\VisitorAccessStatus;
 use App\Models\User;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
@@ -34,11 +35,7 @@ class VisitorAccessFactory extends Factory
                 ? (clone $entryTime)->modify('+2 hours')
                 : null,
 
-            'validation_status' => fake()->randomElement([
-                'pending',
-                'validated',
-                'rejected',
-            ]),
+            'validation_status' => fake()->randomElement(VisitorAccessStatus::cases())->value,
 
             'observations' => fake()->optional()->sentence(),
         ];
