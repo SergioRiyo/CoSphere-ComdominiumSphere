@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ReservationStatus;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 use App\Models\Unit;
@@ -28,7 +29,7 @@ class ReservationFactory extends Factory
             'unit_id' => Unit::factory(),
             'starts_at' => $startsAt,
             'ends_at' => (clone $startsAt)->modify('+2 hours'),
-            'status' => 'confirmed',
+            'status' => ReservationStatus::Approved,
         ];
     }
 }

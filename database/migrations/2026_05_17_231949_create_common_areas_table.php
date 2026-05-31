@@ -20,7 +20,12 @@ return new class extends Migration
             $table->timestamps();
             $table->unsignedSmallInteger('max_reservation_minutes');
             $table->text('rules'); // regras da área
-            $table->boolean('is_active')->default(true);
+            $table->enum('status', [
+                'active',
+                'inactive',
+                'maintenance',
+            ])->default('active');
+            $table->string('maintenance_reason')->nullable();
             $table->boolean('requires_approval')->default(true); // aprovaçao da área
         });
     }

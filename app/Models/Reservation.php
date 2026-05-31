@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReservationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,7 @@ class Reservation extends Model
         'starts_at',
         'ends_at',
         'status',
+        'rejection_reason',
     ];
 
     protected $attributes = [
@@ -28,6 +30,7 @@ class Reservation extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'status' => ReservationStatus::class,
         ];
     }
 

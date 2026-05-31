@@ -17,20 +17,20 @@ class CommonArea extends Model
         'available_until',
         'max_reservation_minutes',
         'rules',
-        'is_active',
+        'status',
+        'maintenance_reason',
         'requires_approval',
     ];
 
     protected $attributes =
         [
-            'is_active' => true,
+            'status' => 'active',
             'requires_approval' => true,
         ];
 
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
             'requires_approval' => 'boolean',
         ];
     }

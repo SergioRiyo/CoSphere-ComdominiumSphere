@@ -24,7 +24,8 @@ class CommonAreaFactory extends Factory
             'available_until' => '22:00',
             'max_reservation_minutes' => 240,
             'rules' => fake()->sentence(),
-            'is_active' => true,
+            'status' => 'active',
+            'maintenance_reason' => null,
             'requires_approval' => true,
         ];
     }
