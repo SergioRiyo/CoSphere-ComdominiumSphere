@@ -17,6 +17,11 @@ class Unit extends Model
         return $this->hasMany(User::class);
     }
 
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(Reservation::class);
+    }
+
     public function visitorAuthorizations(): HasMany
     {
         return $this->hasMany(VisitorAuthorization::class, 'unit_id');
