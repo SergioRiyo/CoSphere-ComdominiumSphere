@@ -13,6 +13,11 @@ return new class extends Migration
     {
         Schema::create('units', function (Blueprint $table) {
             $table->id();
+            $table->string('block')->nullable()->unique(); //nome da quadra, bloco
+            $table->string('number')->unique(); //num da casa, lote
+            $table->string('type'); //lote, casa
+            $table->string('complement')->nullable();
+            $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
         });
     }
