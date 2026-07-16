@@ -16,11 +16,23 @@ class UserSeeder extends Seeder
         $unit = Unit::query()->first() ?? Unit::factory()->create();
 
         User::query()->firstOrCreate(
+            ['email' => 'admin@cosphere.test'],
+            [
+                'unit_id' => $unit->id,
+                'name' => 'Administrador',
+                'role' => 'admin',
+                'email_verified_at' => now(),
+                'password' => 'password',
+            ],
+        );
+
+        User::query()->firstOrCreate(
             ['email' => 'morador@cosphere.test'],
             [
                 'unit_id' => $unit->id,
                 'name' => 'Morador',
                 'role' => 'morador',
+                'email_verified_at' => now(),
                 'password' => 'password',
             ],
         );
@@ -30,6 +42,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Porteiro',
                 'role' => 'porteiro',
+                'email_verified_at' => now(),
                 'password' => 'password',
             ],
         );

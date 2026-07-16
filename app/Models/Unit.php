@@ -11,7 +11,6 @@ class Unit extends Model
     use HasFactory;
 
     protected $fillable = [
-        'block',
         'number',
         'type',
         'complement',

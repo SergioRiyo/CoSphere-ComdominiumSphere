@@ -18,11 +18,8 @@ class UnitFactory extends Factory
     public function definition(): array
     {
         return [
-            'block' => fake()->optional()->randomElement(['A', 'B', 'C']),
             'number' => fake()->unique()->numerify('###'),
-            'type' => fake()->randomElement(['lote', 'casa', 'apartamento']),
-            'complement' => fake()->optional()->sentence(3),
-            'status' => 'active',
+            'type' => fake()->randomElement(['apartamento', 'casa', 'loja']),
         ];
     }
 }
