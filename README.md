@@ -1,40 +1,48 @@
 # CoSphere-ComdominiumSphere
 
-Aplicacao Laravel + Inertia + React com ambiente via Docker usando Supabase como banco.
+Aplicação Laravel + Inertia + React para gestão de condomínio, com bootstrap rápido para desenvolvimento local.
 
-## Rodando o projeto
+## Requisitos
 
-Tenha apenas o Docker Desktop instalado e em execucao.
+- Docker Desktop (opção recomendada)
+- Ou: PHP 8.5+, Composer, Node.js 20+ e PostgreSQL/Supabase
 
-1. Clone o repositorio:
+## Setup rápido com Docker
+
+1. Clone o repositório e entre na pasta:
 
 ```bash
 git clone <URL_DO_REPOSITORIO>
 cd CoSphere-ComdominiumSphere
 ```
 
-2. Crie o arquivo `.env`:
+2. Copie o arquivo de ambiente:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Preencha no `.env` as credenciais reais do Supabase.
-
-4. Suba o projeto pela primeira vez:
+3. Suba o ambiente:
 
 ```bash
 docker compose up --build -d
 ```
 
-O comando instala as dependencias, gera a `APP_KEY` se necessario, roda as migrations e sobe a aplicacao.
+O primeiro boot instala dependências, gera a chave da aplicação e executa as migrações e seeders no banco configurado para desenvolvimento (PostgreSQL/Supabase). O SQLite é reservado para testes automatizados.
 
-## Enderecos
+## Endereços
 
-- Aplicacao: `http://localhost:8000`
-- Vite dev server: `http://localhost:5174`
+- Aplicação: http://localhost:8000
+- Vite dev server: http://localhost:5174
 
-## Comandos basicos
+## Credenciais padrão
+
+Após o seed inicial, você pode entrar com:
+
+- E-mail: admin@cosphere.test
+- Senha: password
+
+## Comandos úteis
 
 Subir os containers:
 
@@ -42,8 +50,26 @@ Subir os containers:
 docker compose up -d
 ```
 
-Parar o projeto:
+Parar os containers:
 
 ```bash
 docker compose down
+```
+
+Executar testes:
+
+```bash
+php artisan test
+```
+
+## Execução local sem Docker
+
+```bash
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan serve
+npm run dev
 ```
