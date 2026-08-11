@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Unit;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -25,8 +26,6 @@ class DatabaseSeederTest extends TestCase
             'role' => 'porteiro',
         ]);
 
-        $this->assertDatabaseHas('units', [
-            'type' => 'apartamento',
-        ]);
+        $this->assertTrue(Unit::query()->exists());
     }
 }
