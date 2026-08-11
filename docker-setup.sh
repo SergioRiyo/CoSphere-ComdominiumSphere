@@ -4,23 +4,12 @@ set -eu
 
 cd /var/www/html
 
-if [ -f .env ]; then
-    if grep -Eq '^DB_CONNECTION=pgsql$' .env || grep -Eq '^DB_USERNAME=seu_usuario_supabase$' .env || grep -Eq '^DB_PASSWORD=sua_senha_supabase$' .env; then
-        cp .env.example .env
-    fi
-else
+if [ ! -f .env ]; then
     cp .env.example .env
 fi
 
-if [ ! -w .env ]; then
-    temp_env_file="$(mktemp)"
-    cat .env > "$temp_env_file"
-    rm -f .env
-    mv "$temp_env_file" .env
-fi
-
 composer install --no-interaction --prefer-dist
-npm install --no-fund --no-audit
+npm ci --no-fund --no-audit
 
 if ! grep -Eq '^APP_KEY=.+$' .env; then
     php artisan key:generate --force

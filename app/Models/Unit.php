@@ -11,6 +11,7 @@ class Unit extends Model
     use HasFactory;
 
     protected $fillable = [
+        'block',
         'number',
         'type',
         'complement',
@@ -29,6 +30,11 @@ class Unit extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(Reservation::class);
+    }
+
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
     }
 
     public function visitorAuthorizations(): HasMany

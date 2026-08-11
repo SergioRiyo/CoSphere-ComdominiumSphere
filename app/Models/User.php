@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->hasMany(Reservation::class);
     }
 
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
     public function visitorAuthorizations()
     {
         return $this->hasMany(VisitorAuthorization::class, 'resident_id');
