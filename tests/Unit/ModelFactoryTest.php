@@ -2,14 +2,18 @@
 
 namespace Tests\Unit;
 
+use App\Enums\UserRole;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ModelFactoryTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_common_area_factory_makes_common_area(): void
     {
         $this->assertInstanceOf(CommonArea::class, CommonArea::factory()->make());
@@ -31,11 +35,11 @@ class ModelFactoryTest extends TestCase
         $this->assertInstanceOf(Unit::class, Unit::factory()->make());
     }
 
-    public function test_user_factory_uses_default_resident_role(): void
+    public function test_user_factory_uses_default_resident_role_with_a_unit(): void
     {
         $user = User::factory()->make();
 
-        $this->assertSame('morador', $user->role);
-        $this->assertNull($user->unit_id);
+        $this->assertSame(UserRole::Morador, $user->role);
+        $this->assertNotNull($user->unit_id);
     }
 }
