@@ -20,6 +20,8 @@ class UserSeeder extends Seeder
             ['email' => 'admin@cosphere.test'],
             [
                 'name' => 'Administrador',
+                'cpf' => '529.982.247-25',
+                'phone' => '(65) 90000-0001',
                 'role' => UserRole::Admin,
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -32,6 +34,8 @@ class UserSeeder extends Seeder
             [
                 'unit_id' => $unit->id,
                 'name' => 'Morador',
+                'cpf' => '111.444.777-35',
+                'phone' => '(65) 90000-0002',
                 'role' => UserRole::Morador,
                 'is_active' => true,
                 'email_verified_at' => now(),
@@ -43,6 +47,8 @@ class UserSeeder extends Seeder
             ['email' => 'porteiro@cosphere.test'],
             [
                 'name' => 'Porteiro',
+                'cpf' => '123.456.789-09',
+                'phone' => '(65) 90000-0003',
                 'role' => UserRole::Porteiro,
                 'is_active' => true,
                 'email_verified_at' => now(),

@@ -30,6 +30,8 @@ class UserFactory extends Factory
             'unit_id' => Unit::factory(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'cpf' => fake()->unique()->numerify('###.###.###-##'),
+            'phone' => fake()->phoneNumber(),
             'role' => UserRole::Morador,
             'is_active' => true,
             'email_verified_at' => now(),
