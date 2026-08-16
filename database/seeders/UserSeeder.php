@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -18,9 +19,9 @@ class UserSeeder extends Seeder
         User::query()->firstOrCreate(
             ['email' => 'admin@cosphere.test'],
             [
-                'unit_id' => $unit->id,
                 'name' => 'Administrador',
-                'role' => 'admin',
+                'role' => UserRole::Admin,
+                'is_active' => true,
                 'email_verified_at' => now(),
                 'password' => 'password',
             ],
@@ -31,7 +32,8 @@ class UserSeeder extends Seeder
             [
                 'unit_id' => $unit->id,
                 'name' => 'Morador',
-                'role' => 'morador',
+                'role' => UserRole::Morador,
+                'is_active' => true,
                 'email_verified_at' => now(),
                 'password' => 'password',
             ],
@@ -41,7 +43,8 @@ class UserSeeder extends Seeder
             ['email' => 'porteiro@cosphere.test'],
             [
                 'name' => 'Porteiro',
-                'role' => 'porteiro',
+                'role' => UserRole::Porteiro,
+                'is_active' => true,
                 'email_verified_at' => now(),
                 'password' => 'password',
             ],
