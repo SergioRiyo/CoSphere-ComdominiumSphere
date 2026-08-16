@@ -66,7 +66,32 @@ class AuthenticationTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'wrong-password',
+        ])->assertSessionHasErrors([
+            'email' => 'E-mail ou senha inválidos.',
         ]);
+
+        $this->assertGuest();
+    }
+
+    public function test_users_can_not_authenticate_with_an_unknown_email_address(): void
+    {
+        $this->post(route('login.store'), [
+            'email' => 'nao-existe@example.com',
+            'password' => 'password',
+        ])->assertSessionHasErrors([
+            'email' => 'E-mail ou senha inválidos.',
+        ]);
+
+        $this->assertGuest();
+    }
+
+    public function test_login_validation_errors_are_translated_to_brazilian_portuguese(): void
+    {
+        $this->post(route('login.store'), [])
+            ->assertSessionHasErrors([
+                'email' => 'O campo e-mail é obrigatório.',
+                'password' => 'O campo senha é obrigatório.',
+            ]);
 
         $this->assertGuest();
     }
@@ -78,7 +103,9 @@ class AuthenticationTest extends TestCase
         $this->post(route('login.store'), [
             'email' => $user->email,
             'password' => 'password',
-        ])->assertSessionHasErrors('email');
+        ])->assertSessionHasErrors([
+            'email' => 'E-mail ou senha inválidos.',
+        ]);
 
         $this->assertGuest();
     }

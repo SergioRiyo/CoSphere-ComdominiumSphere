@@ -19,6 +19,13 @@ class DashboardTest extends TestCase
         }
     }
 
+    public function test_unverified_users_are_redirected_to_the_email_verification_notice(): void
+    {
+        $this->actingAs(User::factory()->unverified()->create())
+            ->get(route('dashboard'))
+            ->assertRedirect(route('verification.notice'));
+    }
+
     public function test_dashboard_dispatches_an_administrator_to_the_administrative_dashboard(): void
     {
         $this->actingAs(User::factory()->admin()->create())
