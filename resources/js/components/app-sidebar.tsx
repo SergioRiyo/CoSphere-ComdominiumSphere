@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
@@ -13,6 +13,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import type { NavItem } from '@/types';
@@ -30,6 +31,15 @@ export function AppSidebar() {
             href: dashboardHref,
             icon: LayoutGrid,
         },
+        ...(auth.user.role === 'admin'
+            ? [
+                  {
+                      title: 'Gestão de usuários',
+                      href: usersIndex(),
+                      icon: Users,
+                  },
+              ]
+            : []),
     ];
 
     return (

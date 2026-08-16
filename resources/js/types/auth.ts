@@ -9,8 +9,11 @@ export type UnitSummary = {
 
 export type User = {
     id: number;
+    unit_id: number | null;
     name: string;
     email: string;
+    cpf: string | null;
+    phone: string | null;
     role: UserRole;
     is_active: boolean;
     avatar?: string;
