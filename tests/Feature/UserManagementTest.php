@@ -33,6 +33,28 @@ class UserManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('admin/users'));
     }
 
+    public function test_residents_and_doormen_cannot_mutate_user_management(): void
+    {
+        $managedUser = User::factory()->morador()->create();
+
+        foreach ([
+            User::factory()->morador()->create(),
+            User::factory()->porteiro()->create(),
+        ] as $user) {
+            $this->actingAs($user)
+                ->post(route('admin.users.store'))
+                ->assertForbidden();
+
+            $this->actingAs($user)
+                ->patch(route('admin.users.update', $managedUser))
+                ->assertForbidden();
+
+            $this->actingAs($user)
+                ->patch(route('admin.users.status.update', $managedUser))
+                ->assertForbidden();
+        }
+    }
+
     public function test_users_are_searched_filtered_and_paginated_on_the_backend(): void
     {
         $admin = User::factory()->admin()->create();

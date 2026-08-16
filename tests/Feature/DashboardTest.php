@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,21 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->unverified()->create())
             ->get(route('dashboard'))
             ->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_unverified_users_cannot_access_role_dashboards_directly(): void
+    {
+        $dashboards = [
+            [User::factory()->admin()->unverified()->create(), 'admin.dashboard'],
+            [User::factory()->morador()->unverified()->create(), 'morador.dashboard'],
+            [User::factory()->porteiro()->unverified()->create(), 'portaria.dashboard'],
+        ];
+
+        foreach ($dashboards as [$user, $route]) {
+            $this->actingAs($user)
+                ->get(route($route))
+                ->assertRedirect(route('verification.notice'));
+        }
     }
 
     public function test_dashboard_dispatches_an_administrator_to_the_administrative_dashboard(): void
@@ -77,6 +93,21 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->porteiro()->create())
             ->get(route('portaria.dashboard'))
             ->assertInertia(fn (Assert $page) => $page->component('portaria/dashboard'));
+    }
+
+    public function test_inertia_shares_the_authenticated_user_role(): void
+    {
+        $dashboards = [
+            [User::factory()->admin()->create(), 'admin.dashboard', UserRole::Admin->value],
+            [User::factory()->morador()->create(), 'morador.dashboard', UserRole::Morador->value],
+            [User::factory()->porteiro()->create(), 'portaria.dashboard', UserRole::Porteiro->value],
+        ];
+
+        foreach ($dashboards as [$user, $route, $role]) {
+            $this->actingAs($user)
+                ->get(route($route))
+                ->assertInertia(fn (Assert $page) => $page->where('auth.user.role', $role));
+        }
     }
 
     public function test_users_cannot_access_dashboards_for_other_roles(): void
