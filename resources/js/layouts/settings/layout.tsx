@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { Palette, ShieldCheck, UserRound } from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
@@ -12,19 +13,19 @@ import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
+        title: 'Meu perfil',
         href: edit(),
-        icon: null,
+        icon: UserRound,
     },
     {
-        title: 'Security',
+        title: 'Segurança',
         href: editSecurity(),
-        icon: null,
+        icon: ShieldCheck,
     },
     {
-        title: 'Appearance',
+        title: 'Aparência',
         href: editAppearance(),
-        icon: null,
+        icon: Palette,
     },
 ];
 
@@ -34,15 +35,15 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
     return (
         <div className="px-4 py-6">
             <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
+                title="Configurações"
+                description="Gerencie seus dados pessoais, segurança e preferências."
             />
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
                 <aside className="w-full max-w-xl lg:w-48">
                     <nav
                         className="flex flex-col space-y-1 space-x-0"
-                        aria-label="Settings"
+                        aria-label="Configurações"
                     >
                         {sidebarNavItems.map((item, index) => (
                             <Button
