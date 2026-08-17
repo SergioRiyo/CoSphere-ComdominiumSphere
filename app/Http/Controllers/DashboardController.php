@@ -3,15 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\AdminDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly AdminDashboardService $adminDashboardService) {}
+
     public function admin(): Response
     {
-        return Inertia::render('admin/dashboard');
+        return Inertia::render('admin/dashboard', [
+            'metrics' => $this->adminDashboardService->metrics(),
+        ]);
     }
 
     public function morador(Request $request): Response

@@ -1,5 +1,14 @@
 import type { UserRole } from '@/types/auth';
 
+export type AdminDashboardMetrics = {
+    active_users: number;
+    inactive_users: number;
+    administrators: number;
+    residents: number;
+    doormen: number;
+    units: number;
+};
+
 export type ManagedUserUnit = {
     id: number;
     block: string | null;

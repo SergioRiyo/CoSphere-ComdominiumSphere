@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\AdminDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -68,6 +69,43 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())
             ->get(route('admin.dashboard'))
             ->assertInertia(fn (Assert $page) => $page->component('admin/dashboard'));
+    }
+
+    public function test_administrative_dashboard_displays_current_user_and_unit_metrics(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->admin()->inactive()->create();
+
+        $firstUnit = Unit::factory()->create();
+        $secondUnit = Unit::factory()->create();
+
+        User::factory()->morador()->active()->for($firstUnit)->create();
+        User::factory()->morador()->inactive()->for($secondUnit)->create();
+        User::factory()->porteiro()->active()->create();
+        User::factory()->porteiro()->inactive()->create();
+
+        $this->actingAs($admin)
+            ->get(route('admin.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('admin/dashboard')
+                ->where('metrics.active_users', 3)
+                ->where('metrics.inactive_users', 3)
+                ->where('metrics.administrators', 2)
+                ->where('metrics.residents', 2)
+                ->where('metrics.doormen', 2)
+                ->where('metrics.units', 2));
+    }
+
+    public function test_administrative_dashboard_metrics_are_zero_without_records(): void
+    {
+        $this->assertSame([
+            'active_users' => 0,
+            'inactive_users' => 0,
+            'administrators' => 0,
+            'residents' => 0,
+            'doormen' => 0,
+            'units' => 0,
+        ], app(AdminDashboardService::class)->metrics());
     }
 
     public function test_a_resident_can_access_the_resident_dashboard_with_their_own_unit(): void
