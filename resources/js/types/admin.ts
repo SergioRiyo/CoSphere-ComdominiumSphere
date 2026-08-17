@@ -2,7 +2,7 @@ import type { UserRole } from '@/types/auth';
 
 export type ManagedUserUnit = {
     id: number;
-    block: string;
+    block: string | null;
     number: string;
 };
 

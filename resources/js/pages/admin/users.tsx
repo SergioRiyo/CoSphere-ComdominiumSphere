@@ -245,7 +245,9 @@ export default function UsersPage({
                                         </td>
                                         <td className="px-5 py-4 text-muted-foreground">
                                             {user.unit
-                                                ? `Bloco ${user.unit.block} · Unidade ${user.unit.number}`
+                                                ? user.unit.block
+                                                    ? `Bloco ${user.unit.block} · Unidade ${user.unit.number}`
+                                                    : `Unidade ${user.unit.number}`
                                                 : '—'}
                                         </td>
                                         <td className="px-5 py-4">
