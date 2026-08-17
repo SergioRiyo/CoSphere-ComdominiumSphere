@@ -63,7 +63,7 @@ class UserManagementService
     }
 
     /**
-     * @return Collection<int, array{id: int, block: string, number: string}>
+     * @return Collection<int, array{id: int, block: string|null, number: string}>
      */
     public function unitOptions(): Collection
     {

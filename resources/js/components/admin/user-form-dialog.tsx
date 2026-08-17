@@ -232,8 +232,9 @@ export default function UserFormDialog({
                                                     key={unit.id}
                                                     value={unit.id.toString()}
                                                 >
-                                                    Bloco {unit.block} · Unidade{' '}
-                                                    {unit.number}
+                                                    {unit.block
+                                                        ? `Bloco ${unit.block} · Unidade ${unit.number}`
+                                                        : `Unidade ${unit.number}`}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
