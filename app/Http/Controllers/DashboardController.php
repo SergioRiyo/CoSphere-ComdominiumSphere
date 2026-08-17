@@ -20,7 +20,7 @@ class DashboardController extends Controller
         $user = $request->user();
 
         return Inertia::render('morador/dashboard', [
-            'unit' => $user->unit()->first(['id', 'number', 'type', 'complement']),
+            'unit' => $user->unit()->first(['id', 'block', 'number', 'type', 'complement']),
         ]);
     }
 

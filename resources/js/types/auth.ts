@@ -2,6 +2,7 @@ export type UserRole = 'admin' | 'morador' | 'porteiro';
 
 export type UnitSummary = {
     id: number;
+    block: string | null;
     number: string;
     type: string;
     complement: string | null;
