@@ -21,6 +21,13 @@ import type { UnitSummary } from '@/types';
 
 type ProfileProps = {
     mustVerifyEmail: boolean;
+    profile: {
+        name: string;
+        email: string;
+        phone: string | null;
+        cpf: string | null;
+        is_active: boolean;
+    };
     roleLabel: string;
     status?: string;
     unit: UnitSummary | null;
@@ -66,6 +73,7 @@ function formatUnit(unit: UnitSummary | null): string {
 
 export default function Profile({
     mustVerifyEmail,
+    profile,
     roleLabel,
     status,
     unit,
@@ -107,7 +115,7 @@ export default function Profile({
                                         <Input
                                             id="name"
                                             name="name"
-                                            defaultValue={auth.user.name}
+                                            defaultValue={profile.name}
                                             required
                                             autoComplete="name"
                                             placeholder="Nome completo"
@@ -121,7 +129,7 @@ export default function Profile({
                                             id="email"
                                             type="email"
                                             name="email"
-                                            defaultValue={auth.user.email}
+                                            defaultValue={profile.email}
                                             required
                                             autoComplete="email"
                                             placeholder="seu.email@exemplo.com"
@@ -135,7 +143,7 @@ export default function Profile({
                                             id="phone"
                                             type="tel"
                                             name="phone"
-                                            defaultValue={auth.user.phone ?? ''}
+                                            defaultValue={profile.phone ?? ''}
                                             autoComplete="tel"
                                             placeholder="(00) 00000-0000"
                                         />
@@ -196,7 +204,7 @@ export default function Profile({
                             <ProfileDetail
                                 icon={IdCard}
                                 label="CPF"
-                                value={auth.user.cpf ?? 'Não informado'}
+                                value={profile.cpf ?? 'Não informado'}
                             />
                             <ProfileDetail
                                 icon={ShieldCheck}
@@ -214,12 +222,12 @@ export default function Profile({
                                     <Badge
                                         variant="outline"
                                         className={
-                                            auth.user.is_active
+                                            profile.is_active
                                                 ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
                                                 : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300'
                                         }
                                     >
-                                        {auth.user.is_active
+                                        {profile.is_active
                                             ? 'Ativo'
                                             : 'Inativo'}
                                     </Badge>
