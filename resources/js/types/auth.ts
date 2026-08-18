@@ -10,19 +10,11 @@ export type UnitSummary = {
 
 export type User = {
     id: number;
-    unit_id: number | null;
     name: string;
     email: string;
-    cpf: string | null;
-    phone: string | null;
     role: UserRole;
-    is_active: boolean;
     avatar?: string;
     email_verified_at: string | null;
-    two_factor_enabled?: boolean;
-    created_at: string;
-    updated_at: string;
-    [key: string]: unknown;
 };
 
 export type Auth = {

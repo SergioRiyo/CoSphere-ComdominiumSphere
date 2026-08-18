@@ -23,9 +23,7 @@ class MaintenanceRequestFactory extends Factory
 
             'service_provider_id' => fn (): int => ServiceProvider::factory()->create()->id,
 
-            'admin_id' => fn (): int => User::factory()->create([
-                'role' => 'admin',
-            ])->id,
+            'admin_id' => fn (): int => User::factory()->admin()->create()->id,
 
             'description' => fake()->paragraph(),
 

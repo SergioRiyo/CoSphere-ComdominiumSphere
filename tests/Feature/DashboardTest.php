@@ -149,6 +149,34 @@ class DashboardTest extends TestCase
         }
     }
 
+    public function test_inertia_shares_only_the_minimum_authenticated_user_data(): void
+    {
+        $resident = User::factory()->morador()->create([
+            'cpf' => '529.982.247-25',
+            'phone' => '(65) 99999-9999',
+        ]);
+
+        $this->actingAs($resident)
+            ->get(route('morador.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('auth.user', 5)
+                ->where('auth.user.id', $resident->id)
+                ->where('auth.user.name', $resident->name)
+                ->where('auth.user.email', $resident->email)
+                ->where('auth.user.role', UserRole::Morador->value)
+                ->where('auth.user.email_verified_at', fn (?string $value): bool => $value !== null)
+                ->missing('auth.user.cpf')
+                ->missing('auth.user.phone')
+                ->missing('auth.user.unit_id')
+                ->missing('auth.user.is_active')
+                ->missing('auth.user.created_at')
+                ->missing('auth.user.updated_at')
+                ->missing('auth.user.password')
+                ->missing('auth.user.remember_token')
+                ->missing('auth.user.two_factor_secret')
+                ->missing('auth.user.two_factor_recovery_codes'));
+    }
+
     public function test_users_cannot_access_dashboards_for_other_roles(): void
     {
         $admin = User::factory()->admin()->create();
