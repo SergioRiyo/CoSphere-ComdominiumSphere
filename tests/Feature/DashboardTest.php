@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,21 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->unverified()->create())
             ->get(route('dashboard'))
             ->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_unverified_users_cannot_access_role_dashboards_directly(): void
+    {
+        $dashboards = [
+            [User::factory()->admin()->unverified()->create(), 'admin.dashboard'],
+            [User::factory()->morador()->unverified()->create(), 'morador.dashboard'],
+            [User::factory()->porteiro()->unverified()->create(), 'portaria.dashboard'],
+        ];
+
+        foreach ($dashboards as [$user, $route]) {
+            $this->actingAs($user)
+                ->get(route($route))
+                ->assertRedirect(route('verification.notice'));
+        }
     }
 
     public function test_dashboard_dispatches_an_administrator_to_the_administrative_dashboard(): void
@@ -57,26 +73,108 @@ class DashboardTest extends TestCase
     public function test_a_resident_can_access_the_resident_dashboard_with_their_own_unit(): void
     {
         $unit = Unit::factory()->create([
+            'block' => 'Bloco B',
             'number' => '101',
             'type' => 'Apartamento',
-            'complement' => 'Bloco A',
+            'complement' => 'Fundos',
         ]);
-        $resident = User::factory()->morador()->for($unit)->create();
+        $resident = User::factory()->morador()->for($unit)->create([
+            'name' => 'Marina da Silva',
+            'email' => 'marina@example.com',
+        ]);
 
         $this->actingAs($resident)
             ->get(route('morador.dashboard'))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('morador/dashboard')
+                ->where('auth.user.name', 'Marina da Silva')
+                ->where('auth.user.email', 'marina@example.com')
+                ->where('auth.user.role', UserRole::Morador->value)
+                ->where('unit.id', $unit->id)
+                ->where('unit.block', 'Bloco B')
                 ->where('unit.number', '101')
                 ->where('unit.type', 'Apartamento')
-                ->where('unit.complement', 'Bloco A'));
+                ->where('unit.complement', 'Fundos'));
+    }
+
+    public function test_a_resident_without_a_unit_receives_a_null_unit(): void
+    {
+        $resident = User::factory()->morador()->create([
+            'unit_id' => null,
+            'name' => 'João da Costa',
+            'email' => 'joao@example.com',
+        ]);
+
+        $this->actingAs($resident)
+            ->get(route('morador.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('morador/dashboard')
+                ->where('auth.user.name', 'João da Costa')
+                ->where('auth.user.email', 'joao@example.com')
+                ->where('auth.user.role', UserRole::Morador->value)
+                ->where('unit', null));
     }
 
     public function test_a_doorman_can_access_the_portaria_dashboard(): void
     {
-        $this->actingAs(User::factory()->porteiro()->create())
+        $doorman = User::factory()->porteiro()->create([
+            'name' => 'Carlos Souza',
+            'email' => 'carlos@example.com',
+        ]);
+
+        $this->actingAs($doorman)
             ->get(route('portaria.dashboard'))
-            ->assertInertia(fn (Assert $page) => $page->component('portaria/dashboard'));
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('portaria/dashboard')
+                ->where('auth.user.name', 'Carlos Souza')
+                ->where('auth.user.email', 'carlos@example.com')
+                ->where('auth.user.role', UserRole::Porteiro->value)
+                ->missing('visitors')
+                ->missing('accesses')
+                ->missing('orders'));
+    }
+
+    public function test_inertia_shares_the_authenticated_user_role(): void
+    {
+        $dashboards = [
+            [User::factory()->admin()->create(), 'admin.dashboard', UserRole::Admin->value],
+            [User::factory()->morador()->create(), 'morador.dashboard', UserRole::Morador->value],
+            [User::factory()->porteiro()->create(), 'portaria.dashboard', UserRole::Porteiro->value],
+        ];
+
+        foreach ($dashboards as [$user, $route, $role]) {
+            $this->actingAs($user)
+                ->get(route($route))
+                ->assertInertia(fn (Assert $page) => $page->where('auth.user.role', $role));
+        }
+    }
+
+    public function test_inertia_shares_only_the_minimum_authenticated_user_data(): void
+    {
+        $resident = User::factory()->morador()->create([
+            'cpf' => '529.982.247-25',
+            'phone' => '(65) 99999-9999',
+        ]);
+
+        $this->actingAs($resident)
+            ->get(route('morador.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('auth.user', 5)
+                ->where('auth.user.id', $resident->id)
+                ->where('auth.user.name', $resident->name)
+                ->where('auth.user.email', $resident->email)
+                ->where('auth.user.role', UserRole::Morador->value)
+                ->where('auth.user.email_verified_at', fn (?string $value): bool => $value !== null)
+                ->missing('auth.user.cpf')
+                ->missing('auth.user.phone')
+                ->missing('auth.user.unit_id')
+                ->missing('auth.user.is_active')
+                ->missing('auth.user.created_at')
+                ->missing('auth.user.updated_at')
+                ->missing('auth.user.password')
+                ->missing('auth.user.remember_token')
+                ->missing('auth.user.two_factor_secret')
+                ->missing('auth.user.two_factor_recovery_codes'));
     }
 
     public function test_users_cannot_access_dashboards_for_other_roles(): void

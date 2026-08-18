@@ -20,8 +20,11 @@ class VehicleFactory extends Factory
     public function definition(): array
     {
         return [
-            'unit_id' => Unit::factory(),
-            'user_id' => User::factory(),
+            'unit_id' => fn (): int => Unit::factory()->create()->id,
+            'user_id' => fn (array $attributes): int => User::factory()
+                ->morador()
+                ->create(['unit_id' => $attributes['unit_id']])
+                ->id,
             'plate' => strtoupper(fake()->unique()->bothify('???#?##')),
             'model' => fake()->bothify('Modelo ##'),
             'color' => fake()->safeColorName(),

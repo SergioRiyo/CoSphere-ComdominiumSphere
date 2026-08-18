@@ -1,4 +1,13 @@
 import { Head, usePage } from '@inertiajs/react';
+import { Building2, CalendarClock } from 'lucide-react';
+import { DashboardComingSoonCard } from '@/components/dashboard-coming-soon-card';
+import { DashboardWelcomeCard } from '@/components/dashboard-welcome-card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+} from '@/components/ui/card';
 import { dashboard } from '@/routes/morador';
 import type { UnitSummary } from '@/types';
 
@@ -12,36 +21,81 @@ export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
     return (
         <>
             <Head title="Dashboard do morador" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
-                    <p className="text-sm font-medium text-muted-foreground">Morador</p>
-                    <h1 className="mt-2 text-2xl font-semibold">Olá, {auth.user.name}</h1>
-                    <p className="mt-3 text-muted-foreground">
-                        Acompanhe aqui as informações da sua unidade e do condomínio.
-                    </p>
-                </div>
+            <div className="flex h-full flex-1 flex-col p-4 sm:p-6">
+                <main className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+                    <DashboardWelcomeCard
+                        user={auth.user}
+                        roleLabel="Morador"
+                        description="Consulte as informações da sua unidade e acompanhe as novidades do condomínio."
+                    />
 
-                {unit && (
-                    <div className="rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
-                        <h2 className="text-lg font-semibold">Sua unidade</h2>
-                        <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                            <div>
-                                <dt className="text-muted-foreground">Número</dt>
-                                <dd className="font-medium">{unit.number}</dd>
-                            </div>
-                            <div>
-                                <dt className="text-muted-foreground">Tipo</dt>
-                                <dd className="font-medium">{unit.type}</dd>
-                            </div>
-                            {unit.complement && (
-                                <div>
-                                    <dt className="text-muted-foreground">Complemento</dt>
-                                    <dd className="font-medium">{unit.complement}</dd>
-                                </div>
-                            )}
-                        </dl>
+                    <div className="grid gap-6 lg:grid-cols-2">
+                        {unit ? (
+                            <Card className="border-cosphere-line/80 shadow-sm dark:border-border">
+                                <CardHeader>
+                                    <h2 className="break-words text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                        Sua unidade
+                                    </h2>
+                                    <CardDescription>
+                                        Informações vinculadas ao seu perfil.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <dl className="grid gap-4 text-sm sm:grid-cols-2">
+                                        {unit.block && (
+                                            <div className="min-w-0">
+                                                <dt className="text-muted-foreground">Bloco</dt>
+                                                <dd className="mt-1 break-words font-medium">
+                                                    {unit.block}
+                                                </dd>
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <dt className="text-muted-foreground">Número</dt>
+                                            <dd className="mt-1 break-words font-medium">
+                                                {unit.number}
+                                            </dd>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <dt className="text-muted-foreground">Tipo</dt>
+                                            <dd className="mt-1 break-words font-medium">
+                                                {unit.type}
+                                            </dd>
+                                        </div>
+                                        {unit.complement && (
+                                            <div className="min-w-0">
+                                                <dt className="text-muted-foreground">Complemento</dt>
+                                                <dd className="mt-1 break-words font-medium">
+                                                    {unit.complement}
+                                                </dd>
+                                            </div>
+                                        )}
+                                    </dl>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card className="border-dashed border-cosphere-line/80 shadow-sm dark:border-border">
+                                <CardHeader>
+                                    <span className="inline-flex size-11 items-center justify-center rounded-xl bg-cosphere-orange/10 text-cosphere-orange">
+                                        <Building2 className="size-5" aria-hidden="true" />
+                                    </span>
+                                    <h2 className="break-words text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                        Unidade não vinculada
+                                    </h2>
+                                    <CardDescription className="break-words leading-relaxed">
+                                        Ainda não há uma unidade vinculada ao seu perfil. Entre em contato com a administração para regularizar o vínculo.
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+                        )}
+
+                        <DashboardComingSoonCard
+                            icon={CalendarClock}
+                            title="Novidades do condomínio"
+                            description="Reservas, visitantes, encomendas e outras informações serão exibidas aqui conforme os módulos forem integrados."
+                        />
                     </div>
-                )}
+                </main>
             </div>
         </>
     );

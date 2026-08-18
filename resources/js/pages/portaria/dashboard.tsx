@@ -1,4 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
+import { ShieldCheck } from 'lucide-react';
+import { DashboardComingSoonCard } from '@/components/dashboard-coming-soon-card';
+import { DashboardWelcomeCard } from '@/components/dashboard-welcome-card';
 import { dashboard } from '@/routes/portaria';
 
 export default function PortariaDashboard() {
@@ -7,14 +10,20 @@ export default function PortariaDashboard() {
     return (
         <>
             <Head title="Dashboard da portaria" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="rounded-xl border border-sidebar-border/70 p-6 dark:border-sidebar-border">
-                    <p className="text-sm font-medium text-muted-foreground">Porteiro</p>
-                    <h1 className="mt-2 text-2xl font-semibold">Olá, {auth.user.name}</h1>
-                    <p className="mt-3 text-muted-foreground">
-                        Esta é a área da portaria do CoSphere.
-                    </p>
-                </div>
+            <div className="flex h-full flex-1 flex-col p-4 sm:p-6">
+                <main className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+                    <DashboardWelcomeCard
+                        user={auth.user}
+                        roleLabel="Porteiro"
+                        description="Acompanhe as informações e novidades destinadas à rotina da portaria."
+                    />
+
+                    <DashboardComingSoonCard
+                        icon={ShieldCheck}
+                        title="Rotinas da portaria"
+                        description="As informações operacionais de visitantes, controle de acesso e recebimento de encomendas serão disponibilizadas conforme os módulos forem integrados."
+                    />
+                </main>
             </div>
         </>
     );
