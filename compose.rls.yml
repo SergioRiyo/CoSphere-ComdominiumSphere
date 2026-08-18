@@ -1,0 +1,25 @@
+name: cosphere-rls-poc
+
+services:
+  postgres_rls_test:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: ${RLS_POSTGRES_DATABASE:-cosphere_rls_poc}
+      POSTGRES_USER: ${RLS_POSTGRES_ADMIN_USERNAME:-cosphere_rls_admin}
+      POSTGRES_PASSWORD: ${RLS_POSTGRES_ADMIN_PASSWORD:-cosphere_rls_local_only}
+    ports:
+      - "127.0.0.1:${RLS_DB_PORT:-55432}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    restart: "no"
+    networks:
+      - rls_poc
+
+networks:
+  rls_poc:
