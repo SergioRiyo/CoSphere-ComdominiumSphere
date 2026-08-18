@@ -59,6 +59,16 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+
+    --color-cosphere-navy: var(--cosphere-navy);
+    --color-cosphere-blue: var(--cosphere-blue);
+    --color-cosphere-orange: var(--cosphere-orange);
+    --color-cosphere-surface: var(--cosphere-surface);
+    --color-cosphere-muted: var(--cosphere-muted);
+    --color-cosphere-line: var(--cosphere-line);
+
+    --shadow-cosphere-panel: 0 24px 70px rgb(10 31 68 / 16%);
+    --shadow-cosphere-soft: 0 14px 36px rgb(10 31 68 / 12%);
 }
 
 :root {
@@ -95,6 +105,12 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.87 0 0);
+    --cosphere-navy: oklch(0.19 0.052 257);
+    --cosphere-blue: oklch(0.63 0.14 250);
+    --cosphere-orange: oklch(0.67 0.19 46);
+    --cosphere-surface: oklch(0.99 0.004 85);
+    --cosphere-muted: oklch(0.56 0.025 255);
+    --cosphere-line: oklch(0.91 0.015 250);
 }
 
 .dark {

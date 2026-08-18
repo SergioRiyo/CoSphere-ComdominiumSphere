@@ -25,9 +25,7 @@ class VisitorAccessFactory extends Factory
         return [
             'visitor_authorization_id' => fn (): int => VisitorAuthorization::factory()->create()->id,
 
-            'doorman_id' => fn (): int => User::factory()->create([
-                'role' => 'porteiro',
-            ])->id,
+            'doorman_id' => fn (): int => User::factory()->porteiro()->create()->id,
 
             'entry_time' => $entryTime,
 

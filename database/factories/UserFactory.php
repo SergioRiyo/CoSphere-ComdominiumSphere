@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -25,10 +27,13 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'unit_id' => null,
+            'unit_id' => Unit::factory(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'role' => 'morador',
+            'cpf' => fake()->unique()->numerify('###.###.###-##'),
+            'phone' => fake()->phoneNumber(),
+            'role' => UserRole::Morador,
+            'is_active' => true,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -45,6 +50,59 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is an administrator.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (): array => [
+            'role' => UserRole::Admin,
+            'unit_id' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a resident associated with a unit.
+     */
+    public function morador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Morador,
+            'unit_id' => $attributes['unit_id'] ?? Unit::factory(),
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a doorman.
+     */
+    public function porteiro(): static
+    {
+        return $this->state(fn (): array => [
+            'role' => UserRole::Porteiro,
+            'unit_id' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is active.
+     */
+    public function active(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is inactive.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (): array => [
+            'is_active' => false,
         ]);
     }
 

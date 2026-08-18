@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\NotificationType;
 use App\Enums\OrderStatus;
+use App\Enums\UserRole;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -204,7 +205,7 @@ class OrderService
 
     private function ensureResidentCanReceiveOrders(User $resident): void
     {
-        if ($resident->role !== 'morador') {
+        if ($resident->role !== UserRole::Morador) {
             throw ValidationException::withMessages([
                 'resident' => 'A encomenda deve estar vinculada a um morador.',
             ]);
@@ -213,7 +214,7 @@ class OrderService
 
     private function ensureDoorman(User $doorman): void
     {
-        if ($doorman->role !== 'porteiro') {
+        if ($doorman->role !== UserRole::Porteiro) {
             throw ValidationException::withMessages([
                 'doorman' => 'Somente porteiros podem registrar encomendas na portaria.',
             ]);
