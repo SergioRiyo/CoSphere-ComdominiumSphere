@@ -59,8 +59,8 @@ class UserManagementTest extends TestCase
     {
         $admin = User::factory()->admin()->create();
         User::factory()->morador()->create(['name' => 'Ana Filtrada']);
-        User::factory()->morador()->inactive()->create(['name' => 'Ana Inativa']);
-        User::factory()->porteiro()->count(11)->create();
+        User::factory()->morador()->inactive()->create(['name' => 'Ana Filtrada Inativa']);
+        User::factory()->porteiro()->count(11)->create(['name' => 'Porteiro Filtrado']);
 
         $this->actingAs($admin)
             ->get(route('admin.users.index', [
@@ -78,15 +78,33 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('admin.users.index', [
+                'search' => 'Ana Filtrada',
+                'role' => UserRole::Morador->value,
+                'status' => 'inactive',
+            ]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('users.data', 1)
+                ->where('users.data.0.name', 'Ana Filtrada Inativa'));
+
+        $this->actingAs($admin)
+            ->get(route('admin.users.index', [
+                'search' => 'Porteiro Filtrado',
                 'role' => UserRole::Porteiro->value,
+                'status' => 'active',
             ]))
             ->assertInertia(fn (Assert $page) => $page
                 ->has('users.data', 10)
                 ->where('users.last_page', 2)
+                ->where('filters.search', 'Porteiro Filtrado')
+                ->where('filters.role', UserRole::Porteiro->value)
+                ->where('filters.status', 'active')
                 ->where(
                     'users.next_page_url',
-                    fn (?string $url): bool => $url !== null
-                        && str_contains($url, 'role=porteiro'),
+                    fn (?string $url): bool => $this->paginationUrlContains($url, [
+                        'search' => 'Porteiro Filtrado',
+                        'role' => UserRole::Porteiro->value,
+                        'status' => 'active',
+                    ]),
                 ));
     }
 
@@ -128,6 +146,28 @@ class UserManagementTest extends TestCase
         $this->assertNull($doorman->unit_id);
     }
 
+    public function test_administrator_can_create_an_administrator_without_a_unit(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.index'))
+            ->post(route('admin.users.store'), $this->validUserData([
+                'role' => UserRole::Admin->value,
+                'unit_id' => null,
+            ]))
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('admin.users.index'));
+
+        $createdAdministrator = User::query()
+            ->where('email', 'novo.usuario@example.com')
+            ->firstOrFail();
+
+        $this->assertSame(UserRole::Admin, $createdAdministrator->role);
+        $this->assertNull($createdAdministrator->unit_id);
+        $this->assertTrue($createdAdministrator->is_active);
+    }
+
     public function test_resident_requires_a_unit_and_profile_fields_must_be_unique(): void
     {
         $admin = User::factory()->admin()->create();
@@ -151,7 +191,69 @@ class UserManagementTest extends TestCase
             ->assertSessionHasErrors(['email', 'cpf', 'role']);
     }
 
-    public function test_administrator_can_update_a_user_and_non_resident_unit_is_cleared(): void
+    public function test_required_and_invalid_fields_are_rejected_when_creating_a_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'))
+            ->assertSessionHasErrors([
+                'name',
+                'email',
+                'cpf',
+                'phone',
+                'role',
+                'password',
+            ]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.users.store'), $this->validUserData([
+                'name' => ['Nome invalido'],
+                'email' => 'email-invalido',
+                'cpf' => '52998224725',
+                'phone' => str_repeat('9', 31),
+                'unit_id' => 999999,
+                'password' => 'short',
+                'password_confirmation' => 'different',
+            ]))
+            ->assertSessionHasErrors([
+                'name',
+                'email',
+                'cpf',
+                'phone',
+                'unit_id',
+                'password',
+            ]);
+    }
+
+    public function test_update_rejects_email_and_cpf_used_by_another_user(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $existingUser = User::factory()->porteiro()->create([
+            'email' => 'existente@example.com',
+            'cpf' => '987.654.321-00',
+        ]);
+        $managedUser = User::factory()->porteiro()->create();
+        $originalEmail = $managedUser->email;
+        $originalCpf = $managedUser->cpf;
+
+        $this->actingAs($admin)
+            ->patch(
+                route('admin.users.update', $managedUser),
+                $this->validUpdateData($managedUser, [
+                    'email' => $existingUser->email,
+                    'cpf' => $existingUser->cpf,
+                ]),
+            )
+            ->assertSessionHasErrors(['email', 'cpf']);
+
+        $managedUser->refresh();
+
+        $this->assertSame($originalEmail, $managedUser->email);
+        $this->assertSame($originalCpf, $managedUser->cpf);
+    }
+
+    public function test_administrator_can_update_users_and_non_resident_roles_clear_unit(): void
     {
         $admin = User::factory()->admin()->create();
         $resident = User::factory()->morador()->create();
@@ -176,6 +278,63 @@ class UserManagementTest extends TestCase
         $this->assertSame(UserRole::Porteiro, $resident->role);
         $this->assertNull($resident->unit_id);
         $this->assertSame($originalPassword, $resident->password);
+
+        $residentPromotedToAdministrator = User::factory()->morador()->create();
+
+        $this->actingAs($admin)
+            ->patch(
+                route('admin.users.update', $residentPromotedToAdministrator),
+                $this->validUpdateData($residentPromotedToAdministrator, [
+                    'role' => UserRole::Admin->value,
+                ]),
+            )
+            ->assertSessionHasNoErrors();
+
+        $residentPromotedToAdministrator->refresh();
+
+        $this->assertSame(UserRole::Admin, $residentPromotedToAdministrator->role);
+        $this->assertNull($residentPromotedToAdministrator->unit_id);
+    }
+
+    public function test_changing_an_administrator_or_doorman_to_resident_requires_a_unit(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        foreach ([
+            User::factory()->admin()->create(),
+            User::factory()->porteiro()->create(),
+        ] as $managedUser) {
+            $originalRole = $managedUser->role;
+
+            $this->actingAs($admin)
+                ->patch(
+                    route('admin.users.update', $managedUser),
+                    $this->validUpdateData($managedUser, [
+                        'role' => UserRole::Morador->value,
+                        'unit_id' => null,
+                    ]),
+                )
+                ->assertSessionHasErrors('unit_id');
+
+            $this->assertSame($originalRole, $managedUser->refresh()->role);
+
+            $unit = Unit::factory()->create();
+
+            $this->actingAs($admin)
+                ->patch(
+                    route('admin.users.update', $managedUser),
+                    $this->validUpdateData($managedUser, [
+                        'role' => UserRole::Morador->value,
+                        'unit_id' => $unit->id,
+                    ]),
+                )
+                ->assertSessionHasNoErrors();
+
+            $managedUser->refresh();
+
+            $this->assertSame(UserRole::Morador, $managedUser->role);
+            $this->assertTrue($managedUser->unit->is($unit));
+        }
     }
 
     public function test_administrator_can_inactivate_and_activate_a_user(): void
@@ -198,6 +357,55 @@ class UserManagementTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($user->refresh()->is_active);
+    }
+
+    public function test_status_update_requires_a_boolean_value(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->porteiro()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.status.update', $user))
+            ->assertSessionHasErrors('is_active');
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.status.update', $user), [
+                'is_active' => 'invalid',
+            ])
+            ->assertSessionHasErrors('is_active');
+
+        $this->assertTrue($user->refresh()->is_active);
+    }
+
+    /**
+     * @param  array<string, string>  $expectedQuery
+     */
+    private function paginationUrlContains(?string $url, array $expectedQuery): bool
+    {
+        if ($url === null) {
+            return false;
+        }
+
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+        return array_intersect_assoc($expectedQuery, $query) === $expectedQuery;
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function validUpdateData(User $user, array $overrides = []): array
+    {
+        return [
+            'name' => $user->name,
+            'email' => $user->email,
+            'cpf' => $user->cpf,
+            'phone' => '(65) 99999-0000',
+            'role' => $user->role->value,
+            'unit_id' => $user->unit_id,
+            ...$overrides,
+        ];
     }
 
     /**
