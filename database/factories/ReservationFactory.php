@@ -25,8 +25,11 @@ class ReservationFactory extends Factory
 
         return [
             'common_area_id' => CommonArea::factory(),
-            'user_id' => User::factory(),
-            'unit_id' => Unit::factory(),
+            'unit_id' => fn (): int => Unit::factory()->create()->id,
+            'user_id' => fn (array $attributes): int => User::factory()
+                ->morador()
+                ->create(['unit_id' => $attributes['unit_id']])
+                ->id,
             'starts_at' => $startsAt,
             'ends_at' => (clone $startsAt)->modify('+2 hours'),
             'status' => ReservationStatus::Approved,

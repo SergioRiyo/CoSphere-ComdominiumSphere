@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use LogicException;
 
 class UserManagementService
 {
@@ -123,8 +124,16 @@ class UserManagementService
         return $user->refresh();
     }
 
-    private function unitIdFor(UserRole $role, mixed $unitId): ?int
+    private function unitIdFor(UserRole $role, ?int $unitId): ?int
     {
-        return $role === UserRole::Morador ? (int) $unitId : null;
+        if ($role !== UserRole::Morador) {
+            return null;
+        }
+
+        if ($unitId === null) {
+            throw new LogicException('Moradores devem estar vinculados a uma unidade.');
+        }
+
+        return $unitId;
     }
 }

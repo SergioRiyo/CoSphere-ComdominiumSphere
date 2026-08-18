@@ -99,6 +99,20 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        'pgsql_rls' => [
+            'driver' => 'pgsql',
+            'host' => env('RLS_DB_HOST', 'rls-db-host-not-configured'),
+            'port' => env('RLS_DB_PORT', 'rls-db-port-not-configured'),
+            'database' => env('RLS_DB_DATABASE', 'rls-db-database-not-configured'),
+            'username' => env('RLS_DB_USERNAME', 'rls-db-username-not-configured'),
+            'password' => env('RLS_DB_PASSWORD'),
+            'charset' => env('RLS_DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => env('RLS_DB_SCHEMA', 'public'),
+            'sslmode' => env('RLS_DB_SSLMODE', 'disable'),
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
