@@ -33,7 +33,7 @@ export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
                         {unit ? (
                             <Card className="border-cosphere-line/80 shadow-sm dark:border-border">
                                 <CardHeader>
-                                    <h2 className="break-words text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                    <h2 className="text-lg font-semibold break-words text-cosphere-navy dark:text-foreground">
                                         Sua unidade
                                     </h2>
                                     <CardDescription>
@@ -44,28 +44,36 @@ export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
                                     <dl className="grid gap-4 text-sm sm:grid-cols-2">
                                         {unit.block && (
                                             <div className="min-w-0">
-                                                <dt className="text-muted-foreground">Bloco</dt>
-                                                <dd className="mt-1 break-words font-medium">
+                                                <dt className="text-muted-foreground">
+                                                    Bloco
+                                                </dt>
+                                                <dd className="mt-1 font-medium break-words">
                                                     {unit.block}
                                                 </dd>
                                             </div>
                                         )}
                                         <div className="min-w-0">
-                                            <dt className="text-muted-foreground">Número</dt>
-                                            <dd className="mt-1 break-words font-medium">
+                                            <dt className="text-muted-foreground">
+                                                Número
+                                            </dt>
+                                            <dd className="mt-1 font-medium break-words">
                                                 {unit.number}
                                             </dd>
                                         </div>
                                         <div className="min-w-0">
-                                            <dt className="text-muted-foreground">Tipo</dt>
-                                            <dd className="mt-1 break-words font-medium">
+                                            <dt className="text-muted-foreground">
+                                                Tipo
+                                            </dt>
+                                            <dd className="mt-1 font-medium break-words">
                                                 {unit.type}
                                             </dd>
                                         </div>
                                         {unit.complement && (
                                             <div className="min-w-0">
-                                                <dt className="text-muted-foreground">Complemento</dt>
-                                                <dd className="mt-1 break-words font-medium">
+                                                <dt className="text-muted-foreground">
+                                                    Complemento
+                                                </dt>
+                                                <dd className="mt-1 font-medium break-words">
                                                     {unit.complement}
                                                 </dd>
                                             </div>
@@ -77,13 +85,19 @@ export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
                             <Card className="border-dashed border-cosphere-line/80 shadow-sm dark:border-border">
                                 <CardHeader>
                                     <span className="inline-flex size-11 items-center justify-center rounded-xl bg-cosphere-orange/10 text-cosphere-orange">
-                                        <Building2 className="size-5" aria-hidden="true" />
+                                        <Building2
+                                            className="size-5"
+                                            aria-hidden="true"
+                                        />
                                     </span>
-                                    <h2 className="break-words text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                    <h2 className="text-lg font-semibold break-words text-cosphere-navy dark:text-foreground">
                                         Unidade não vinculada
                                     </h2>
-                                    <CardDescription className="break-words leading-relaxed">
-                                        Ainda não há uma unidade vinculada ao seu perfil. Entre em contato com a administração para regularizar o vínculo.
+                                    <CardDescription className="leading-relaxed break-words">
+                                        Ainda não há uma unidade vinculada ao
+                                        seu perfil. Entre em contato com a
+                                        administração para regularizar o
+                                        vínculo.
                                     </CardDescription>
                                 </CardHeader>
                             </Card>

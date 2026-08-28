@@ -25,13 +25,16 @@ export function DashboardComingSoonCard({
                     <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <div className="space-y-2">
-                    <Badge className="bg-cosphere-blue/10 text-cosphere-blue hover:bg-cosphere-blue/10" variant="secondary">
+                    <Badge
+                        className="bg-cosphere-blue/10 text-cosphere-blue hover:bg-cosphere-blue/10"
+                        variant="secondary"
+                    >
                         Em breve
                     </Badge>
-                    <h2 className="break-words text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                    <h2 className="text-lg font-semibold break-words text-cosphere-navy dark:text-foreground">
                         {title}
                     </h2>
-                    <CardDescription className="break-words leading-relaxed">
+                    <CardDescription className="leading-relaxed break-words">
                         {description}
                     </CardDescription>
                 </div>

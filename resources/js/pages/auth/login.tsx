@@ -96,7 +96,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                                 tabIndex={1}
                                                 autoComplete="email"
                                                 placeholder="seu.email@condominio.com.br"
-                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy placeholder:text-cosphere-muted shadow-sm focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
+                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
                                             />
                                         </div>
                                         <InputError message={errors.email} />
@@ -121,7 +121,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                                 tabIndex={2}
                                                 autoComplete="current-password"
                                                 placeholder="••••••••"
-                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy placeholder:text-cosphere-muted shadow-sm focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
+                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
                                             />
                                         </div>
                                         <InputError message={errors.password} />

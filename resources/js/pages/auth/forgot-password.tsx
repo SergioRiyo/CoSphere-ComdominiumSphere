@@ -65,5 +65,6 @@ export default function ForgotPassword({ status }: { status?: string }) {
 
 ForgotPassword.layout = {
     title: 'Esqueci minha senha',
-    description: 'Informe seu e-mail para receber um link de redefinição de senha',
+    description:
+        'Informe seu e-mail para receber um link de redefinição de senha',
 };
