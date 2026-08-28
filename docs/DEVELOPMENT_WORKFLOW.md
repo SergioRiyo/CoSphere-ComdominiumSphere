@@ -95,11 +95,15 @@ Não introduzir abstrações vazias, microservices, CQRS ou event sourcing. Ante
 
 | Módulo | Escopo | Status |
 | --- | --- | --- |
-| Módulo 1 | Base, autenticação e usuários | Pendente |
+| Módulo 1 | Base, autenticação e usuários | Concluído (MVP) |
 | Módulo 2 | Visitantes e controle de acesso | Pendente |
 | Módulo 3 | Reservas e encomendas | Pendente |
 | Módulo 4 | Ocorrências, manutenção e relatórios | Pendente |
 | Módulo 5 | Comunicação, comunidade e integração | Pendente |
+
+No Módulo 1, a autorização principal é aplicada pelo Laravel com autenticação,
+status e papéis. A RLS foi validada como prova de conceito PostgreSQL para o
+isolamento de unidades e não representa uma integração completa ao runtime.
 
 O Módulo 0 é somente a fundação técnica. Não antecipar telas, CRUDs, controle de acesso por perfil, RLS, policies ou regras de negócio desses módulos em correções da base.
 
@@ -138,7 +142,8 @@ Antes de abrir um Pull Request, executar as validações aplicáveis e registrar
 
 ## Pendências que não pertencem ao Módulo 0
 
-- Módulo 1: definir RLS considerando que Laravel acessa PostgreSQL pelo backend; definir policies e papéis; avaliar a desativação do cadastro público do Fortify.
+- Módulo 1 (MVP concluído): uma eventual evolução para produção pode integrar a
+  RLS ao runtime e ampliar o hardening, sem fazer parte da entrega atual.
 - Módulo 2: implementar a validação de vínculo e papéis no fluxo de visitantes e controle de acesso.
 - Módulo 3: implementar autorização e fluxos de reservas e encomendas.
 - Módulo 4: implementar regras de ocorrências, manutenção e relatórios.

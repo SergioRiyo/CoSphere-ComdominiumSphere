@@ -29,16 +29,20 @@ export function DashboardWelcomeCard({
                         {roleLabel}
                     </span>
                     <div>
-                        <h1 className="break-words text-2xl font-semibold tracking-tight text-cosphere-navy dark:text-foreground">
+                        <h1 className="text-2xl font-semibold tracking-tight break-words text-cosphere-navy dark:text-foreground">
                             Olá, {user.name}
                         </h1>
-                        <CardDescription className="mt-2 max-w-2xl break-words leading-relaxed">
+                        <CardDescription className="mt-2 max-w-2xl leading-relaxed break-words">
                             {description}
                         </CardDescription>
                     </div>
                 </div>
 
-                <Button className="w-full sm:w-auto sm:shrink-0" variant="outline" asChild>
+                <Button
+                    className="w-full sm:w-auto sm:shrink-0"
+                    variant="outline"
+                    asChild
+                >
                     <Link href={edit()} prefetch>
                         <Settings aria-hidden="true" />
                         Ver perfil
@@ -47,7 +51,9 @@ export function DashboardWelcomeCard({
             </CardHeader>
 
             <CardContent>
-                <p className="break-all text-sm text-muted-foreground">{user.email}</p>
+                <p className="text-sm break-all text-muted-foreground">
+                    {user.email}
+                </p>
             </CardContent>
         </Card>
     );

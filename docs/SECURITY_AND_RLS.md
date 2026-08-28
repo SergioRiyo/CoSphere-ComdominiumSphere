@@ -105,8 +105,8 @@ docker compose --env-file .env.rls-poc -f compose.rls.yml exec -T postgres_rls_t
   sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT current_database(), current_user, version();"'
 ```
 
-Para a futura suíte RLS, carregue somente as variáveis locais, valide o
-guardrail e execute a configuração PHPUnit dedicada:
+Para executar a suíte RLS, carregue somente as variáveis locais e use o script
+dedicado:
 
 ```bash
 set -a; . ./.env.rls-poc; set +a
@@ -114,9 +114,12 @@ sh scripts/run-rls-poc-tests.sh
 ```
 
 `scripts/verify-rls-poc-environment.sh` falha se o host, porta, banco, usuário
-ou SSL não forem valores exclusivos da POC. A conexão Laravel `pgsql_rls` usa
-somente `RLS_DB_*` e não possui fallback para `DB_*`. A suíte principal
-`php artisan test` continua usando SQLite e não depende desse container.
+ou SSL não forem valores exclusivos da POC, ou se a configuração do Laravel
+estiver cacheada. Depois desse guardrail, o script aplica as migrations como o
+administrador local e executa o PHPUnit com a role de runtime da POC. A conexão
+Laravel `pgsql_rls` usa somente `RLS_DB_*` e não possui fallback para `DB_*`. A
+suíte principal `php artisan test` continua usando SQLite e não depende desse
+container.
 
 Para parar e apagar todo o estado descartável:
 
