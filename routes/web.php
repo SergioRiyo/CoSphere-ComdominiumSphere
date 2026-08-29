@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VisitorAuthorizationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -19,9 +20,12 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::resource('users', UserController::class)->only(['index', 'store', 'update']);
     });
 
-    Route::get('morador/dashboard', [DashboardController::class, 'morador'])
-        ->middleware('role:morador')
-        ->name('morador.dashboard');
+    Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
+        Route::resource('visitors', VisitorAuthorizationController::class)
+            ->parameters(['visitors' => 'visitorAuthorization'])
+            ->only(['index', 'show']);
+    });
 
     Route::get('portaria/dashboard', [DashboardController::class, 'porteiro'])
         ->middleware('role:porteiro')
