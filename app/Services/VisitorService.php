@@ -19,7 +19,7 @@ class VisitorService
     public function generateVisitorCode(): string
     {
         do {
-            $code = 'VIS_'.Str::upper(Str::random(8));
+            $code = 'csa_'.Str::random(32);
         } while (VisitorAuthorization::where('access_code', $code)->exists());
 
         return $code;
@@ -52,11 +52,9 @@ class VisitorService
                 'unit_id' => $data['unit_id'],
                 'resident_id' => $data['resident_id'],
                 'vehicle_plate' => $data['vehicle_plate'] ?? null,
-                'qr_code' => $accessCode,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'status' => VisitorAuthorizationStatus::Active->value,
-                'registration_link' => $data['registration_link'] ?? null,
                 'authorized_date' => now(),
                 'access_code' => $accessCode,
             ]);
@@ -100,6 +98,10 @@ class VisitorService
 
         if ($authorization->status === VisitorAuthorizationStatus::PendingData) {
             throw new DomainException('Autorização aguardando preenchimento de dados.');
+        }
+
+        if (! $authorization->visitor_id || ! $authorization->access_code) {
+            throw new DomainException('Autorização sem os dados obrigatórios do visitante.');
         }
 
         if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
@@ -209,7 +211,7 @@ class VisitorService
             }
 
             $access->update([
-                'doorman_id' => $doormanId,
+                'exit_doorman_id' => $doormanId,
                 'exit_time' => now(),
                 'observations' => $observations ?? $access->observations,
             ]);
