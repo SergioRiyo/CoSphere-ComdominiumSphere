@@ -4,13 +4,15 @@ import {
     CarFront,
     CircleCheckBig,
     CircleX,
+    Clock3,
     KeyRound,
+    LogIn,
     MapPin,
     ShieldCheck,
     UserRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -26,8 +28,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { store as storeEntry } from '@/routes/portaria/visitor-accesses';
 import { validate, validation } from '@/routes/portaria/visitor-authorizations';
 import type {
+    PortariaEntryResult,
     PortariaValidatedAuthorization,
     PortariaValidationResult,
 } from '@/types';
@@ -49,25 +53,45 @@ export default function VisitorValidationPage({
     >({
         access_code: '',
     });
+    const {
+        setData: setEntryData,
+        submit: submitEntry,
+        processing: entryProcessing,
+        errors: entryErrors,
+        clearErrors: clearEntryErrors,
+    } = useHttp<ValidationFormData, PortariaEntryResult>({
+        access_code: '',
+    });
     const [result, setResult] = useState<PortariaValidationResult | null>(null);
+    const [entryResult, setEntryResult] = useState<PortariaEntryResult | null>(
+        null,
+    );
     const [requestError, setRequestError] = useState<string | null>(null);
+    const entrySubmissionRef = useRef(false);
+    const isProcessing = processing || entryProcessing;
+    const accessCodeError = errors.access_code ?? entryErrors.access_code;
 
     const handleCodeChange = (accessCode: string) => {
         setData('access_code', accessCode);
+        setEntryData('access_code', accessCode);
         clearErrors('access_code');
+        clearEntryErrors('access_code');
         setResult(null);
+        setEntryResult(null);
         setRequestError(null);
     };
 
     const submitValidation = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        if (processing) {
+        if (isProcessing) {
             return;
         }
 
         clearErrors();
+        clearEntryErrors();
         setResult(null);
+        setEntryResult(null);
         setRequestError(null);
 
         try {
@@ -92,6 +116,40 @@ export default function VisitorValidationPage({
         }
     };
 
+    const registerEntry = async () => {
+        if (isProcessing || entrySubmissionRef.current) {
+            return;
+        }
+
+        entrySubmissionRef.current = true;
+        clearEntryErrors();
+        setEntryResult(null);
+        setRequestError(null);
+
+        try {
+            const nextEntryResult = await submitEntry(storeEntry(), {
+                onHttpException: (response) => {
+                    setRequestError(
+                        response.status === 429
+                            ? 'Muitas tentativas de registro. Aguarde um instante e tente novamente.'
+                            : 'Não foi possível registrar a entrada neste momento.',
+                    );
+                },
+                onNetworkError: () => {
+                    setRequestError(
+                        'Não foi possível conectar ao servidor. Verifique a conexão e tente novamente.',
+                    );
+                },
+            });
+
+            setEntryResult(nextEntryResult);
+        } catch {
+            setEntryResult(null);
+        } finally {
+            entrySubmissionRef.current = false;
+        }
+    };
+
     return (
         <>
             <Head title="Validação de visitante" />
@@ -111,8 +169,8 @@ export default function VisitorValidationPage({
                         </h1>
                         <p className="text-sm leading-relaxed text-muted-foreground">
                             Informe o código apresentado pelo visitante para
-                            conferir a autorização. Esta consulta não registra a
-                            entrada.
+                            conferir a autorização. A validação não registra a
+                            entrada automaticamente.
                         </p>
                     </header>
 
@@ -135,7 +193,7 @@ export default function VisitorValidationPage({
                                 <form
                                     onSubmit={submitValidation}
                                     className="grid gap-4"
-                                    aria-busy={processing}
+                                    aria-busy={isProcessing}
                                 >
                                     <div className="grid gap-2">
                                         <Label htmlFor="access-code">
@@ -156,22 +214,23 @@ export default function VisitorValidationPage({
                                             autoCapitalize="none"
                                             spellCheck={false}
                                             aria-invalid={Boolean(
-                                                errors.access_code,
+                                                accessCodeError,
                                             )}
                                             aria-describedby="access-code-error"
                                             className="h-11 font-mono text-base"
+                                            disabled={isProcessing}
                                             autoFocus
                                         />
                                         <InputError
                                             id="access-code-error"
-                                            message={errors.access_code}
+                                            message={accessCodeError}
                                         />
                                     </div>
 
                                     <Button
                                         type="submit"
                                         size="lg"
-                                        disabled={processing}
+                                        disabled={isProcessing}
                                         className="w-full"
                                     >
                                         {processing ? (
@@ -206,11 +265,24 @@ export default function VisitorValidationPage({
                                         {requestError}
                                     </AlertDescription>
                                 </Alert>
+                            ) : entryResult?.registered && result?.allowed ? (
+                                <EntryRegisteredResult
+                                    authorization={result.authorization}
+                                    message={entryResult.message}
+                                    entryTime={entryResult.entry.entry_time}
+                                    timezone={timezone}
+                                />
+                            ) : entryResult ? (
+                                <EntryDeniedResult
+                                    message={entryResult.message}
+                                />
                             ) : result?.allowed ? (
                                 <AllowedResult
                                     authorization={result.authorization}
                                     message={result.message}
                                     timezone={timezone}
+                                    onRegisterEntry={registerEntry}
+                                    entryProcessing={entryProcessing}
                                 />
                             ) : result ? (
                                 <DeniedResult message={result.message} />
@@ -246,10 +318,14 @@ function AllowedResult({
     authorization,
     message,
     timezone,
+    onRegisterEntry,
+    entryProcessing,
 }: {
     authorization: PortariaValidatedAuthorization;
     message: string;
     timezone: string;
+    onRegisterEntry: () => void;
+    entryProcessing: boolean;
 }) {
     return (
         <Card className="min-w-0 border-emerald-500/35 bg-emerald-50/60 shadow-sm dark:bg-emerald-950/15">
@@ -303,8 +379,104 @@ function AllowedResult({
                         className="sm:col-span-2"
                     />
                 </dl>
+
+                <div className="mt-6 grid gap-3 border-t border-emerald-500/20 pt-6">
+                    <p className="text-sm leading-relaxed text-emerald-900 dark:text-emerald-100">
+                        Confira os dados acima antes de liberar fisicamente o
+                        acesso do visitante.
+                    </p>
+                    <Button
+                        type="button"
+                        size="lg"
+                        onClick={onRegisterEntry}
+                        disabled={entryProcessing}
+                        className="w-full bg-emerald-700 text-white hover:bg-emerald-800"
+                    >
+                        {entryProcessing ? (
+                            <>
+                                <Spinner />
+                                Registrando entrada...
+                            </>
+                        ) : (
+                            <>
+                                <LogIn />
+                                Registrar entrada
+                            </>
+                        )}
+                    </Button>
+                </div>
             </CardContent>
         </Card>
+    );
+}
+
+function EntryRegisteredResult({
+    authorization,
+    message,
+    entryTime,
+    timezone,
+}: {
+    authorization: PortariaValidatedAuthorization;
+    message: string;
+    entryTime: string;
+    timezone: string;
+}) {
+    return (
+        <Card className="min-w-0 border-emerald-500/35 bg-emerald-50/60 shadow-sm dark:bg-emerald-950/15">
+            <CardHeader className="gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="grid size-12 place-items-center rounded-full bg-emerald-700 text-white shadow-sm">
+                        <CircleCheckBig className="size-7" aria-hidden="true" />
+                    </span>
+                    <Badge className="bg-emerald-700 text-white hover:bg-emerald-700">
+                        Entrada confirmada
+                    </Badge>
+                </div>
+                <div className="grid gap-1">
+                    <CardTitle className="text-xl text-emerald-950 dark:text-emerald-100">
+                        ENTRADA REGISTRADA
+                    </CardTitle>
+                    <CardDescription className="text-emerald-800 dark:text-emerald-200">
+                        {message}
+                    </CardDescription>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <dl className="grid min-w-0 gap-5 sm:grid-cols-2">
+                    <ResultDetail
+                        icon={UserRound}
+                        label="Visitante"
+                        value={authorization.visitor_name}
+                    />
+                    <ResultDetail
+                        icon={MapPin}
+                        label="Unidade"
+                        value={formatUnit(authorization.unit)}
+                    />
+                    <ResultDetail
+                        icon={Clock3}
+                        label="Horário da entrada"
+                        value={formatDateTime(entryTime, timezone)}
+                        className="sm:col-span-2"
+                    />
+                </dl>
+            </CardContent>
+        </Card>
+    );
+}
+
+function EntryDeniedResult({ message }: { message: string }) {
+    return (
+        <Alert
+            variant="destructive"
+            className="border-destructive/35 bg-destructive/5 px-5 py-5"
+        >
+            <CircleX className="size-5" aria-hidden="true" />
+            <AlertTitle className="text-lg">ENTRADA NÃO REGISTRADA</AlertTitle>
+            <AlertDescription className="text-sm leading-relaxed">
+                {message}
+            </AlertDescription>
+        </Alert>
     );
 }
 

@@ -182,11 +182,13 @@ class VisitorService
         try {
             $this->validateAuthorization($authorization);
         } catch (DomainException $exception) {
-            $this->denyAccess(
-                authorization: $authorization,
-                doormanId: $doormanId,
-                reason: $exception->getMessage(),
-            );
+            if (! $this->hasOpenAccess($authorization)) {
+                $this->denyAccess(
+                    authorization: $authorization,
+                    doormanId: $doormanId,
+                    reason: $exception->getMessage(),
+                );
+            }
 
             throw $exception;
         }
@@ -375,12 +377,7 @@ class VisitorService
             );
         }
 
-        $hasOpenAccess = $authorization->visitorAccesses()
-            ->where('validation_status', VisitorAccessStatus::Validated->value)
-            ->whereNull('exit_time')
-            ->exists();
-
-        if ($hasOpenAccess) {
+        if ($this->hasOpenAccess($authorization)) {
             return $this->denial(
                 'open_access',
                 'Este visitante já possui uma entrada registrada sem saída.',
@@ -388,6 +385,14 @@ class VisitorService
         }
 
         return null;
+    }
+
+    private function hasOpenAccess(VisitorAuthorization $authorization): bool
+    {
+        return $authorization->visitorAccesses()
+            ->where('validation_status', VisitorAccessStatus::Validated->value)
+            ->whereNull('exit_time')
+            ->exists();
     }
 
     /**
