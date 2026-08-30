@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\NotificationType;
+use App\Enums\UserRole;
 use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Notification;
@@ -80,44 +81,67 @@ class VisitorService
         return $this->validateAuthorization($authorization);
     }
 
+    /**
+     * @return array{
+     *     allowed: bool,
+     *     reason: string|null,
+     *     message: string,
+     *     authorization: array{
+     *         visitor_name: string,
+     *         unit: array{block: string|null, number: string},
+     *         vehicle_plate: string|null,
+     *         start_date: string,
+     *         end_date: string,
+     *         status: string
+     *     }|null
+     * }
+     */
+    public function validateAccessCode(string $accessCode): array
+    {
+        $authorization = VisitorAuthorization::query()
+            ->where('access_code', $accessCode)
+            ->first();
+
+        if (! $authorization) {
+            return $this->deniedValidationResult(
+                reason: 'not_found',
+                message: 'Código de acesso não encontrado.',
+            );
+        }
+
+        $denial = $this->authorizationDenial($authorization);
+
+        if ($denial !== null) {
+            return $this->deniedValidationResult(
+                reason: $denial['reason'],
+                message: $denial['message'],
+            );
+        }
+
+        return [
+            'allowed' => true,
+            'reason' => null,
+            'message' => 'Acesso liberado.',
+            'authorization' => [
+                'visitor_name' => $authorization->visitor->name,
+                'unit' => [
+                    'block' => $authorization->unit->block,
+                    'number' => $authorization->unit->number,
+                ],
+                'vehicle_plate' => $authorization->vehicle_plate,
+                'start_date' => $authorization->start_date->toIso8601String(),
+                'end_date' => $authorization->end_date->toIso8601String(),
+                'status' => $authorization->status->value,
+            ],
+        ];
+    }
+
     public function validateAuthorization(VisitorAuthorization $authorization): VisitorAuthorization
     {
-        $now = now();
+        $denial = $this->authorizationDenial($authorization);
 
-        if ($authorization->status === VisitorAuthorizationStatus::Canceled) {
-            throw new DomainException('Autorização cancelada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::Expired) {
-            throw new DomainException('Autorização expirada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::Used) {
-            throw new DomainException('Autorização já utilizada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::PendingData) {
-            throw new DomainException('Autorização aguardando preenchimento de dados.');
-        }
-
-        if (! $authorization->visitor_id || ! $authorization->access_code) {
-            throw new DomainException('Autorização sem os dados obrigatórios do visitante.');
-        }
-
-        if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
-            $authorization->update([
-                'status' => VisitorAuthorizationStatus::Expired,
-            ]);
-
-            throw new DomainException('Autorização expirada.');
-        }
-
-        if ($authorization->start_date && $now->lessThan($authorization->start_date)) {
-            throw new DomainException('Autorização ainda não está ativa.');
-        }
-
-        if ($authorization->status !== VisitorAuthorizationStatus::Active) {
-            throw new DomainException('Autorização inválida.');
+        if ($denial !== null) {
+            throw new DomainException($denial['message']);
         }
 
         return $authorization;
@@ -156,15 +180,6 @@ class VisitorService
             }
 
             $this->validateAuthorization($authorization);
-
-            $hasOpenAccess = VisitorAccess::where('visitor_authorization_id', $authorization->id)
-                ->where('validation_status', VisitorAccessStatus::Validated->value)
-                ->whereNull('exit_time')
-                ->exists();
-
-            if ($hasOpenAccess) {
-                throw new DomainException('Este visitante já possui uma entrada registrada sem saída.');
-            }
 
             $access = VisitorAccess::create([
                 'visitor_authorization_id' => $authorization->id,
@@ -272,5 +287,109 @@ class VisitorService
             'sent_at' => now(),
             'is_read' => false,
         ]);
+    }
+
+    /**
+     * @return array{reason: string, message: string}|null
+     */
+    private function authorizationDenial(VisitorAuthorization $authorization): ?array
+    {
+        if ($authorization->status === VisitorAuthorizationStatus::Canceled) {
+            return $this->denial('canceled', 'Autorização cancelada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::Expired) {
+            return $this->denial('expired', 'Autorização expirada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::Used) {
+            return $this->denial('used', 'Autorização já utilizada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::PendingData) {
+            return $this->denial('pending_data', 'Autorização aguardando preenchimento de dados.');
+        }
+
+        if (! $authorization->visitor_id || ! $authorization->access_code) {
+            return $this->denial(
+                'inconsistent_authorization',
+                'Autorização sem os dados obrigatórios do visitante.',
+            );
+        }
+
+        $now = now();
+
+        if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
+            $authorization->update([
+                'status' => VisitorAuthorizationStatus::Expired,
+            ]);
+
+            return $this->denial('expired', 'Autorização expirada.');
+        }
+
+        if ($authorization->start_date && $now->lessThan($authorization->start_date)) {
+            return $this->denial('future', 'Autorização ainda não está ativa.');
+        }
+
+        if ($authorization->status !== VisitorAuthorizationStatus::Active) {
+            return $this->denial('inconsistent_authorization', 'Autorização inválida.');
+        }
+
+        $authorization->loadMissing([
+            'visitor:id,name',
+            'resident:id,unit_id,role,is_active',
+            'unit:id,block,number,status',
+        ]);
+
+        if ($authorization->visitor === null
+            || $authorization->resident === null
+            || $authorization->unit === null
+            || ! $authorization->resident->is_active
+            || $authorization->resident->role !== UserRole::Morador
+            || $authorization->resident->unit_id !== $authorization->unit_id
+            || $authorization->unit->status !== 'active') {
+            return $this->denial(
+                'inconsistent_authorization',
+                'Os dados da autorização estão inconsistentes.',
+            );
+        }
+
+        $hasOpenAccess = $authorization->visitorAccesses()
+            ->where('validation_status', VisitorAccessStatus::Validated->value)
+            ->whereNull('exit_time')
+            ->exists();
+
+        if ($hasOpenAccess) {
+            return $this->denial(
+                'open_access',
+                'Este visitante já possui uma entrada registrada sem saída.',
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{reason: string, message: string}
+     */
+    private function denial(string $reason, string $message): array
+    {
+        return [
+            'reason' => $reason,
+            'message' => $message,
+        ];
+    }
+
+    /**
+     * @return array{allowed: false, reason: string, message: string, authorization: null}
+     */
+    private function deniedValidationResult(string $reason, string $message): array
+    {
+        return [
+            'allowed' => false,
+            'reason' => $reason,
+            'message' => $message,
+            'authorization' => null,
+        ];
     }
 }
