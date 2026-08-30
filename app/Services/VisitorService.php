@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Notification;
+use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
@@ -26,32 +27,52 @@ class VisitorService
         return $code;
     }
 
-    public function createVisitorAuthorization(array $data): VisitorAuthorization
+    /**
+     * @param  array{name: string, cpf: string, phone: string, vehicle_plate?: string|null, start_date: string, end_date: string}  $data
+     */
+    public function createDirectAuthorization(User $resident, array $data): VisitorAuthorization
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $resident) {
+            $resident->loadMissing('unit');
+
+            if ($resident->role !== UserRole::Morador
+                || ! $resident->is_active
+                || $resident->unit === null
+                || $resident->unit->status !== 'active') {
+                throw new DomainException('O morador precisa estar vinculado a uma unidade ativa.');
+            }
+
             $startDate = Carbon::parse($data['start_date']);
             $endDate = Carbon::parse($data['end_date']);
 
-            if ($startDate->greaterThanOrEqualTo($endDate)) {
-                throw new DomainException('A data de início deve ser anterior à data de término.');
+            if ($startDate->isPast()) {
+                throw new DomainException('O início da visita não pode estar no passado.');
             }
 
-            $visitor = Visitor::updateOrCreate(
-                [
+            if ($startDate->greaterThanOrEqualTo($endDate)) {
+                throw new DomainException('O término deve ser posterior ao início da visita.');
+            }
+
+            $visitor = Visitor::withTrashed()
+                ->where('cpf', $data['cpf'])
+                ->first();
+
+            if ($visitor === null) {
+                $visitor = Visitor::create([
                     'cpf' => $data['cpf'],
-                ],
-                [
                     'name' => $data['name'],
-                    'phone' => $data['phone'] ?? null,
-                ]
-            );
+                    'phone' => $data['phone'],
+                ]);
+            } elseif ($visitor->trashed()) {
+                $visitor->restore();
+            }
 
             $accessCode = $this->generateVisitorCode();
 
             $authorization = VisitorAuthorization::create([
                 'visitor_id' => $visitor->id,
-                'unit_id' => $data['unit_id'],
-                'resident_id' => $data['resident_id'],
+                'unit_id' => $resident->unit_id,
+                'resident_id' => $resident->id,
                 'vehicle_plate' => $data['vehicle_plate'] ?? null,
                 'start_date' => $startDate,
                 'end_date' => $endDate,

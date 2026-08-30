@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import {
     CalendarDays,
     Eye,
+    Plus,
     Search,
     SlidersHorizontal,
     UserRoundSearch,
@@ -10,6 +11,7 @@ import {
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
+import VisitorAuthorizationFormDialog from '@/components/morador/visitor-authorization-form-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -54,6 +56,8 @@ export default function VisitorsPage({
 }: VisitorsPageProps) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [isLoading, setIsLoading] = useState(false);
+    const [isAuthorizationDialogOpen, setIsAuthorizationDialogOpen] =
+        useState(false);
     const hasFilters = Boolean(
         filters.search ||
         filters.status ||
@@ -101,18 +105,24 @@ export default function VisitorsPage({
             <Head title="Visitantes" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4 sm:p-6">
-                <header className="flex max-w-3xl flex-col gap-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                        <UserRoundSearch className="size-4" />
-                        Histórico da unidade
+                <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="flex max-w-3xl flex-col gap-2">
+                        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                            <UserRoundSearch className="size-4" />
+                            Histórico da unidade
+                        </div>
+                        <h1 className="text-3xl font-semibold tracking-tight">
+                            Visitantes
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Consulte convites e autorizações vinculados à sua
+                            unidade.
+                        </p>
                     </div>
-                    <h1 className="text-3xl font-semibold tracking-tight">
-                        Visitantes
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Consulte convites e autorizações vinculados à sua
-                        unidade.
-                    </p>
+                    <Button onClick={() => setIsAuthorizationDialogOpen(true)}>
+                        <Plus />
+                        Nova autorização
+                    </Button>
                 </header>
 
                 <Card className="border-primary/15 bg-gradient-to-br from-card to-muted/30">
@@ -306,6 +316,12 @@ export default function VisitorsPage({
                         )}
                     </div>
                 </Card>
+
+                <VisitorAuthorizationFormDialog
+                    open={isAuthorizationDialogOpen}
+                    onOpenChange={setIsAuthorizationDialogOpen}
+                    timezone={timezone}
+                />
             </div>
         </>
     );

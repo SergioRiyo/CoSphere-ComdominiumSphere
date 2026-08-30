@@ -25,7 +25,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
         Route::resource('visitors', VisitorAuthorizationController::class)
             ->parameters(['visitors' => 'visitorAuthorization'])
-            ->only(['index', 'show']);
+            ->only(['index', 'show', 'store']);
     });
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
