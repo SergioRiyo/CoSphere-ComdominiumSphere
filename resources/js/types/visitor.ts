@@ -68,6 +68,20 @@ export type PortariaValidationResult =
           authorization: null;
       };
 
+export type PortariaEntryResult =
+    | {
+          registered: true;
+          message: string;
+          entry: {
+              entry_time: string;
+          };
+      }
+    | {
+          registered: false;
+          message: string;
+          entry: null;
+      };
+
 export type VisitorAuthorizationFilters = {
     search: string;
     status: VisitorAuthorizationStatus | '';
