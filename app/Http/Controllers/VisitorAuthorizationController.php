@@ -7,10 +7,12 @@ use App\Http\Requests\IndexVisitorAuthorizationRequest;
 use App\Http\Requests\StoreVisitorAuthorizationRequest;
 use App\Models\VisitorAuthorization;
 use App\Services\VisitorAuthorizationQueryService;
+use App\Services\VisitorQrCodeService;
 use App\Services\VisitorService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -20,6 +22,7 @@ class VisitorAuthorizationController extends Controller
 {
     public function __construct(
         private VisitorAuthorizationQueryService $visitorAuthorizationQueryService,
+        private VisitorQrCodeService $visitorQrCodeService,
         private VisitorService $visitorService,
     ) {}
 
@@ -77,5 +80,34 @@ class VisitorAuthorizationController extends Controller
                 ->details($visitorAuthorization),
             'timezone' => config('app.timezone'),
         ]);
+    }
+
+    public function qrCode(Request $request, VisitorAuthorization $visitorAuthorization): HttpResponse
+    {
+        Gate::forUser($request->user())->authorize('view', $visitorAuthorization);
+
+        $response = response($this->visitorQrCodeService->svg($visitorAuthorization))
+            ->header('Content-Type', 'image/svg+xml')
+            ->header('Cache-Control', 'private, no-store')
+            ->header('X-Content-Type-Options', 'nosniff');
+
+        if ($request->boolean('download')) {
+            $response->header(
+                'Content-Disposition',
+                'attachment; filename="visitor-authorization-'.$visitorAuthorization->id.'.svg"',
+            );
+        }
+
+        return $response;
+    }
+
+    public function accessCode(Request $request, VisitorAuthorization $visitorAuthorization): HttpResponse
+    {
+        Gate::forUser($request->user())->authorize('view', $visitorAuthorization);
+
+        return response($this->visitorQrCodeService->manualCode($visitorAuthorization))
+            ->header('Content-Type', 'text/plain; charset=UTF-8')
+            ->header('Cache-Control', 'private, no-store')
+            ->header('X-Content-Type-Options', 'nosniff');
     }
 }

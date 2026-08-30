@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 class VisitorAuthorizationQueryService
 {
+    public function __construct(private VisitorQrCodeService $visitorQrCodeService) {}
+
     /**
      * @param  array{search?: string, status?: string, date_from?: string, date_to?: string}  $filters
      */
@@ -55,7 +57,8 @@ class VisitorAuthorizationQueryService
     {
         $authorization->loadMissing([
             'visitor:id,name,cpf,phone',
-            'unit:id,block,number',
+            'resident:id,unit_id,role,is_active',
+            'unit:id,block,number,status',
         ]);
         $status = $this->effectiveStatus($authorization);
 
@@ -75,6 +78,7 @@ class VisitorAuthorizationQueryService
             'end_date' => $authorization->end_date->toIso8601String(),
             'status' => $status->value,
             'status_label' => $status->label(),
+            'qr_available' => $this->visitorQrCodeService->isAvailable($authorization),
         ];
     }
 

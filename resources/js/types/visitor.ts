@@ -43,6 +43,7 @@ export type VisitorAuthorizationDetails = Omit<
 > & {
     visitor: (VisitorSummary & { phone: string | null }) | null;
     vehicle_plate: string | null;
+    qr_available: boolean;
 };
 
 export type PortariaValidatedAuthorization = {

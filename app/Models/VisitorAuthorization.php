@@ -40,6 +40,7 @@ class VisitorAuthorization extends Model
     ];
 
     protected $hidden = [
+        'access_code',
         'invitation_token_hash',
     ];
 

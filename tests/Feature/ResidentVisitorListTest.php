@@ -232,6 +232,7 @@ class ResidentVisitorListTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('morador/visitors/show')
                 ->where('authorization.id', $authorization->id)
+                ->where('authorization.qr_available', true)
                 ->missing('authorization.access_code')
                 ->missing('authorization.invitation_token_hash'));
 

@@ -23,6 +23,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
+        Route::get('visitors/{visitorAuthorization}/qr-code', [VisitorAuthorizationController::class, 'qrCode'])
+            ->name('visitors.qr-code');
+        Route::get('visitors/{visitorAuthorization}/access-code', [VisitorAuthorizationController::class, 'accessCode'])
+            ->name('visitors.access-code');
         Route::resource('visitors', VisitorAuthorizationController::class)
             ->parameters(['visitors' => 'visitorAuthorization'])
             ->only(['index', 'show', 'store']);

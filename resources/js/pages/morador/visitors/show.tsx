@@ -9,6 +9,7 @@ import {
     UserRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import VisitorQrCodeCard from '@/components/morador/visitor-qr-code-card';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -142,6 +143,10 @@ export default function VisitorDetailsPage({
                         </CardContent>
                     </Card>
                 </div>
+
+                {authorization.qr_available && (
+                    <VisitorQrCodeCard authorizationId={authorization.id} />
+                )}
 
                 <div>
                     <Button variant="outline" asChild>
