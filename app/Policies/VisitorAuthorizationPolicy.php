@@ -19,4 +19,11 @@ class VisitorAuthorizationPolicy
             && $user->unit_id !== null
             && $user->unit_id === $authorization->unit_id;
     }
+
+    public function create(User $user): bool
+    {
+        return $this->viewAny($user)
+            && $user->is_active
+            && $user->unit()->where('status', 'active')->exists();
+    }
 }
