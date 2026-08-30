@@ -7,6 +7,16 @@ export type VisitorAuthorizationStatus =
     | 'expired'
     | 'canceled';
 
+export type PortariaValidationDenialReason =
+    | 'not_found'
+    | 'pending_data'
+    | 'future'
+    | 'expired'
+    | 'canceled'
+    | 'used'
+    | 'open_access'
+    | 'inconsistent_authorization';
+
 export type VisitorAuthorizationUnit = {
     block: string | null;
     number: string;
@@ -34,6 +44,29 @@ export type VisitorAuthorizationDetails = Omit<
     visitor: (VisitorSummary & { phone: string | null }) | null;
     vehicle_plate: string | null;
 };
+
+export type PortariaValidatedAuthorization = {
+    visitor_name: string;
+    unit: VisitorAuthorizationUnit;
+    vehicle_plate: string | null;
+    start_date: string;
+    end_date: string;
+    status: VisitorAuthorizationStatus;
+};
+
+export type PortariaValidationResult =
+    | {
+          allowed: true;
+          reason: null;
+          message: string;
+          authorization: PortariaValidatedAuthorization;
+      }
+    | {
+          allowed: false;
+          reason: PortariaValidationDenialReason;
+          message: string;
+          authorization: null;
+      };
 
 export type VisitorAuthorizationFilters = {
     search: string;

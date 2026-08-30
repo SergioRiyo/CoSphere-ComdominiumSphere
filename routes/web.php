@@ -30,6 +30,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'porteiro'])->name('dashboard');
+        Route::get('visitor-authorizations/validate', [PortariaVisitorValidationController::class, 'index'])
+            ->name('visitor-authorizations.validation');
         Route::post('visitor-authorizations/validate', PortariaVisitorValidationController::class)
             ->middleware('throttle:30,1')
             ->name('visitor-authorizations.validate');

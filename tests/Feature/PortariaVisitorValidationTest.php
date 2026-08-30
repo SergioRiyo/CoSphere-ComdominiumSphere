@@ -8,11 +8,56 @@ use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAuthorization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class PortariaVisitorValidationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_active_verified_doorman_can_access_the_manual_validation_page(): void
+    {
+        $doorman = User::factory()->porteiro()->create();
+
+        $this->actingAs($doorman)
+            ->get(route('portaria.visitor-authorizations.validation'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('portaria/visitor-validation')
+                ->where('timezone', config('app.timezone'))
+                ->missing('authorization')
+                ->missing('visitor')
+                ->missing('access_code'));
+    }
+
+    public function test_guest_cannot_access_the_manual_validation_page(): void
+    {
+        $this->get(route('portaria.visitor-authorizations.validation'))
+            ->assertRedirect(route('login'));
+    }
+
+    public function test_administrator_and_resident_cannot_access_the_manual_validation_page(): void
+    {
+        foreach ([
+            User::factory()->admin()->create(),
+            User::factory()->morador()->create(),
+        ] as $unauthorizedUser) {
+            $this->actingAs($unauthorizedUser)
+                ->get(route('portaria.visitor-authorizations.validation'))
+                ->assertForbidden();
+        }
+    }
+
+    public function test_inactive_doorman_cannot_access_the_manual_validation_page(): void
+    {
+        $inactiveDoorman = User::factory()->porteiro()->inactive()->create();
+
+        $this->actingAs($inactiveDoorman)
+            ->get(route('portaria.visitor-authorizations.validation'))
+            ->assertRedirect(route('login'));
+
+        $this->assertGuest();
+    }
 
     public function test_active_verified_doorman_can_validate_an_active_authorization(): void
     {
