@@ -15,6 +15,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
+import VisitorQrScanner from '@/components/portaria/visitor-qr-scanner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ export default function VisitorValidationPage({
         null,
     );
     const [requestError, setRequestError] = useState<string | null>(null);
+    const validationSubmissionRef = useRef(false);
     const entrySubmissionRef = useRef(false);
     const isProcessing = processing || entryProcessing;
     const accessCodeError = errors.access_code ?? entryErrors.access_code;
@@ -81,13 +83,14 @@ export default function VisitorValidationPage({
         setRequestError(null);
     };
 
-    const submitValidation = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        if (isProcessing) {
+    const validateAccessCode = async (accessCode: string) => {
+        if (isProcessing || validationSubmissionRef.current) {
             return;
         }
 
+        validationSubmissionRef.current = true;
+        setData('access_code', accessCode);
+        setEntryData('access_code', accessCode);
         clearErrors();
         clearEntryErrors();
         setResult(null);
@@ -113,7 +116,15 @@ export default function VisitorValidationPage({
             setResult(validationResult);
         } catch {
             setResult(null);
+        } finally {
+            validationSubmissionRef.current = false;
         }
+    };
+
+    const submitValidation = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+
+        await validateAccessCode(data.access_code);
     };
 
     const registerEntry = async () => {
@@ -185,8 +196,8 @@ export default function VisitorValidationPage({
                                     Código de acesso
                                 </CardTitle>
                                 <CardDescription>
-                                    Digite o código completo para consultar a
-                                    autorização existente.
+                                    Digite o código completo ou leia o QR Code
+                                    para consultar a autorização existente.
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -246,6 +257,41 @@ export default function VisitorValidationPage({
                                         )}
                                     </Button>
                                 </form>
+
+                                <div
+                                    className="my-5 flex items-center gap-3"
+                                    aria-hidden="true"
+                                >
+                                    <span className="h-px flex-1 bg-border" />
+                                    <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                        ou
+                                    </span>
+                                    <span className="h-px flex-1 bg-border" />
+                                </div>
+
+                                <VisitorQrScanner
+                                    disabled={isProcessing}
+                                    hasPreviousResult={Boolean(
+                                        result ||
+                                        entryResult ||
+                                        requestError ||
+                                        accessCodeError,
+                                    )}
+                                    onDetected={validateAccessCode}
+                                />
+
+                                <p className="sr-only" role="status">
+                                    {processing
+                                        ? 'Validando autorização.'
+                                        : entryProcessing
+                                          ? 'Registrando entrada.'
+                                          : ''}
+                                </p>
+
+                                <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+                                    A câmera exige HTTPS em ambiente publicado.
+                                    O código manual continuará disponível.
+                                </p>
                             </CardContent>
                         </Card>
 
@@ -265,6 +311,8 @@ export default function VisitorValidationPage({
                                         {requestError}
                                     </AlertDescription>
                                 </Alert>
+                            ) : accessCodeError ? (
+                                <DeniedResult message={accessCodeError} />
                             ) : entryResult?.registered && result?.allowed ? (
                                 <EntryRegisteredResult
                                     authorization={result.authorization}
