@@ -9,8 +9,9 @@ use App\Services\VisitorQrCodeService;
 use App\Services\VisitorService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class VisitorInvitationController extends Controller
 {
@@ -23,14 +24,16 @@ class VisitorInvitationController extends Controller
         return back()->with('invitation_url', route('visitor-invitations.show', $token));
     }
 
-    public function show(string $token): Response
+    public function show(Request $request, string $token): HttpResponse
     {
         $this->available($token);
 
-        return Inertia::render('visitor-invitations/show', ['token' => $token]);
+        return $this->withoutCache(
+            Inertia::render('visitor-invitations/show', ['token' => $token])->toResponse($request),
+        );
     }
 
-    public function complete(CompleteVisitorInvitationRequest $request, string $token): Response
+    public function complete(CompleteVisitorInvitationRequest $request, string $token): HttpResponse
     {
         try {
             $authorization = $this->visitorService->completeInvitation($token, $request->validated());
@@ -38,7 +41,10 @@ class VisitorInvitationController extends Controller
             abort(404);
         }
 
-        return Inertia::render('visitor-invitations/completed', ['qr_svg' => $this->visitorQrCodeService->svg($authorization)]);
+        return $this->withoutCache(
+            Inertia::render('visitor-invitations/completed', ['qr_svg' => $this->visitorQrCodeService->svg($authorization)])
+                ->toResponse($request),
+        );
     }
 
     private function available(string $token): void
@@ -47,5 +53,14 @@ class VisitorInvitationController extends Controller
         if (! $a || $a->status->value !== 'pending_data' || $a->invitation_used_at || ! $a->invitation_expires_at?->isFuture() || ! $a->start_date->isFuture()) {
             abort(404);
         }
+    }
+
+    private function withoutCache(HttpResponse $response): HttpResponse
+    {
+        $response->headers->set('Cache-Control', 'private, no-store');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Referrer-Policy', 'no-referrer');
+
+        return $response;
     }
 }

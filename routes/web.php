@@ -32,13 +32,23 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
         Route::get('visitors/{visitorAuthorization}/qr-code', [VisitorAuthorizationController::class, 'qrCode'])
+            ->middleware('throttle:visitor-qr-code')
             ->name('visitors.qr-code');
         Route::get('visitors/{visitorAuthorization}/access-code', [VisitorAuthorizationController::class, 'accessCode'])
+            ->middleware('throttle:visitor-qr-code')
             ->name('visitors.access-code');
         Route::resource('visitors', VisitorAuthorizationController::class)
             ->parameters(['visitors' => 'visitorAuthorization'])
-            ->only(['index', 'show', 'store', 'destroy']);
-        Route::post('visitor-invitations', [VisitorInvitationController::class, 'store'])->name('visitor-invitations.store');
+            ->only(['index', 'show']);
+        Route::post('visitors', [VisitorAuthorizationController::class, 'store'])
+            ->middleware('throttle:visitor-authorization')
+            ->name('visitors.store');
+        Route::delete('visitors/{visitorAuthorization}', [VisitorAuthorizationController::class, 'destroy'])
+            ->middleware('throttle:visitor-authorization')
+            ->name('visitors.destroy');
+        Route::post('visitor-invitations', [VisitorInvitationController::class, 'store'])
+            ->middleware('throttle:visitor-authorization')
+            ->name('visitor-invitations.store');
     });
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
@@ -48,15 +58,15 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('visitor-accesses', [PortariaVisitorAccessController::class, 'index'])
             ->name('visitor-accesses.index');
         Route::post('visitor-accesses/{visitorAccess}/exit', [PortariaVisitorAccessController::class, 'registerExit'])
-            ->middleware('throttle:30,1')
+            ->middleware('throttle:visitor-portaria-exit')
             ->name('visitor-accesses.exit');
         Route::get('visitor-authorizations/validate', [PortariaVisitorValidationController::class, 'index'])
             ->name('visitor-authorizations.validation');
         Route::post('visitor-authorizations/validate', PortariaVisitorValidationController::class)
-            ->middleware('throttle:30,1')
+            ->middleware('throttle:visitor-portaria-validation')
             ->name('visitor-authorizations.validate');
         Route::post('visitor-accesses', PortariaVisitorEntryController::class)
-            ->middleware('throttle:30,1')
+            ->middleware('throttle:visitor-portaria-entry')
             ->name('visitor-accesses.store');
     });
 });

@@ -18,7 +18,7 @@ class PortariaVisitorEntryController extends Controller
         try {
             $access = $this->visitorService->registerEntry(
                 accessCode: $validated['access_code'],
-                doormanId: (int) $request->user()->getAuthIdentifier(),
+                doormanId: $request->user(),
             );
         } catch (DomainException $exception) {
             return response()->json([

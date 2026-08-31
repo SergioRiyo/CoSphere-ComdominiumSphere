@@ -21,7 +21,7 @@ class VisitorInvitationTest extends TestCase
         $authorization = VisitorAuthorization::firstOrFail();
         $this->assertNotNull($authorization->invitation_token_hash);
         $token = str_repeat('A', 64);
-        $authorization->update(['invitation_token_hash' => hash('sha256', $token)]);
+        $authorization->forceFill(['invitation_token_hash' => hash('sha256', $token)])->save();
         $this->get(route('visitor-invitations.show', $token))->assertOk();
         $payload = ['name' => 'Visitante Teste', 'cpf' => '52998224725', 'phone' => '65999999999', 'confirmed' => '1'];
         $this->post(route('visitor-invitations.complete', $token), $payload)
@@ -46,7 +46,7 @@ class VisitorInvitationTest extends TestCase
         $this->get(route('visitor-invitations.show', $token))->assertNotFound();
         $revokedToken = str_repeat('R', 64);
         $authorization = VisitorAuthorization::factory()->pendingData($revokedToken)->create();
-        $authorization->update(['status' => 'canceled', 'invitation_token_hash' => null]);
+        $authorization->forceFill(['status' => 'canceled', 'invitation_token_hash' => null])->save();
         $this->get(route('visitor-invitations.show', $revokedToken))->assertNotFound();
         $this->get(route('visitor-invitations.show', str_repeat('C', 64)))->assertNotFound();
     }
@@ -117,5 +117,28 @@ class VisitorInvitationTest extends TestCase
 
         $this->post(route('visitor-invitations.complete', $token), $payload)
             ->assertTooManyRequests();
+    }
+
+    public function test_public_invitation_responses_are_not_cacheable(): void
+    {
+        $token = str_repeat('H', 64);
+        VisitorAuthorization::factory()->pendingData($token)->create();
+
+        $this->get(route('visitor-invitations.show', $token))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Pragma', 'no-cache')
+            ->assertHeader('Referrer-Policy', 'no-referrer');
+
+        $this->post(route('visitor-invitations.complete', $token), [
+            'name' => 'Visitante Teste',
+            'cpf' => '52998224725',
+            'phone' => '65999999999',
+            'confirmed' => '1',
+        ])
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Pragma', 'no-cache')
+            ->assertHeader('Referrer-Policy', 'no-referrer');
     }
 }

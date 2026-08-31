@@ -91,7 +91,7 @@ class VisitorServiceTest extends TestCase
 
     public function test_deve_negar_acesso_com_autorizacao_invalida(): void
     {
-        $doorman = User::factory()->create();
+        $doorman = User::factory()->porteiro()->create();
 
         $authorization = VisitorAuthorization::factory()->create([
             'status' => VisitorAuthorizationStatus::Canceled,
@@ -118,7 +118,7 @@ class VisitorServiceTest extends TestCase
 
     public function test_deve_registrar_entrada_de_visitante(): void
     {
-        $doorman = User::factory()->create();
+        $doorman = User::factory()->porteiro()->create();
 
         $authorization = VisitorAuthorization::factory()->create([
             'status' => VisitorAuthorizationStatus::Active,
@@ -148,7 +148,7 @@ class VisitorServiceTest extends TestCase
 
     public function test_deve_registrar_saida_de_visitante(): void
     {
-        $doorman = User::factory()->create();
+        $doorman = User::factory()->porteiro()->create();
 
         $authorization = VisitorAuthorization::factory()->create([
             'status' => VisitorAuthorizationStatus::Active,
@@ -181,6 +181,25 @@ class VisitorServiceTest extends TestCase
             'id' => $authorization->id,
             'status' => VisitorAuthorizationStatus::Used->value,
         ]);
+    }
+
+    public function test_service_rejects_inactive_or_non_doorman_operators(): void
+    {
+        $authorization = VisitorAuthorization::factory()->active()->create();
+
+        foreach ([
+            User::factory()->morador()->create(),
+            User::factory()->porteiro()->inactive()->create(),
+        ] as $operator) {
+            try {
+                $this->visitorService->registerEntry($authorization->access_code, $operator);
+                $this->fail('Era esperada uma DomainException para operador inválido.');
+            } catch (DomainException $exception) {
+                $this->assertSame('O porteiro responsável precisa estar ativo.', $exception->getMessage());
+            }
+        }
+
+        $this->assertDatabaseCount('visitor_accesses', 0);
     }
 
     public function test_portaria_validation_returns_only_sanitized_operational_data(): void
