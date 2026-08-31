@@ -92,6 +92,55 @@ export type PortariaOpenVisitorAccess = {
     entry_doorman_name: string | null;
 };
 
+export type PortariaVisitorAccessSituation =
+    | 'present'
+    | 'finished'
+    | 'denied'
+    | 'pending'
+    | 'validated';
+
+export type PortariaVisitorAccessHistory = {
+    visitor_name: string;
+    unit: VisitorAuthorizationUnit;
+    vehicle_plate: string | null;
+    entry_time: string | null;
+    exit_time: string | null;
+    entry_doorman_name: string | null;
+    exit_doorman_name: string | null;
+    situation: PortariaVisitorAccessSituation;
+    situation_label: string;
+};
+
+export type PortariaVisitorAccessHistoryFilters = {
+    search: string;
+    unit_id: number | null;
+    situation: PortariaVisitorAccessSituation | '';
+    date_from: string;
+    date_to: string;
+};
+
+export type PortariaVisitorAccessHistoryUnitOption = {
+    id: number;
+    label: string;
+};
+
+export type PortariaVisitorAccessSituationOption = {
+    value: PortariaVisitorAccessSituation;
+    label: string;
+};
+
+export type PaginatedPortariaVisitorAccessHistory = {
+    data: PortariaVisitorAccessHistory[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    links: PaginationLink[];
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
 export type VisitorAuthorizationFilters = {
     search: string;
     status: VisitorAuthorizationStatus | '';
