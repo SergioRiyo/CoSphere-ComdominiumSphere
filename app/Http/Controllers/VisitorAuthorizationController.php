@@ -83,6 +83,26 @@ class VisitorAuthorizationController extends Controller
         ]);
     }
 
+    public function destroy(Request $request, VisitorAuthorization $visitorAuthorization): RedirectResponse
+    {
+        Gate::forUser($request->user())->authorize('cancel', $visitorAuthorization);
+
+        try {
+            $this->visitorService->cancelAuthorization($visitorAuthorization);
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => 'Autorização cancelada com sucesso.',
+            ]);
+        } catch (DomainException $exception) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => $exception->getMessage(),
+            ]);
+        }
+
+        return back();
+    }
+
     public function qrCode(Request $request, VisitorAuthorization $visitorAuthorization): HttpResponse
     {
         Gate::forUser($request->user())->authorize('view', $visitorAuthorization);

@@ -26,4 +26,12 @@ class VisitorAuthorizationPolicy
             && $user->is_active
             && $user->unit()->where('status', 'active')->exists();
     }
+
+    public function cancel(User $user, VisitorAuthorization $authorization): bool
+    {
+        return $this->view($user, $authorization)
+            && $user->is_active
+            && $user->id === $authorization->resident_id
+            && $user->unit()->where('status', 'active')->exists();
+    }
 }

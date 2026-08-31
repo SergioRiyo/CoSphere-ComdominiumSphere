@@ -9,8 +9,6 @@ use App\Services\VisitorQrCodeService;
 use App\Services\VisitorService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,14 +21,6 @@ class VisitorInvitationController extends Controller
         [, $token] = $this->visitorService->createInvitation($request->user(), $request->validated());
 
         return back()->with('invitation_url', route('visitor-invitations.show', $token));
-    }
-
-    public function destroy(Request $request, VisitorAuthorization $visitorAuthorization): RedirectResponse
-    {
-        Gate::forUser($request->user())->authorize('view', $visitorAuthorization);
-        $this->visitorService->revokeInvitation($visitorAuthorization);
-
-        return back();
     }
 
     public function show(string $token): Response

@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePoll } from '@inertiajs/react';
 import {
     CalendarDays,
     Eye,
@@ -58,6 +58,8 @@ export default function VisitorsPage({
     errors = {},
     invitationUrl,
 }: VisitorsPageProps) {
+    usePoll(60_000, { only: ['authorizations'] });
+
     const [draftFilters, setDraftFilters] = useState(filters);
     const [isLoading, setIsLoading] = useState(false);
     const [isAuthorizationDialogOpen, setIsAuthorizationDialogOpen] =

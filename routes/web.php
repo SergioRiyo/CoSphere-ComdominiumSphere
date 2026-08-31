@@ -35,9 +35,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
             ->name('visitors.access-code');
         Route::resource('visitors', VisitorAuthorizationController::class)
             ->parameters(['visitors' => 'visitorAuthorization'])
-            ->only(['index', 'show', 'store']);
+            ->only(['index', 'show', 'store', 'destroy']);
         Route::post('visitor-invitations', [VisitorInvitationController::class, 'store'])->name('visitor-invitations.store');
-        Route::delete('visitor-invitations/{visitorAuthorization}', [VisitorInvitationController::class, 'destroy'])->name('visitor-invitations.destroy');
     });
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {

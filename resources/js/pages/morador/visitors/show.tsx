@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePoll } from '@inertiajs/react';
 import {
     ArrowLeft,
     CalendarClock,
@@ -9,6 +9,7 @@ import {
     UserRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useState } from 'react';
 import VisitorQrCodeCard from '@/components/morador/visitor-qr-code-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -18,9 +19,17 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
-import { destroy as destroyInvitation } from '@/routes/morador/visitor-invitations';
-import { index } from '@/routes/morador/visitors';
+import { destroy, index } from '@/routes/morador/visitors';
 import type { VisitorAuthorizationDetails } from '@/types';
 
 type VisitorDetailsPageProps = {
@@ -32,6 +41,12 @@ export default function VisitorDetailsPage({
     authorization,
     timezone,
 }: VisitorDetailsPageProps) {
+    const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+    const [isCanceling, setIsCanceling] = useState(false);
+    const canCancel = ['pending_data', 'active'].includes(authorization.status);
+
+    usePoll(60_000, { only: ['authorization'] });
+
     const unit = authorization.unit.block
         ? `Bloco ${authorization.unit.block} · Unidade ${authorization.unit.number}`
         : `Unidade ${authorization.unit.number}`;
@@ -149,16 +164,12 @@ export default function VisitorDetailsPage({
                     <VisitorQrCodeCard authorizationId={authorization.id} />
                 )}
 
-                {authorization.status === 'pending_data' && (
+                {canCancel && (
                     <Button
                         variant="destructive"
-                        onClick={() =>
-                            router.delete(
-                                destroyInvitation.url(authorization.id),
-                            )
-                        }
+                        onClick={() => setIsCancelDialogOpen(true)}
                     >
-                        Revogar convite
+                        Cancelar autorização
                     </Button>
                 )}
 
@@ -170,6 +181,54 @@ export default function VisitorDetailsPage({
                         </Link>
                     </Button>
                 </div>
+
+                <Dialog
+                    open={isCancelDialogOpen}
+                    onOpenChange={setIsCancelDialogOpen}
+                >
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Cancelar autorização?</DialogTitle>
+                            <DialogDescription>
+                                O QR Code, o código manual e o link de convite,
+                                quando existir, deixarão de funcionar
+                                imediatamente.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={isCanceling}
+                                >
+                                    Voltar
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                disabled={isCanceling}
+                                onClick={() =>
+                                    router.delete(
+                                        destroy.url(authorization.id),
+                                        {
+                                            onStart: () => setIsCanceling(true),
+                                            onFinish: () =>
+                                                setIsCanceling(false),
+                                            onSuccess: () =>
+                                                setIsCancelDialogOpen(false),
+                                        },
+                                    )
+                                }
+                            >
+                                {isCanceling
+                                    ? 'Cancelando...'
+                                    : 'Confirmar cancelamento'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </>
     );

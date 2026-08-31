@@ -131,12 +131,45 @@ class VisitorService
         });
     }
 
-    public function revokeInvitation(VisitorAuthorization $authorization): void
+    public function cancelAuthorization(VisitorAuthorization $authorization): void
     {
-        if ($authorization->status !== VisitorAuthorizationStatus::PendingData) {
-            throw new DomainException('Convite indisponível.');
-        }
-        $authorization->update(['status' => VisitorAuthorizationStatus::Canceled, 'invitation_token_hash' => null]);
+        DB::transaction(function () use ($authorization): void {
+            $authorization = VisitorAuthorization::whereKey($authorization->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $authorization) {
+                throw new DomainException('Autorização indisponível.');
+            }
+
+            if ($authorization->status === VisitorAuthorizationStatus::Active
+                && $authorization->end_date->isPast()) {
+                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
+                throw new DomainException('Autorização expirada.');
+            }
+
+            if ($authorization->status === VisitorAuthorizationStatus::PendingData
+                && (! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture())) {
+                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
+                throw new DomainException('Convite expirado.');
+            }
+
+            if (! in_array($authorization->status, [
+                VisitorAuthorizationStatus::PendingData,
+                VisitorAuthorizationStatus::Active,
+            ], true)) {
+                throw new DomainException('Esta autorização não pode ser cancelada.');
+            }
+
+            if ($this->hasOpenAccess($authorization)) {
+                throw new DomainException('Não é possível cancelar uma autorização com entrada em aberto.');
+            }
+
+            $authorization->update([
+                'status' => VisitorAuthorizationStatus::Canceled,
+                'invitation_token_hash' => null,
+            ]);
+        });
     }
 
     public function validateAuthorizationByCode(string $accessCode): VisitorAuthorization
