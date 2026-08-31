@@ -47,6 +47,7 @@ class VisitorAuthorizationController extends Controller
                 'date_to' => $filters['date_to'] ?? '',
             ],
             'timezone' => config('app.timezone'),
+            'invitationUrl' => $request->session()->get('invitation_url'),
         ]);
     }
 

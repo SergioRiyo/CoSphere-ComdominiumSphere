@@ -91,6 +91,54 @@ class VisitorService
         });
     }
 
+    /** @param array{start_date:string,end_date:string} $data */
+    public function createInvitation(User $resident, array $data): array
+    {
+        return DB::transaction(function () use ($resident, $data): array {
+            $resident->loadMissing('unit');
+            if ($resident->role !== UserRole::Morador || ! $resident->is_active || $resident->unit?->status !== 'active') {
+                throw new DomainException('O morador precisa estar vinculado a uma unidade ativa.');
+            }
+            $start = Carbon::parse($data['start_date']);
+            $end = Carbon::parse($data['end_date']);
+            if ($start->isPast() || $start->greaterThanOrEqualTo($end)) {
+                throw new DomainException('O período da visita é inválido.');
+            }
+            $token = Str::random(64);
+            $authorization = VisitorAuthorization::create(['unit_id' => $resident->unit_id, 'resident_id' => $resident->id, 'start_date' => $start, 'end_date' => $end, 'status' => VisitorAuthorizationStatus::PendingData, 'invitation_token_hash' => hash('sha256', $token), 'invitation_expires_at' => now()->addDay()->min($start)]);
+
+            return [$authorization, $token];
+        });
+    }
+
+    /** @param array{name:string,cpf:string,phone:string,vehicle_plate?:string|null} $data */
+    public function completeInvitation(string $token, array $data): VisitorAuthorization
+    {
+        return DB::transaction(function () use ($token, $data): VisitorAuthorization {
+            $authorization = VisitorAuthorization::where('invitation_token_hash', hash('sha256', $token))->lockForUpdate()->first();
+            if (! $authorization || $authorization->status !== VisitorAuthorizationStatus::PendingData || $authorization->invitation_used_at || ! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture()) {
+                throw new DomainException('Convite indisponível.');
+            }
+            $visitor = Visitor::withTrashed()->where('cpf', $data['cpf'])->first();
+            if (! $visitor) {
+                $visitor = Visitor::create(['name' => $data['name'], 'cpf' => $data['cpf'], 'phone' => $data['phone']]);
+            } elseif ($visitor->trashed()) {
+                $visitor->restore();
+            }
+            $authorization->update(['visitor_id' => $visitor->id, 'vehicle_plate' => $data['vehicle_plate'] ?? null, 'access_code' => $this->generateVisitorCode(), 'status' => VisitorAuthorizationStatus::Active, 'authorized_date' => now(), 'invitation_used_at' => now(), 'invitation_token_hash' => null]);
+
+            return $authorization->refresh();
+        });
+    }
+
+    public function revokeInvitation(VisitorAuthorization $authorization): void
+    {
+        if ($authorization->status !== VisitorAuthorizationStatus::PendingData) {
+            throw new DomainException('Convite indisponível.');
+        }
+        $authorization->update(['status' => VisitorAuthorizationStatus::Canceled, 'invitation_token_hash' => null]);
+    }
+
     public function validateAuthorizationByCode(string $accessCode): VisitorAuthorization
     {
         $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();

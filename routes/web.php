@@ -6,9 +6,14 @@ use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
+use App\Http\Controllers\VisitorInvitationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
+Route::prefix('convites/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->middleware('throttle:visitor-invitation')->group(function () {
+    Route::get('/', [VisitorInvitationController::class, 'show'])->name('visitor-invitations.show');
+    Route::post('/', [VisitorInvitationController::class, 'complete'])->name('visitor-invitations.complete');
+});
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
@@ -31,6 +36,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::resource('visitors', VisitorAuthorizationController::class)
             ->parameters(['visitors' => 'visitorAuthorization'])
             ->only(['index', 'show', 'store']);
+        Route::post('visitor-invitations', [VisitorInvitationController::class, 'store'])->name('visitor-invitations.store');
+        Route::delete('visitor-invitations/{visitorAuthorization}', [VisitorInvitationController::class, 'destroy'])->name('visitor-invitations.destroy');
     });
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
