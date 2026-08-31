@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\UserController;
@@ -41,6 +42,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'porteiro'])->name('dashboard');
+        Route::get('visitor-accesses', [PortariaVisitorAccessController::class, 'index'])
+            ->name('visitor-accesses.index');
+        Route::post('visitor-accesses/{visitorAccess}/exit', [PortariaVisitorAccessController::class, 'registerExit'])
+            ->middleware('throttle:30,1')
+            ->name('visitor-accesses.exit');
         Route::get('visitor-authorizations/validate', [PortariaVisitorValidationController::class, 'index'])
             ->name('visitor-authorizations.validation');
         Route::post('visitor-authorizations/validate', PortariaVisitorValidationController::class)

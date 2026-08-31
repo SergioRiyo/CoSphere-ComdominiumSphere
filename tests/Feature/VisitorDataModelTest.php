@@ -108,7 +108,7 @@ class VisitorDataModelTest extends TestCase
         $service = app(VisitorService::class);
 
         $access = $service->registerEntry($authorization->access_code, $entryDoorman->id);
-        $service->registerExit($authorization->access_code, $exitDoorman->id);
+        $service->registerExit($access, $exitDoorman->id);
 
         $access->refresh();
         $authorization->refresh();

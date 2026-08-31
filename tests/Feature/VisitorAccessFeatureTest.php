@@ -115,13 +115,13 @@ class VisitorAccessFeatureTest extends TestCase
         ]);
         $authorization->update(['start_date' => now()->subHour()]);
 
-        $this->visitorService->registerEntry(
+        $entryAccess = $this->visitorService->registerEntry(
             accessCode: $authorization->access_code,
             doormanId: $doorman->id,
         );
 
         $access = $this->visitorService->registerExit(
-            accessCode: $authorization->access_code,
+            visitorAccess: $entryAccess,
             doormanId: $doorman->id,
             observations: 'Saida registrada na portaria.',
         );

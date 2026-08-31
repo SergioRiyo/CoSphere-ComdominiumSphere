@@ -306,45 +306,57 @@ class VisitorService
     }
 
     public function registerExit(
-        string $accessCode,
+        VisitorAccess $visitorAccess,
         int $doormanId,
         ?string $observations = null
     ): VisitorAccess {
-        return DB::transaction(function () use ($accessCode, $doormanId, $observations) {
-            $authorization = VisitorAuthorization::where('access_code', $accessCode)
+        return DB::transaction(function () use ($visitorAccess, $doormanId, $observations) {
+            $authorization = VisitorAuthorization::whereKey($visitorAccess->visitor_authorization_id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $authorization) {
-                throw new DomainException('Código de acesso inválido.');
+                throw new DomainException('Acesso de visitante inválido.');
             }
 
-            $access = VisitorAccess::where('visitor_authorization_id', $authorization->id)
+            $access = VisitorAccess::whereKey($visitorAccess->id)
+                ->where('visitor_authorization_id', $authorization->id)
                 ->where('validation_status', VisitorAccessStatus::Validated)
+                ->whereNotNull('entry_time')
                 ->whereNull('exit_time')
-                ->latest('entry_time')
+                ->lockForUpdate()
                 ->first();
 
             if (! $access) {
                 throw new DomainException('Não existe entrada em aberto para este visitante.');
             }
 
-            $access->update([
-                'exit_doorman_id' => $doormanId,
-                'exit_time' => now(),
-                'observations' => $observations ?? $access->observations,
-            ]);
+            $updatedAccesses = VisitorAccess::whereKey($access->id)
+                ->where('visitor_authorization_id', $authorization->id)
+                ->where('validation_status', VisitorAccessStatus::Validated)
+                ->whereNotNull('entry_time')
+                ->whereNull('exit_time')
+                ->update([
+                    'exit_doorman_id' => $doormanId,
+                    'exit_time' => now(),
+                    'observations' => $observations ?? $access->observations,
+                ]);
+
+            if ($updatedAccesses !== 1) {
+                throw new DomainException('A saída deste visitante já foi registrada.');
+            }
 
             $authorization->update([
                 'status' => VisitorAuthorizationStatus::Used,
             ]);
 
             $authorization->loadMissing('visitor');
+            $visitorName = $authorization->visitor?->name ?? 'visitante';
 
             $this->notifyResident(
                 authorization: $authorization,
                 title: 'Saída de visitante registrada',
-                message: "O visitante {$authorization->visitor->name} teve a saída registrada na portaria."
+                message: "O visitante {$visitorName} teve a saída registrada na portaria."
             );
 
             return $access->refresh();
