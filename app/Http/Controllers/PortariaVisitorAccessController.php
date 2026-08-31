@@ -8,6 +8,7 @@ use App\Services\VisitorService;
 use DomainException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,8 +19,10 @@ class PortariaVisitorAccessController extends Controller
         private VisitorService $visitorService,
     ) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        Gate::forUser($request->user())->authorize('viewAny', VisitorAccess::class);
+
         return Inertia::render('portaria/visitor-accesses/index', [
             'openAccesses' => $this->visitorAccessQueryService->openForPortaria(),
             'timezone' => config('app.timezone'),
@@ -28,10 +31,12 @@ class PortariaVisitorAccessController extends Controller
 
     public function registerExit(Request $request, VisitorAccess $visitorAccess): RedirectResponse
     {
+        Gate::forUser($request->user())->authorize('update', $visitorAccess);
+
         try {
             $this->visitorService->registerExit(
                 visitorAccess: $visitorAccess,
-                doormanId: (int) $request->user()->getAuthIdentifier(),
+                doormanId: $request->user(),
             );
         } catch (DomainException $exception) {
             Inertia::flash('toast', [

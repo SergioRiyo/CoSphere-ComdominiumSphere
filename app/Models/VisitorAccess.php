@@ -15,12 +15,6 @@ class VisitorAccess extends Model
     protected $table = 'visitor_accesses';
 
     protected $fillable = [
-        'visitor_authorization_id',
-        'doorman_id',
-        'exit_doorman_id',
-        'entry_time',
-        'exit_time',
-        'validation_status',
         'observations',
     ];
 

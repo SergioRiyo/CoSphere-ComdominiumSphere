@@ -17,11 +17,7 @@ class VisitorAuthorization extends Model
 
     protected $fillable = [
         'visitor_id',
-        'unit_id',
-        'resident_id',
         'vehicle_plate',
-        'access_code',
-        'invitation_token_hash',
         'invitation_expires_at',
         'invitation_used_at',
         'start_date',
