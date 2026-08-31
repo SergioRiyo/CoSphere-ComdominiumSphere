@@ -78,7 +78,7 @@ class VisitorAuthorizationController extends Controller
 
         return Inertia::render('morador/visitors/show', [
             'authorization' => $this->visitorAuthorizationQueryService
-                ->details($visitorAuthorization),
+                ->details($request->user(), $visitorAuthorization),
             'timezone' => config('app.timezone'),
         ]);
     }

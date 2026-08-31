@@ -149,11 +149,14 @@ class ResidentVisitorListTest extends TestCase
                 ->missing('authorizations.data.0.invitation_token_hash'));
     }
 
-    public function test_list_masks_visitor_cpf_but_details_show_the_authorized_data(): void
+    public function test_list_masks_visitor_cpf_but_responsible_resident_can_view_the_full_data(): void
     {
         $unit = Unit::factory()->create();
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
-        $visitor = Visitor::factory()->create(['cpf' => '529.982.247-25']);
+        $visitor = Visitor::factory()->create([
+            'cpf' => '529.982.247-25',
+            'phone' => '(11) 99876-5432',
+        ]);
         $authorization = $this->createAuthorization($unit, $resident, [
             'visitor_id' => $visitor->id,
         ]);
@@ -166,7 +169,28 @@ class ResidentVisitorListTest extends TestCase
         $this->actingAs($resident)
             ->get(route('morador.visitors.show', $authorization))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('authorization.visitor.cpf', '529.982.247-25'));
+                ->where('authorization.visitor.cpf', '529.982.247-25')
+                ->where('authorization.visitor.phone', '(11) 99876-5432'));
+    }
+
+    public function test_co_resident_receives_masked_visitor_data_in_authorization_details(): void
+    {
+        $unit = Unit::factory()->create();
+        $responsibleResident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $coResident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $visitor = Visitor::factory()->create([
+            'cpf' => '529.982.247-25',
+            'phone' => '(11) 99876-5432',
+        ]);
+        $authorization = $this->createAuthorization($unit, $responsibleResident, [
+            'visitor_id' => $visitor->id,
+        ]);
+
+        $this->actingAs($coResident)
+            ->get(route('morador.visitors.show', $authorization))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('authorization.visitor.cpf', '***.***.***-25')
+                ->where('authorization.visitor.phone', '(**) *****-5432'));
     }
 
     public function test_expired_active_authorization_is_presented_and_filtered_as_expired(): void

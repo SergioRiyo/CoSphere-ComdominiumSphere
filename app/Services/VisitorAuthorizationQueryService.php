@@ -53,7 +53,7 @@ class VisitorAuthorizationQueryService
     /**
      * @return array<string, mixed>
      */
-    public function details(VisitorAuthorization $authorization): array
+    public function details(User $resident, VisitorAuthorization $authorization): array
     {
         $authorization->loadMissing([
             'visitor:id,name,cpf,phone',
@@ -66,8 +66,8 @@ class VisitorAuthorizationQueryService
             'id' => $authorization->id,
             'visitor' => $authorization->visitor === null ? null : [
                 'name' => $authorization->visitor->name,
-                'cpf' => $authorization->visitor->cpf,
-                'phone' => $authorization->visitor->phone,
+                'cpf' => $this->visitorCpf($resident, $authorization),
+                'phone' => $this->visitorPhone($resident, $authorization),
             ],
             'unit' => [
                 'block' => $authorization->unit->block,
@@ -218,5 +218,25 @@ class VisitorAuthorizationQueryService
         $digits = (string) preg_replace('/\D/', '', $cpf);
 
         return '***.***.***-'.substr($digits, -2);
+    }
+
+    private function visitorCpf(User $resident, VisitorAuthorization $authorization): string
+    {
+        if ($resident->is($authorization->resident)) {
+            return $authorization->visitor->cpf;
+        }
+
+        return $this->maskedCpf($authorization->visitor->cpf);
+    }
+
+    private function visitorPhone(User $resident, VisitorAuthorization $authorization): string
+    {
+        if ($resident->is($authorization->resident)) {
+            return $authorization->visitor->phone;
+        }
+
+        $digits = (string) preg_replace('/\D/', '', $authorization->visitor->phone);
+
+        return '(**) *****-'.substr($digits, -4);
     }
 }
