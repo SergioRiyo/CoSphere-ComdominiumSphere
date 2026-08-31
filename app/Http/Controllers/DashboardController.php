@@ -4,13 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AdminDashboardService;
+use App\Services\VisitorDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly AdminDashboardService $adminDashboardService) {}
+    public function __construct(
+        private readonly AdminDashboardService $adminDashboardService,
+        private readonly VisitorDashboardService $visitorDashboardService,
+    ) {}
 
     public function admin(): Response
     {
@@ -26,11 +30,15 @@ class DashboardController extends Controller
 
         return Inertia::render('morador/dashboard', [
             'unit' => $user->unit()->first(['id', 'block', 'number', 'type', 'complement']),
+            'active_authorizations' => $this->visitorDashboardService
+                ->activeAuthorizationsForResident($user),
         ]);
     }
 
     public function porteiro(): Response
     {
-        return Inertia::render('portaria/dashboard');
+        return Inertia::render('portaria/dashboard', [
+            'present_visitors' => $this->visitorDashboardService->presentVisitors(),
+        ]);
     }
 }

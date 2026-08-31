@@ -29,6 +29,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { dashboard } from '@/routes/portaria';
 import { store as storeEntry } from '@/routes/portaria/visitor-accesses';
 import { validate, validation } from '@/routes/portaria/visitor-authorizations';
 import type {
@@ -587,6 +588,10 @@ function formatDateTime(value: string, timezone: string) {
 
 VisitorValidationPage.layout = {
     breadcrumbs: [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
         {
             title: 'Validação de visitante',
             href: validation(),

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\VisitorAccess;
+use App\Models\VisitorAuthorization;
 use App\Services\AdminDashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -132,7 +134,8 @@ class DashboardTest extends TestCase
                 ->where('unit.block', 'Bloco B')
                 ->where('unit.number', '101')
                 ->where('unit.type', 'Apartamento')
-                ->where('unit.complement', 'Fundos'));
+                ->where('unit.complement', 'Fundos')
+                ->where('active_authorizations', 0));
     }
 
     public function test_a_resident_without_a_unit_receives_a_null_unit(): void
@@ -150,7 +153,35 @@ class DashboardTest extends TestCase
                 ->where('auth.user.name', 'João da Costa')
                 ->where('auth.user.email', 'joao@example.com')
                 ->where('auth.user.role', UserRole::Morador->value)
-                ->where('unit', null));
+                ->where('unit', null)
+                ->where('active_authorizations', 0));
+    }
+
+    public function test_resident_dashboard_counts_active_authorizations_for_their_unit(): void
+    {
+        $unit = Unit::factory()->create();
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $coResident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+
+        VisitorAuthorization::factory()->active()->create([
+            'unit_id' => $unit->id,
+            'resident_id' => $resident->id,
+        ]);
+        VisitorAuthorization::factory()->active()->create([
+            'unit_id' => $unit->id,
+            'resident_id' => $coResident->id,
+        ]);
+        VisitorAuthorization::factory()->expired()->create([
+            'unit_id' => $unit->id,
+            'resident_id' => $resident->id,
+        ]);
+        VisitorAuthorization::factory()->active()->create();
+
+        $this->actingAs($resident)
+            ->get(route('morador.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('active_authorizations', 2)
+                ->missing('present_visitors'));
     }
 
     public function test_a_doorman_can_access_the_portaria_dashboard(): void
@@ -167,9 +198,26 @@ class DashboardTest extends TestCase
                 ->where('auth.user.name', 'Carlos Souza')
                 ->where('auth.user.email', 'carlos@example.com')
                 ->where('auth.user.role', UserRole::Porteiro->value)
+                ->where('present_visitors', 0)
+                ->missing('active_authorizations')
                 ->missing('visitors')
                 ->missing('accesses')
                 ->missing('orders'));
+    }
+
+    public function test_portaria_dashboard_counts_visitors_with_an_open_validated_access(): void
+    {
+        VisitorAccess::factory()->open()->count(2)->create();
+        VisitorAccess::factory()->create([
+            'exit_time' => now(),
+        ]);
+        VisitorAccess::factory()->rejected()->create();
+
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->get(route('portaria.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('present_visitors', 2)
+                ->missing('active_authorizations'));
     }
 
     public function test_inertia_shares_the_authenticated_user_role(): void
