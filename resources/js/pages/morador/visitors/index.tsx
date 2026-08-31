@@ -12,6 +12,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import VisitorAuthorizationFormDialog from '@/components/morador/visitor-authorization-form-dialog';
+import { InvitationLinkDialog } from '@/components/morador/visitor-invitation-dialog';
+import VisitorInvitationDialog from '@/components/morador/visitor-invitation-dialog';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -44,6 +46,7 @@ type VisitorsPageProps = {
     filters: VisitorAuthorizationFilters;
     statusOptions: VisitorAuthorizationStatusOption[];
     timezone: string;
+    invitationUrl: string | null;
     errors?: Partial<Record<keyof VisitorAuthorizationFilters, string>>;
 };
 
@@ -53,11 +56,13 @@ export default function VisitorsPage({
     statusOptions,
     timezone,
     errors = {},
+    invitationUrl,
 }: VisitorsPageProps) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [isLoading, setIsLoading] = useState(false);
     const [isAuthorizationDialogOpen, setIsAuthorizationDialogOpen] =
         useState(false);
+    const [isInvitationDialogOpen, setIsInvitationDialogOpen] = useState(false);
     const hasFilters = Boolean(
         filters.search ||
         filters.status ||
@@ -119,10 +124,21 @@ export default function VisitorsPage({
                             unidade.
                         </p>
                     </div>
-                    <Button onClick={() => setIsAuthorizationDialogOpen(true)}>
-                        <Plus />
-                        Nova autorização
-                    </Button>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsInvitationDialogOpen(true)}
+                        >
+                            <Plus />
+                            Novo convite
+                        </Button>
+                        <Button
+                            onClick={() => setIsAuthorizationDialogOpen(true)}
+                        >
+                            <Plus />
+                            Nova autorização
+                        </Button>
+                    </div>
                 </header>
 
                 <Card className="border-primary/15 bg-gradient-to-br from-card to-muted/30">
@@ -321,6 +337,16 @@ export default function VisitorsPage({
                     open={isAuthorizationDialogOpen}
                     onOpenChange={setIsAuthorizationDialogOpen}
                     timezone={timezone}
+                />
+                <VisitorInvitationDialog
+                    open={isInvitationDialogOpen}
+                    onOpenChange={setIsInvitationDialogOpen}
+                />
+                <InvitationLinkDialog
+                    url={invitationUrl}
+                    onOpenChange={() =>
+                        router.reload({ only: ['invitationUrl'] })
+                    }
                 />
             </div>
         </>

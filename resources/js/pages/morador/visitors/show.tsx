@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     ArrowLeft,
     CalendarClock,
@@ -19,6 +19,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
+import { destroy as destroyInvitation } from '@/routes/morador/visitor-invitations';
 import { index } from '@/routes/morador/visitors';
 import type { VisitorAuthorizationDetails } from '@/types';
 
@@ -146,6 +147,19 @@ export default function VisitorDetailsPage({
 
                 {authorization.qr_available && (
                     <VisitorQrCodeCard authorizationId={authorization.id} />
+                )}
+
+                {authorization.status === 'pending_data' && (
+                    <Button
+                        variant="destructive"
+                        onClick={() =>
+                            router.delete(
+                                destroyInvitation.url(authorization.id),
+                            )
+                        }
+                    >
+                        Revogar convite
+                    </Button>
                 )}
 
                 <div>
