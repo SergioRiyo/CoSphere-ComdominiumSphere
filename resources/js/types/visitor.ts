@@ -83,6 +83,15 @@ export type PortariaEntryResult =
           entry: null;
       };
 
+export type PortariaOpenVisitorAccess = {
+    id: number;
+    visitor_name: string;
+    unit: VisitorAuthorizationUnit;
+    vehicle_plate: string | null;
+    entry_time: string;
+    entry_doorman_name: string | null;
+};
+
 export type VisitorAuthorizationFilters = {
     search: string;
     status: VisitorAuthorizationStatus | '';

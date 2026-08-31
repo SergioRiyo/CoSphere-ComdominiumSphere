@@ -156,13 +156,13 @@ class VisitorServiceTest extends TestCase
             'end_date' => now()->addHour(),
         ]);
 
-        $this->visitorService->registerEntry(
+        $entryAccess = $this->visitorService->registerEntry(
             accessCode: $authorization->access_code,
             doormanId: $doorman->id,
         );
 
         $access = $this->visitorService->registerExit(
-            accessCode: $authorization->access_code,
+            visitorAccess: $entryAccess,
             doormanId: $doorman->id,
             observations: 'Saída registrada.',
         );
