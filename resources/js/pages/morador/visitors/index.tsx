@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
+import { dashboard } from '@/routes/morador';
 import { index, show } from '@/routes/morador/visitors';
 import type {
     PaginatedVisitorAuthorizations,
@@ -619,6 +620,10 @@ function formatTime(date: Date, timezone: string) {
 
 VisitorsPage.layout = {
     breadcrumbs: [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
         {
             title: 'Visitantes',
             href: index(),

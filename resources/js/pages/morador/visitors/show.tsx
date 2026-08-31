@@ -29,6 +29,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
+import { dashboard } from '@/routes/morador';
 import { destroy, index } from '@/routes/morador/visitors';
 import type { VisitorAuthorizationDetails } from '@/types';
 
@@ -271,7 +272,15 @@ function formatDateTime(value: string, timezone: string) {
 VisitorDetailsPage.layout = {
     breadcrumbs: [
         {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
+        {
             title: 'Visitantes',
+            href: index(),
+        },
+        {
+            title: 'Detalhes da visita',
             href: index(),
         },
     ],

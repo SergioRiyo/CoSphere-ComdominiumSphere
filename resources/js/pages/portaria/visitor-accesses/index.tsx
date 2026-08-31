@@ -29,6 +29,8 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
+import { VisitorAccessStatusBadge } from '@/components/visitor-access-status-badge';
+import { dashboard } from '@/routes/portaria';
 import {
     exit as registerExit,
     index,
@@ -203,9 +205,10 @@ function VisitorAccessCard({
                     <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                         <UserRound className="size-5" aria-hidden="true" />
                     </span>
-                    <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
-                        Presente
-                    </Badge>
+                    <VisitorAccessStatusBadge
+                        situation="present"
+                        label="Presente"
+                    />
                 </div>
                 <div className="min-w-0">
                     <CardTitle className="text-lg break-words">
@@ -319,6 +322,10 @@ function presentCountLabel(count: number) {
 
 VisitorAccessesPage.layout = {
     breadcrumbs: [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
         {
             title: 'Visitantes presentes',
             href: index(),

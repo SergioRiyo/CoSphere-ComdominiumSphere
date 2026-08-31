@@ -13,7 +13,6 @@ import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -32,6 +31,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { VisitorAccessStatusBadge } from '@/components/visitor-access-status-badge';
+import { dashboard } from '@/routes/portaria';
 import { index } from '@/routes/portaria/visitor-access-history';
 import type {
     PaginatedPortariaVisitorAccessHistory,
@@ -530,15 +531,12 @@ function AccessDetail({
 }
 
 function SituationBadge({ access }: { access: PortariaVisitorAccessHistory }) {
-    const variant = {
-        present: 'default',
-        finished: 'secondary',
-        denied: 'destructive',
-        pending: 'outline',
-        validated: 'outline',
-    }[access.situation] as 'default' | 'secondary' | 'destructive' | 'outline';
-
-    return <Badge variant={variant}>{access.situation_label}</Badge>;
+    return (
+        <VisitorAccessStatusBadge
+            situation={access.situation}
+            label={access.situation_label}
+        />
+    );
 }
 
 function EmptyState({ hasFilters }: { hasFilters: boolean }) {
@@ -651,6 +649,10 @@ function accessKey(access: PortariaVisitorAccessHistory, position: number) {
 
 VisitorAccessHistoryPage.layout = {
     breadcrumbs: [
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+        },
         {
             title: 'Histórico de acessos',
             href: index(),
