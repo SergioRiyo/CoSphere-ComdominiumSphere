@@ -19,6 +19,12 @@ class OccurrenceAndMaintenanceSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Incident::query()->exists()
+            || MaintenanceRequest::query()->exists()
+            || ServiceProvider::query()->exists()) {
+            return;
+        }
+
         $units = Unit::query()
             ->whereHas('users', function (Builder $query): void {
                 $query
@@ -42,7 +48,7 @@ class OccurrenceAndMaintenanceSeeder extends Seeder
         }
 
         ServiceProvider::factory()
-            ->count(8)
+            ->count(3)
             ->create();
 
         $maintenanceIncidentIds = [];
