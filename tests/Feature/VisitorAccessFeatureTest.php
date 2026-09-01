@@ -31,12 +31,10 @@ class VisitorAccessFeatureTest extends TestCase
 
         $this->actingAs($resident);
 
-        $authorization = $this->visitorService->createVisitorAuthorization([
+        $authorization = $this->visitorService->createDirectAuthorization($resident, [
             'name' => 'Maria Visitante',
             'cpf' => '123.456.789-00',
             'phone' => '(65) 99999-9999',
-            'unit_id' => $unit->id,
-            'resident_id' => $resident->id,
             'start_date' => now()->addHour()->toDateTimeString(),
             'end_date' => now()->addHours(5)->toDateTimeString(),
         ]);
@@ -51,12 +49,10 @@ class VisitorAccessFeatureTest extends TestCase
     {
         [$unit, $resident] = $this->createResident();
 
-        $authorization = $this->visitorService->createVisitorAuthorization([
+        $authorization = $this->visitorService->createDirectAuthorization($resident, [
             'name' => 'Joao Visitante',
             'cpf' => '987.654.321-00',
             'phone' => '(65) 98888-8888',
-            'unit_id' => $unit->id,
-            'resident_id' => $resident->id,
             'start_date' => now()->addHour()->toDateTimeString(),
             'end_date' => now()->addHours(4)->toDateTimeString(),
         ]);
@@ -81,15 +77,14 @@ class VisitorAccessFeatureTest extends TestCase
         [$unit, $resident] = $this->createResident();
         $doorman = $this->createDoorman();
 
-        $authorization = $this->visitorService->createVisitorAuthorization([
+        $authorization = $this->visitorService->createDirectAuthorization($resident, [
             'name' => 'Carlos Visitante',
             'cpf' => '111.222.333-44',
             'phone' => '(65) 97777-7777',
-            'unit_id' => $unit->id,
-            'resident_id' => $resident->id,
-            'start_date' => now()->subHour()->toDateTimeString(),
+            'start_date' => now()->addHour()->toDateTimeString(),
             'end_date' => now()->addHours(3)->toDateTimeString(),
         ]);
+        $authorization->update(['start_date' => now()->subHour()]);
 
         $access = $this->visitorService->registerEntry(
             accessCode: $authorization->access_code,
@@ -111,23 +106,22 @@ class VisitorAccessFeatureTest extends TestCase
         [$unit, $resident] = $this->createResident();
         $doorman = $this->createDoorman();
 
-        $authorization = $this->visitorService->createVisitorAuthorization([
+        $authorization = $this->visitorService->createDirectAuthorization($resident, [
             'name' => 'Ana Visitante',
             'cpf' => '555.666.777-88',
             'phone' => '(65) 96666-6666',
-            'unit_id' => $unit->id,
-            'resident_id' => $resident->id,
-            'start_date' => now()->subHour()->toDateTimeString(),
+            'start_date' => now()->addHour()->toDateTimeString(),
             'end_date' => now()->addHours(3)->toDateTimeString(),
         ]);
+        $authorization->update(['start_date' => now()->subHour()]);
 
-        $this->visitorService->registerEntry(
+        $entryAccess = $this->visitorService->registerEntry(
             accessCode: $authorization->access_code,
             doormanId: $doorman->id,
         );
 
         $access = $this->visitorService->registerExit(
-            accessCode: $authorization->access_code,
+            visitorAccess: $entryAccess,
             doormanId: $doorman->id,
             observations: 'Saida registrada na portaria.',
         );

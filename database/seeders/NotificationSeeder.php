@@ -11,6 +11,10 @@ class NotificationSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Notification::query()->exists()) {
+            return;
+        }
+
         $users = User::query()->limit(5)->get();
 
         foreach ($users as $user) {

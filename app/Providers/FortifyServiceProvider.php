@@ -105,5 +105,16 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+        RateLimiter::for('visitor-invitation', fn (Request $request) => Limit::perMinute(10)->by($request->ip()));
+        RateLimiter::for('visitor-authorization', fn (Request $request) => Limit::perMinute(10)->by($this->authenticatedThrottleKey($request)));
+        RateLimiter::for('visitor-qr-code', fn (Request $request) => Limit::perMinute(20)->by($this->authenticatedThrottleKey($request)));
+        RateLimiter::for('visitor-portaria-validation', fn (Request $request) => Limit::perMinute(30)->by($this->authenticatedThrottleKey($request)));
+        RateLimiter::for('visitor-portaria-entry', fn (Request $request) => Limit::perMinute(30)->by($this->authenticatedThrottleKey($request)));
+        RateLimiter::for('visitor-portaria-exit', fn (Request $request) => Limit::perMinute(30)->by($this->authenticatedThrottleKey($request)));
+    }
+
+    private function authenticatedThrottleKey(Request $request): string
+    {
+        return ($request->user()?->getAuthIdentifier() ?? 'guest').'|'.$request->ip();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Visitor extends Model
@@ -18,7 +19,7 @@ class Visitor extends Model
         'phone',
     ];
 
-    public function authorizations()
+    public function authorizations(): HasMany
     {
         return $this->hasMany(VisitorAuthorization::class);
     }

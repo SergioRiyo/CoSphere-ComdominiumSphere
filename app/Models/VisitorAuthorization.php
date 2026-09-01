@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\VisitorAuthorizationStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class VisitorAuthorization extends Model
@@ -15,12 +17,9 @@ class VisitorAuthorization extends Model
 
     protected $fillable = [
         'visitor_id',
-        'unit_id',
-        'resident_id',
         'vehicle_plate',
-        'access_code',
-        'qr_code',
-        'registration_link',
+        'invitation_expires_at',
+        'invitation_used_at',
         'start_date',
         'end_date',
         'status',
@@ -31,27 +30,33 @@ class VisitorAuthorization extends Model
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'authorized_date' => 'datetime',
+        'invitation_expires_at' => 'datetime',
+        'invitation_used_at' => 'datetime',
         'status' => VisitorAuthorizationStatus::class,
     ];
 
-    public function visitor()
+    protected $hidden = [
+        'access_code',
+        'invitation_token_hash',
+    ];
+
+    public function visitor(): BelongsTo
     {
         return $this->belongsTo(Visitor::class);
     }
 
-    public function unit()
+    public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
 
-    public function resident()
+    public function resident(): BelongsTo
     {
         return $this->belongsTo(User::class, 'resident_id');
     }
 
-    public function visitorAccesses()
+    public function visitorAccesses(): HasMany
     {
         return $this->hasMany(VisitorAccess::class);
     }
-    
 }

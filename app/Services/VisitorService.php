@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Enums\NotificationType;
+use App\Enums\UserRole;
 use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Notification;
+use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
@@ -19,44 +21,62 @@ class VisitorService
     public function generateVisitorCode(): string
     {
         do {
-            $code = 'VIS_'.Str::upper(Str::random(8));
+            $code = 'csa_'.Str::random(32);
         } while (VisitorAuthorization::where('access_code', $code)->exists());
 
         return $code;
     }
 
-    public function createVisitorAuthorization(array $data): VisitorAuthorization
+    /**
+     * @param  array{name: string, cpf: string, phone: string, vehicle_plate?: string|null, start_date: string, end_date: string}  $data
+     */
+    public function createDirectAuthorization(User $resident, array $data): VisitorAuthorization
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $resident) {
+            $resident->loadMissing('unit');
+
+            if ($resident->role !== UserRole::Morador
+                || ! $resident->is_active
+                || $resident->unit === null
+                || $resident->unit->status !== 'active') {
+                throw new DomainException('O morador precisa estar vinculado a uma unidade ativa.');
+            }
+
             $startDate = Carbon::parse($data['start_date']);
             $endDate = Carbon::parse($data['end_date']);
 
-            if ($startDate->greaterThanOrEqualTo($endDate)) {
-                throw new DomainException('A data de início deve ser anterior à data de término.');
+            if ($startDate->isPast()) {
+                throw new DomainException('O início da visita não pode estar no passado.');
             }
 
-            $visitor = Visitor::updateOrCreate(
-                [
+            if ($startDate->greaterThanOrEqualTo($endDate)) {
+                throw new DomainException('O término deve ser posterior ao início da visita.');
+            }
+
+            $visitor = Visitor::withTrashed()
+                ->where('cpf', $data['cpf'])
+                ->first();
+
+            if ($visitor === null) {
+                $visitor = Visitor::create([
                     'cpf' => $data['cpf'],
-                ],
-                [
                     'name' => $data['name'],
-                    'phone' => $data['phone'] ?? null,
-                ]
-            );
+                    'phone' => $data['phone'],
+                ]);
+            } elseif ($visitor->trashed()) {
+                $visitor->restore();
+            }
 
             $accessCode = $this->generateVisitorCode();
 
-            $authorization = VisitorAuthorization::create([
+            $authorization = VisitorAuthorization::forceCreate([
                 'visitor_id' => $visitor->id,
-                'unit_id' => $data['unit_id'],
-                'resident_id' => $data['resident_id'],
+                'unit_id' => $resident->unit_id,
+                'resident_id' => $resident->id,
                 'vehicle_plate' => $data['vehicle_plate'] ?? null,
-                'qr_code' => $accessCode,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'status' => VisitorAuthorizationStatus::Active->value,
-                'registration_link' => $data['registration_link'] ?? null,
                 'authorized_date' => now(),
                 'access_code' => $accessCode,
             ]);
@@ -71,6 +91,87 @@ class VisitorService
         });
     }
 
+    /** @param array{start_date:string,end_date:string} $data */
+    public function createInvitation(User $resident, array $data): array
+    {
+        return DB::transaction(function () use ($resident, $data): array {
+            $resident->loadMissing('unit');
+            if ($resident->role !== UserRole::Morador || ! $resident->is_active || $resident->unit?->status !== 'active') {
+                throw new DomainException('O morador precisa estar vinculado a uma unidade ativa.');
+            }
+            $start = Carbon::parse($data['start_date']);
+            $end = Carbon::parse($data['end_date']);
+            if ($start->isPast() || $start->greaterThanOrEqualTo($end)) {
+                throw new DomainException('O período da visita é inválido.');
+            }
+            $token = Str::random(64);
+            $authorization = VisitorAuthorization::forceCreate(['unit_id' => $resident->unit_id, 'resident_id' => $resident->id, 'start_date' => $start, 'end_date' => $end, 'status' => VisitorAuthorizationStatus::PendingData, 'invitation_token_hash' => hash('sha256', $token), 'invitation_expires_at' => now()->addDay()->min($start)]);
+
+            return [$authorization, $token];
+        });
+    }
+
+    /** @param array{name:string,cpf:string,phone:string,vehicle_plate?:string|null} $data */
+    public function completeInvitation(string $token, array $data): VisitorAuthorization
+    {
+        return DB::transaction(function () use ($token, $data): VisitorAuthorization {
+            $authorization = VisitorAuthorization::where('invitation_token_hash', hash('sha256', $token))->lockForUpdate()->first();
+            if (! $authorization || $authorization->status !== VisitorAuthorizationStatus::PendingData || $authorization->invitation_used_at || ! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture()) {
+                throw new DomainException('Convite indisponível.');
+            }
+            $visitor = Visitor::withTrashed()->where('cpf', $data['cpf'])->first();
+            if (! $visitor) {
+                $visitor = Visitor::create(['name' => $data['name'], 'cpf' => $data['cpf'], 'phone' => $data['phone']]);
+            } elseif ($visitor->trashed()) {
+                $visitor->restore();
+            }
+            $authorization->forceFill(['visitor_id' => $visitor->id, 'vehicle_plate' => $data['vehicle_plate'] ?? null, 'access_code' => $this->generateVisitorCode(), 'status' => VisitorAuthorizationStatus::Active, 'authorized_date' => now(), 'invitation_used_at' => now(), 'invitation_token_hash' => null])->save();
+
+            return $authorization->refresh();
+        });
+    }
+
+    public function cancelAuthorization(VisitorAuthorization $authorization): void
+    {
+        DB::transaction(function () use ($authorization): void {
+            $authorization = VisitorAuthorization::whereKey($authorization->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $authorization) {
+                throw new DomainException('Autorização indisponível.');
+            }
+
+            if ($authorization->status === VisitorAuthorizationStatus::Active
+                && $authorization->end_date->isPast()) {
+                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
+                throw new DomainException('Autorização expirada.');
+            }
+
+            if ($authorization->status === VisitorAuthorizationStatus::PendingData
+                && (! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture())) {
+                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
+                throw new DomainException('Convite expirado.');
+            }
+
+            if (! in_array($authorization->status, [
+                VisitorAuthorizationStatus::PendingData,
+                VisitorAuthorizationStatus::Active,
+            ], true)) {
+                throw new DomainException('Esta autorização não pode ser cancelada.');
+            }
+
+            if ($this->hasOpenAccess($authorization)) {
+                throw new DomainException('Não é possível cancelar uma autorização com entrada em aberto.');
+            }
+
+            $authorization->forceFill([
+                'status' => VisitorAuthorizationStatus::Canceled,
+                'invitation_token_hash' => null,
+            ])->save();
+        });
+    }
+
     public function validateAuthorizationByCode(string $accessCode): VisitorAuthorization
     {
         $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();
@@ -82,40 +183,67 @@ class VisitorService
         return $this->validateAuthorization($authorization);
     }
 
+    /**
+     * @return array{
+     *     allowed: bool,
+     *     reason: string|null,
+     *     message: string,
+     *     authorization: array{
+     *         visitor_name: string,
+     *         unit: array{block: string|null, number: string},
+     *         vehicle_plate: string|null,
+     *         start_date: string,
+     *         end_date: string,
+     *         status: string
+     *     }|null
+     * }
+     */
+    public function validateAccessCode(string $accessCode): array
+    {
+        $authorization = VisitorAuthorization::query()
+            ->where('access_code', $accessCode)
+            ->first();
+
+        if (! $authorization) {
+            return $this->deniedValidationResult(
+                reason: 'not_found',
+                message: 'Código de acesso não encontrado.',
+            );
+        }
+
+        $denial = $this->authorizationDenial($authorization);
+
+        if ($denial !== null) {
+            return $this->deniedValidationResult(
+                reason: $denial['reason'],
+                message: $denial['message'],
+            );
+        }
+
+        return [
+            'allowed' => true,
+            'reason' => null,
+            'message' => 'Acesso liberado.',
+            'authorization' => [
+                'visitor_name' => $authorization->visitor->name,
+                'unit' => [
+                    'block' => $authorization->unit->block,
+                    'number' => $authorization->unit->number,
+                ],
+                'vehicle_plate' => $authorization->vehicle_plate,
+                'start_date' => $authorization->start_date->toIso8601String(),
+                'end_date' => $authorization->end_date->toIso8601String(),
+                'status' => $authorization->status->value,
+            ],
+        ];
+    }
+
     public function validateAuthorization(VisitorAuthorization $authorization): VisitorAuthorization
     {
-        $now = now();
+        $denial = $this->authorizationDenial($authorization);
 
-        if ($authorization->status === VisitorAuthorizationStatus::Canceled) {
-            throw new DomainException('Autorização cancelada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::Expired) {
-            throw new DomainException('Autorização expirada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::Used) {
-            throw new DomainException('Autorização já utilizada.');
-        }
-
-        if ($authorization->status === VisitorAuthorizationStatus::PendingData) {
-            throw new DomainException('Autorização aguardando preenchimento de dados.');
-        }
-
-        if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
-            $authorization->update([
-                'status' => VisitorAuthorizationStatus::Expired,
-            ]);
-
-            throw new DomainException('Autorização expirada.');
-        }
-
-        if ($authorization->start_date && $now->lessThan($authorization->start_date)) {
-            throw new DomainException('Autorização ainda não está ativa.');
-        }
-
-        if ($authorization->status !== VisitorAuthorizationStatus::Active) {
-            throw new DomainException('Autorização inválida.');
+        if ($denial !== null) {
+            throw new DomainException($denial['message']);
         }
 
         return $authorization;
@@ -123,9 +251,10 @@ class VisitorService
 
     public function registerEntry(
         string $accessCode,
-        int $doormanId,
+        User|int $doormanId,
         ?string $observations = null
     ): VisitorAccess {
+        $doorman = $this->activeDoorman($doormanId);
         $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();
 
         if (! $authorization) {
@@ -135,16 +264,18 @@ class VisitorService
         try {
             $this->validateAuthorization($authorization);
         } catch (DomainException $exception) {
-            $this->denyAccess(
-                authorization: $authorization,
-                doormanId: $doormanId,
-                reason: $exception->getMessage(),
-            );
+            if (! $this->hasOpenAccess($authorization)) {
+                $this->denyAccess(
+                    authorization: $authorization,
+                    doormanId: $doorman,
+                    reason: $exception->getMessage(),
+                );
+            }
 
             throw $exception;
         }
 
-        return DB::transaction(function () use ($authorization, $doormanId, $observations) {
+        return DB::transaction(function () use ($authorization, $doorman, $observations) {
             $authorization = VisitorAuthorization::whereKey($authorization->id)
                 ->lockForUpdate()
                 ->first();
@@ -155,18 +286,9 @@ class VisitorService
 
             $this->validateAuthorization($authorization);
 
-            $hasOpenAccess = VisitorAccess::where('visitor_authorization_id', $authorization->id)
-                ->where('validation_status', VisitorAccessStatus::Validated->value)
-                ->whereNull('exit_time')
-                ->exists();
-
-            if ($hasOpenAccess) {
-                throw new DomainException('Este visitante já possui uma entrada registrada sem saída.');
-            }
-
-            $access = VisitorAccess::create([
+            $access = VisitorAccess::forceCreate([
                 'visitor_authorization_id' => $authorization->id,
-                'doorman_id' => $doormanId,
+                'doorman_id' => $doorman->id,
                 'entry_time' => now(),
                 'exit_time' => null,
                 'validation_status' => VisitorAccessStatus::Validated,
@@ -185,45 +307,59 @@ class VisitorService
     }
 
     public function registerExit(
-        string $accessCode,
-        int $doormanId,
+        VisitorAccess $visitorAccess,
+        User|int $doormanId,
         ?string $observations = null
     ): VisitorAccess {
-        return DB::transaction(function () use ($accessCode, $doormanId, $observations) {
-            $authorization = VisitorAuthorization::where('access_code', $accessCode)
+        $doorman = $this->activeDoorman($doormanId);
+
+        return DB::transaction(function () use ($visitorAccess, $doorman, $observations) {
+            $authorization = VisitorAuthorization::whereKey($visitorAccess->visitor_authorization_id)
                 ->lockForUpdate()
                 ->first();
 
             if (! $authorization) {
-                throw new DomainException('Código de acesso inválido.');
+                throw new DomainException('Acesso de visitante inválido.');
             }
 
-            $access = VisitorAccess::where('visitor_authorization_id', $authorization->id)
+            $access = VisitorAccess::whereKey($visitorAccess->id)
+                ->where('visitor_authorization_id', $authorization->id)
                 ->where('validation_status', VisitorAccessStatus::Validated)
+                ->whereNotNull('entry_time')
                 ->whereNull('exit_time')
-                ->latest('entry_time')
+                ->lockForUpdate()
                 ->first();
 
             if (! $access) {
                 throw new DomainException('Não existe entrada em aberto para este visitante.');
             }
 
-            $access->update([
-                'doorman_id' => $doormanId,
-                'exit_time' => now(),
-                'observations' => $observations ?? $access->observations,
-            ]);
+            $updatedAccesses = VisitorAccess::whereKey($access->id)
+                ->where('visitor_authorization_id', $authorization->id)
+                ->where('validation_status', VisitorAccessStatus::Validated)
+                ->whereNotNull('entry_time')
+                ->whereNull('exit_time')
+                ->update([
+                    'exit_doorman_id' => $doorman->id,
+                    'exit_time' => now(),
+                    'observations' => $observations ?? $access->observations,
+                ]);
+
+            if ($updatedAccesses !== 1) {
+                throw new DomainException('A saída deste visitante já foi registrada.');
+            }
 
             $authorization->update([
                 'status' => VisitorAuthorizationStatus::Used,
             ]);
 
             $authorization->loadMissing('visitor');
+            $visitorName = $authorization->visitor?->name ?? 'visitante';
 
             $this->notifyResident(
                 authorization: $authorization,
                 title: 'Saída de visitante registrada',
-                message: "O visitante {$authorization->visitor->name} teve a saída registrada na portaria."
+                message: "O visitante {$visitorName} teve a saída registrada na portaria."
             );
 
             return $access->refresh();
@@ -232,12 +368,14 @@ class VisitorService
 
     public function denyAccess(
         VisitorAuthorization $authorization,
-        int $doormanId,
+        User|int $doormanId,
         ?string $reason = null
     ): VisitorAccess {
-        $access = VisitorAccess::create([
+        $doorman = $this->activeDoorman($doormanId);
+
+        $access = VisitorAccess::forceCreate([
             'visitor_authorization_id' => $authorization->id,
-            'doorman_id' => $doormanId,
+            'doorman_id' => $doorman->id,
             'entry_time' => null,
             'exit_time' => null,
             'validation_status' => VisitorAccessStatus::Rejected,
@@ -270,5 +408,127 @@ class VisitorService
             'sent_at' => now(),
             'is_read' => false,
         ]);
+    }
+
+    /**
+     * @return array{reason: string, message: string}|null
+     */
+    private function authorizationDenial(VisitorAuthorization $authorization): ?array
+    {
+        if ($authorization->status === VisitorAuthorizationStatus::Canceled) {
+            return $this->denial('canceled', 'Autorização cancelada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::Expired) {
+            return $this->denial('expired', 'Autorização expirada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::Used) {
+            return $this->denial('used', 'Autorização já utilizada.');
+        }
+
+        if ($authorization->status === VisitorAuthorizationStatus::PendingData) {
+            return $this->denial('pending_data', 'Autorização aguardando preenchimento de dados.');
+        }
+
+        if (! $authorization->visitor_id || ! $authorization->access_code) {
+            return $this->denial(
+                'inconsistent_authorization',
+                'Autorização sem os dados obrigatórios do visitante.',
+            );
+        }
+
+        $now = now();
+
+        if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
+            $authorization->update([
+                'status' => VisitorAuthorizationStatus::Expired,
+            ]);
+
+            return $this->denial('expired', 'Autorização expirada.');
+        }
+
+        if ($authorization->start_date && $now->lessThan($authorization->start_date)) {
+            return $this->denial('future', 'Autorização ainda não está ativa.');
+        }
+
+        if ($authorization->status !== VisitorAuthorizationStatus::Active) {
+            return $this->denial('inconsistent_authorization', 'Autorização inválida.');
+        }
+
+        $authorization->loadMissing([
+            'visitor:id,name',
+            'resident:id,unit_id,role,is_active',
+            'unit:id,block,number,status',
+        ]);
+
+        if ($authorization->visitor === null
+            || $authorization->resident === null
+            || $authorization->unit === null
+            || ! $authorization->resident->is_active
+            || $authorization->resident->role !== UserRole::Morador
+            || $authorization->resident->unit_id !== $authorization->unit_id
+            || $authorization->unit->status !== 'active') {
+            return $this->denial(
+                'inconsistent_authorization',
+                'Os dados da autorização estão inconsistentes.',
+            );
+        }
+
+        if ($this->hasOpenAccess($authorization)) {
+            return $this->denial(
+                'open_access',
+                'Este visitante já possui uma entrada registrada sem saída.',
+            );
+        }
+
+        return null;
+    }
+
+    private function hasOpenAccess(VisitorAuthorization $authorization): bool
+    {
+        return $authorization->visitorAccesses()
+            ->where('validation_status', VisitorAccessStatus::Validated->value)
+            ->whereNull('exit_time')
+            ->exists();
+    }
+
+    private function activeDoorman(User|int $doorman): User
+    {
+        $doorman = $doorman instanceof User
+            ? $doorman
+            : User::find($doorman);
+
+        if ($doorman === null
+            || $doorman->role !== UserRole::Porteiro
+            || ! $doorman->is_active) {
+            throw new DomainException('O porteiro responsável precisa estar ativo.');
+        }
+
+        return $doorman;
+    }
+
+    /**
+     * @return array{reason: string, message: string}
+     */
+    private function denial(string $reason, string $message): array
+    {
+        return [
+            'reason' => $reason,
+            'message' => $message,
+        ];
+    }
+
+    /**
+     * @return array{allowed: false, reason: string, message: string, authorization: null}
+     */
+    private function deniedValidationResult(string $reason, string $message): array
+    {
+        return [
+            'allowed' => false,
+            'reason' => $reason,
+            'message' => $message,
+            'authorization' => null,
+        ];
     }
 }

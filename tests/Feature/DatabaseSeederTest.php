@@ -5,11 +5,16 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
+use App\Models\Notification;
 use App\Models\Order;
+use App\Models\ServiceProvider;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
+use Database\Seeders\VisitorAccessSeeder;
+use Database\Seeders\VisitorAuthorizationSeeder;
 use Tests\TestCase;
 
 class DatabaseSeederTest extends TestCase
@@ -46,6 +51,16 @@ class DatabaseSeederTest extends TestCase
 
         $this->assertTrue(Unit::query()->exists());
         $this->assertNotNull(User::query()->where('email', 'morador@cosphere.test')->value('unit_id'));
+        $this->assertSeededDataIsCompact();
+
+        $this->artisan('db:seed', [
+            '--class' => VisitorAuthorizationSeeder::class,
+            '--force' => true,
+        ])->assertSuccessful();
+        $this->artisan('db:seed', [
+            '--class' => VisitorAccessSeeder::class,
+            '--force' => true,
+        ])->assertSuccessful();
 
         $this->assertSeededOwnershipIntegrity();
     }
@@ -63,12 +78,17 @@ class DatabaseSeederTest extends TestCase
             $this->assertSame($authorization->unit_id, $authorization->resident->unit_id);
         }
 
-        foreach (VisitorAccess::query()->with(['visitorAuthorization.resident', 'doorman'])->cursor() as $access) {
+        foreach (VisitorAccess::query()->with(['visitorAuthorization.resident', 'doorman', 'exitDoorman'])->cursor() as $access) {
             $authorization = $access->visitorAuthorization;
 
             $this->assertSame($authorization->unit_id, $authorization->resident->unit_id);
             $this->assertSame(UserRole::Porteiro, $access->doorman->role);
             $this->assertNull($access->doorman->unit_id);
+
+            if ($access->exitDoorman) {
+                $this->assertSame(UserRole::Porteiro, $access->exitDoorman->role);
+                $this->assertNull($access->exitDoorman->unit_id);
+            }
         }
 
         foreach (Order::query()->with('resident')->cursor() as $order) {
@@ -85,6 +105,29 @@ class DatabaseSeederTest extends TestCase
             $this->assertSame($request->incident->unit_id, $request->incident->resident->unit_id);
             $this->assertSame(UserRole::Admin, $request->admin->role);
             $this->assertNull($request->admin->unit_id);
+        }
+    }
+
+    private function assertSeededDataIsCompact(): void
+    {
+        $this->assertSame(10, Visitor::query()->count());
+        $this->assertSame(10, VisitorAuthorization::query()->count());
+        $this->assertSame(10, VisitorAccess::query()->count());
+        $this->assertSame(10, Order::query()->count());
+
+        foreach ([
+            User::class,
+            Unit::class,
+            Visitor::class,
+            VisitorAuthorization::class,
+            VisitorAccess::class,
+            Order::class,
+            Incident::class,
+            MaintenanceRequest::class,
+            ServiceProvider::class,
+            Notification::class,
+        ] as $model) {
+            $this->assertLessThanOrEqual(10, $model::query()->count(), $model);
         }
     }
 }

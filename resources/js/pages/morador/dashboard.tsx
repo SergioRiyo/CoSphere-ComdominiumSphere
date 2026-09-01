@@ -1,21 +1,27 @@
-import { Head, usePage } from '@inertiajs/react';
-import { Building2, CalendarClock } from 'lucide-react';
-import { DashboardComingSoonCard } from '@/components/dashboard-coming-soon-card';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { Building2, ContactRound } from 'lucide-react';
 import { DashboardWelcomeCard } from '@/components/dashboard-welcome-card';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
+    CardTitle,
 } from '@/components/ui/card';
 import { dashboard } from '@/routes/morador';
+import { index as visitorsIndex } from '@/routes/morador/visitors';
 import type { UnitSummary } from '@/types';
 
 type MoradorDashboardProps = {
     unit: UnitSummary | null;
+    active_authorizations: number;
 };
 
-export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
+export default function MoradorDashboard({
+    unit,
+    active_authorizations: activeAuthorizations,
+}: MoradorDashboardProps) {
     const { auth } = usePage().props;
 
     return (
@@ -103,11 +109,31 @@ export default function MoradorDashboard({ unit }: MoradorDashboardProps) {
                             </Card>
                         )}
 
-                        <DashboardComingSoonCard
-                            icon={CalendarClock}
-                            title="Novidades do condomínio"
-                            description="Reservas, visitantes, encomendas e outras informações serão exibidas aqui conforme os módulos forem integrados."
-                        />
+                        <Card className="border-cosphere-line/80 shadow-sm dark:border-border">
+                            <CardHeader>
+                                <span className="inline-flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                    <ContactRound
+                                        className="size-5"
+                                        aria-hidden="true"
+                                    />
+                                </span>
+                                <CardTitle>Visitantes</CardTitle>
+                                <CardDescription>
+                                    Autorizações ativas vinculadas à sua
+                                    unidade.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="grid gap-5">
+                                <p className="text-4xl font-semibold tracking-tight text-cosphere-navy dark:text-foreground">
+                                    {activeAuthorizations}
+                                </p>
+                                <Button className="w-full sm:w-fit" asChild>
+                                    <Link href={visitorsIndex()}>
+                                        Gerenciar visitantes
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
                     </div>
                 </main>
             </div>
