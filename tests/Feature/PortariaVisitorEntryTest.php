@@ -221,6 +221,27 @@ class PortariaVisitorEntryTest extends TestCase
         $this->assertDatabaseCount('visitor_accesses', 0);
     }
 
+    public function test_known_denied_entry_is_recorded_with_the_authenticated_doorman_and_reason(): void
+    {
+        $doorman = User::factory()->porteiro()->create();
+        $authorization = VisitorAuthorization::factory()->canceled()->create();
+
+        $this->actingAs($doorman)
+            ->postJson(route('portaria.visitor-accesses.store'), [
+                'access_code' => $authorization->access_code,
+            ])
+            ->assertOk()
+            ->assertJsonPath('registered', false)
+            ->assertJsonPath('message', 'Autorização cancelada.');
+
+        $this->assertDatabaseHas('visitor_accesses', [
+            'visitor_authorization_id' => $authorization->id,
+            'doorman_id' => $doorman->id,
+            'validation_status' => VisitorAccessStatus::Rejected->value,
+            'observations' => 'Autorização cancelada.',
+        ]);
+    }
+
     public function test_access_code_is_required_to_register_an_entry(): void
     {
         $doorman = User::factory()->porteiro()->create();

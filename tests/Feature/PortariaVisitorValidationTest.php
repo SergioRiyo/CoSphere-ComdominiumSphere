@@ -6,6 +6,7 @@ use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
+use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -130,6 +131,36 @@ class PortariaVisitorValidationTest extends TestCase
             ]);
 
         $this->assertDatabaseCount('visitor_accesses', 0);
+    }
+
+    public function test_validation_returns_controlled_denials_for_non_liberated_authorizations(): void
+    {
+        $doorman = User::factory()->porteiro()->create();
+        $authorizations = [
+            'pending_data' => VisitorAuthorization::factory()->pendingData()->create([
+                'access_code' => 'csa_pending_validation',
+            ]),
+            'future' => VisitorAuthorization::factory()->future()->create(),
+            'expired' => VisitorAuthorization::factory()->expired()->create(),
+            'canceled' => VisitorAuthorization::factory()->canceled()->create(),
+            'used' => VisitorAuthorization::factory()->used()->create(),
+        ];
+        $openAccessAuthorization = VisitorAuthorization::factory()->active()->create();
+        VisitorAccess::factory()->open()->create([
+            'visitor_authorization_id' => $openAccessAuthorization->id,
+        ]);
+        $authorizations['open_access'] = $openAccessAuthorization;
+
+        foreach ($authorizations as $reason => $authorization) {
+            $this->actingAs($doorman)
+                ->postJson(route('portaria.visitor-authorizations.validate'), [
+                    'access_code' => $authorization->access_code,
+                ])
+                ->assertOk()
+                ->assertJsonPath('allowed', false)
+                ->assertJsonPath('reason', $reason)
+                ->assertJsonPath('authorization', null);
+        }
     }
 
     public function test_access_code_is_required(): void

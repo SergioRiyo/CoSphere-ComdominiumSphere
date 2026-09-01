@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\VisitorAuthorization;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -140,5 +142,89 @@ class VisitorInvitationTest extends TestCase
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertHeader('Pragma', 'no-cache')
             ->assertHeader('Referrer-Policy', 'no-referrer');
+    }
+
+    public function test_invitation_expiration_is_the_earlier_of_24_hours_or_visit_start(): void
+    {
+        $now = Carbon::parse('2026-09-01 10:00:00');
+        $this->travelTo($now);
+        $unit = Unit::factory()->create(['status' => 'active']);
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+
+        $this->actingAs($resident)
+            ->post(route('morador.visitor-invitations.store'), [
+                'start_date' => $now->copy()->addHours(12),
+                'end_date' => $now->copy()->addHours(14),
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue(
+            $now->copy()->addHours(12)->equalTo(
+                VisitorAuthorization::query()->sole()->invitation_expires_at,
+            ),
+        );
+
+        $this->actingAs($resident)
+            ->post(route('morador.visitor-invitations.store'), [
+                'start_date' => $now->copy()->addDays(2),
+                'end_date' => $now->copy()->addDays(3),
+            ])
+            ->assertRedirect();
+
+        $this->assertTrue(
+            $now->copy()->addDay()->equalTo(
+                VisitorAuthorization::query()->latest('id')->firstOrFail()->invitation_expires_at,
+            ),
+        );
+    }
+
+    public function test_invitation_is_unavailable_when_the_visit_start_is_reached(): void
+    {
+        $token = str_repeat('I', 64);
+        VisitorAuthorization::factory()->pendingData($token)->create([
+            'start_date' => now(),
+            'invitation_expires_at' => now()->addDay(),
+        ]);
+
+        $this->get(route('visitor-invitations.show', $token))
+            ->assertNotFound();
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertNotFound();
+    }
+
+    public function test_invitation_completion_ignores_ownership_period_and_status_fields(): void
+    {
+        $token = str_repeat('J', 64);
+        $authorization = VisitorAuthorization::factory()->pendingData($token)->create();
+        $otherUnit = Unit::factory()->create();
+        $otherResident = User::factory()->morador()->create(['unit_id' => $otherUnit->id]);
+
+        $this->post(route('visitor-invitations.complete', $token), [
+            ...$this->validVisitorData(),
+            'resident_id' => $otherResident->id,
+            'unit_id' => $otherUnit->id,
+            'start_date' => now()->addMonth(),
+            'end_date' => now()->addMonths(2),
+            'status' => 'canceled',
+        ])->assertOk();
+
+        $authorization->refresh();
+
+        $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->status);
+        $this->assertNotSame($otherResident->id, $authorization->resident_id);
+        $this->assertNotSame($otherUnit->id, $authorization->unit_id);
+        $this->assertTrue($authorization->start_date->isTomorrow());
+    }
+
+    /** @return array{name: string, cpf: string, phone: string, confirmed: string} */
+    private function validVisitorData(): array
+    {
+        return [
+            'name' => 'Visitante Teste',
+            'cpf' => '52998224725',
+            'phone' => '65999999999',
+            'confirmed' => '1',
+        ];
     }
 }
