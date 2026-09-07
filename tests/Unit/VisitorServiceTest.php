@@ -211,6 +211,7 @@ class VisitorServiceTest extends TestCase
         ]);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'Visitante da Portaria',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 98888-7777',

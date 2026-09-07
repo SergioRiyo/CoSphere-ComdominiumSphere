@@ -73,9 +73,12 @@ class DatabaseSeederTest extends TestCase
         $this->assertTrue(Incident::query()->exists());
         $this->assertTrue(MaintenanceRequest::query()->exists());
 
-        foreach (VisitorAuthorization::query()->with('resident')->cursor() as $authorization) {
+        foreach (VisitorAuthorization::query()->with(['resident', 'visitor'])->cursor() as $authorization) {
             $this->assertSame(UserRole::Morador, $authorization->resident->role);
             $this->assertSame($authorization->unit_id, $authorization->resident->unit_id);
+            if ($authorization->visitor !== null) {
+                $this->assertSame($authorization->unit_id, $authorization->visitor->unit_id);
+            }
         }
 
         foreach (VisitorAccess::query()->with(['visitorAuthorization.resident', 'doorman', 'exitDoorman'])->cursor() as $access) {

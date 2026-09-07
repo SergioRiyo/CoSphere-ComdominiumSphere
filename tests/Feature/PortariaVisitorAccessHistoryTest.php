@@ -23,6 +23,7 @@ class PortariaVisitorAccessHistoryTest extends TestCase
         $unit = Unit::factory()->create(['block' => 'A', 'number' => '101']);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'Helena Visitante',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 99999-9999',
@@ -288,6 +289,7 @@ class PortariaVisitorAccessHistoryTest extends TestCase
         $unit = $attributes['unit'] ?? Unit::factory()->create();
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => $attributes['visitor_name'] ?? fake()->name(),
         ]);
         $authorization = VisitorAuthorization::factory()->active()->create([

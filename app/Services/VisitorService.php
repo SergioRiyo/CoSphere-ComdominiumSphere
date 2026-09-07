@@ -7,6 +7,7 @@ use App\Enums\UserRole;
 use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Notification;
+use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAccess;
@@ -53,19 +54,7 @@ class VisitorService
                 throw new DomainException('O término deve ser posterior ao início da visita.');
             }
 
-            $visitor = Visitor::withTrashed()
-                ->where('cpf', $data['cpf'])
-                ->first();
-
-            if ($visitor === null) {
-                $visitor = Visitor::create([
-                    'cpf' => $data['cpf'],
-                    'name' => $data['name'],
-                    'phone' => $data['phone'],
-                ]);
-            } elseif ($visitor->trashed()) {
-                $visitor->restore();
-            }
+            $visitor = $this->resolveVisitorForUnit($resident->unit_id, $data);
 
             $accessCode = $this->generateVisitorCode();
 
@@ -119,16 +108,31 @@ class VisitorService
             if (! $authorization || $authorization->status !== VisitorAuthorizationStatus::PendingData || $authorization->invitation_used_at || ! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture()) {
                 throw new DomainException('Convite indisponível.');
             }
-            $visitor = Visitor::withTrashed()->where('cpf', $data['cpf'])->first();
-            if (! $visitor) {
-                $visitor = Visitor::create(['name' => $data['name'], 'cpf' => $data['cpf'], 'phone' => $data['phone']]);
-            } elseif ($visitor->trashed()) {
-                $visitor->restore();
-            }
+            $visitor = $this->resolveVisitorForUnit($authorization->unit_id, $data);
             $authorization->forceFill(['visitor_id' => $visitor->id, 'vehicle_plate' => $data['vehicle_plate'] ?? null, 'access_code' => $this->generateVisitorCode(), 'status' => VisitorAuthorizationStatus::Active, 'authorized_date' => now(), 'invitation_used_at' => now(), 'invitation_token_hash' => null])->save();
 
             return $authorization->refresh();
         });
+    }
+
+    /** @param array{name: string, cpf: string, phone: string} $data */
+    private function resolveVisitorForUnit(int $unitId, array $data): Visitor
+    {
+        $digits = (string) preg_replace('/\D/', '', $data['cpf']);
+        $cpf = strlen($digits) === 11
+            ? sprintf('%s.%s.%s-%s', substr($digits, 0, 3), substr($digits, 3, 3), substr($digits, 6, 3), substr($digits, 9, 2))
+            : $data['cpf'];
+
+        $visitor = Unit::findOrFail($unitId)->visitors()->withTrashed()->firstOrCreate(
+            ['cpf' => $cpf],
+            ['name' => $data['name'], 'phone' => $data['phone']],
+        );
+
+        if ($visitor->trashed()) {
+            $visitor->restore();
+        }
+
+        return $visitor;
     }
 
     public function cancelAuthorization(VisitorAuthorization $authorization): void
