@@ -108,6 +108,26 @@ class VisitorService
             if (! $authorization || $authorization->status !== VisitorAuthorizationStatus::PendingData || $authorization->invitation_used_at || ! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture()) {
                 throw new DomainException('Convite indisponível.');
             }
+
+            $resident = User::whereKey($authorization->resident_id)
+                ->sharedLock()
+                ->first(['id', 'unit_id', 'role', 'is_active']);
+
+            if ($resident === null
+                || ! $resident->is_active
+                || $resident->role !== UserRole::Morador
+                || $resident->unit_id !== $authorization->unit_id) {
+                throw new DomainException('Convite indisponível.');
+            }
+
+            $unit = Unit::whereKey($authorization->unit_id)
+                ->sharedLock()
+                ->first(['id', 'status']);
+
+            if ($unit === null || $unit->status !== 'active') {
+                throw new DomainException('Convite indisponível.');
+            }
+
             $visitor = $this->resolveVisitorForUnit($authorization->unit_id, $data);
             $authorization->forceFill(['visitor_id' => $visitor->id, 'vehicle_plate' => $data['vehicle_plate'] ?? null, 'access_code' => $this->generateVisitorCode(), 'status' => VisitorAuthorizationStatus::Active, 'authorized_date' => now(), 'invitation_used_at' => now(), 'invitation_token_hash' => null])->save();
 
@@ -137,7 +157,7 @@ class VisitorService
 
     public function cancelAuthorization(VisitorAuthorization $authorization): void
     {
-        DB::transaction(function () use ($authorization): void {
+        $expirationError = DB::transaction(function () use ($authorization): ?string {
             $authorization = VisitorAuthorization::whereKey($authorization->id)
                 ->lockForUpdate()
                 ->first();
@@ -148,14 +168,14 @@ class VisitorService
 
             if ($authorization->status === VisitorAuthorizationStatus::Active
                 && $authorization->end_date->isPast()) {
-                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
-                throw new DomainException('Autorização expirada.');
+                $this->expireActiveAuthorization($authorization);
+
+                return 'Autorização expirada.';
             }
 
             if ($authorization->status === VisitorAuthorizationStatus::PendingData
                 && (! $authorization->invitation_expires_at?->isFuture() || ! $authorization->start_date->isFuture())) {
-                $authorization->update(['status' => VisitorAuthorizationStatus::Expired]);
-                throw new DomainException('Convite expirado.');
+                return 'Convite expirado.';
             }
 
             if (! in_array($authorization->status, [
@@ -173,7 +193,13 @@ class VisitorService
                 'status' => VisitorAuthorizationStatus::Canceled,
                 'invitation_token_hash' => null,
             ])->save();
+
+            return null;
         });
+
+        if ($expirationError !== null) {
+            throw new DomainException($expirationError);
+        }
     }
 
     public function validateAuthorizationByCode(string $accessCode): VisitorAuthorization
@@ -353,9 +379,14 @@ class VisitorService
                 throw new DomainException('A saída deste visitante já foi registrada.');
             }
 
-            $authorization->update([
-                'status' => VisitorAuthorizationStatus::Used,
-            ]);
+            if (in_array($authorization->status, [
+                VisitorAuthorizationStatus::Active,
+                VisitorAuthorizationStatus::Expired,
+            ], true)) {
+                $authorization->update([
+                    'status' => VisitorAuthorizationStatus::Used,
+                ]);
+            }
 
             $authorization->loadMissing('visitor');
             $visitorName = $authorization->visitor?->name ?? 'visitante';
@@ -419,6 +450,11 @@ class VisitorService
      */
     private function authorizationDenial(VisitorAuthorization $authorization): ?array
     {
+        if ($authorization->status === VisitorAuthorizationStatus::Active
+            && $authorization->end_date?->isPast()) {
+            $this->expireActiveAuthorization($authorization);
+        }
+
         if ($authorization->status === VisitorAuthorizationStatus::Canceled) {
             return $this->denial('canceled', 'Autorização cancelada.');
         }
@@ -445,10 +481,6 @@ class VisitorService
         $now = now();
 
         if ($authorization->end_date && $now->greaterThan($authorization->end_date)) {
-            $authorization->update([
-                'status' => VisitorAuthorizationStatus::Expired,
-            ]);
-
             return $this->denial('expired', 'Autorização expirada.');
         }
 
@@ -487,6 +519,16 @@ class VisitorService
         }
 
         return null;
+    }
+
+    private function expireActiveAuthorization(VisitorAuthorization $authorization): void
+    {
+        VisitorAuthorization::whereKey($authorization->id)
+            ->where('status', VisitorAuthorizationStatus::Active)
+            ->where('end_date', '<', now())
+            ->update(['status' => VisitorAuthorizationStatus::Expired]);
+
+        $authorization->refresh();
     }
 
     private function hasOpenAccess(VisitorAuthorization $authorization): bool

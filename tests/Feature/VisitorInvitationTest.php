@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Unit;
 use App\Models\User;
+use App\Models\Visitor;
 use App\Models\VisitorAuthorization;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class VisitorInvitationTest extends TestCase
@@ -215,6 +220,153 @@ class VisitorInvitationTest extends TestCase
         $this->assertNotSame($otherResident->id, $authorization->resident_id);
         $this->assertNotSame($otherUnit->id, $authorization->unit_id);
         $this->assertTrue($authorization->start_date->isTomorrow());
+    }
+
+    #[DataProvider('invalidInvitationContexts')]
+    public function test_completion_revalidates_context_without_consuming_the_invitation(string $contextChange): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $unit = Unit::factory()->create(['status' => 'active']);
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+
+        $response = $this->actingAs($resident)
+            ->from(route('morador.visitors.index'))
+            ->post(route('morador.visitor-invitations.store'), [
+                'start_date' => now()->addDays(2),
+                'end_date' => now()->addDays(3),
+            ])
+            ->assertRedirect(route('morador.visitors.index'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('invitation_url');
+
+        $token = Str::afterLast((string) $response->getSession()->get('invitation_url'), '/');
+        $authorization = VisitorAuthorization::query()->sole();
+        $pendingAttributes = $authorization->getAttributes();
+
+        $this->assertSame(hash('sha256', $token), $authorization->invitation_token_hash);
+        $this->assertSame(VisitorAuthorizationStatus::PendingData, $authorization->status);
+        $this->assertSame($resident->id, $authorization->resident_id);
+        $this->assertSame($unit->id, $authorization->unit_id);
+
+        Auth::logout();
+        $this->assertGuest();
+
+        match ($contextChange) {
+            'inactive_resident' => $resident->update(['is_active' => false]),
+            'admin_resident' => $resident->update(['role' => UserRole::Admin]),
+            'doorman_resident' => $resident->update(['role' => UserRole::Porteiro]),
+            'resident_without_unit' => $resident->update(['unit_id' => null]),
+            'resident_in_another_unit' => $resident->update(['unit_id' => Unit::factory()->create()->id]),
+            'inactive_unit' => $unit->update(['status' => 'inactive']),
+        };
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertNotFound();
+
+        $authorization->refresh();
+
+        $this->assertSame($pendingAttributes, $authorization->getAttributes());
+        $this->assertSame(VisitorAuthorizationStatus::PendingData, $authorization->status);
+        $this->assertSame(hash('sha256', $token), $authorization->invitation_token_hash);
+        $this->assertNull($authorization->visitor_id);
+        $this->assertNull($authorization->access_code);
+        $this->assertNull($authorization->invitation_used_at);
+        $this->assertDatabaseCount('visitors', 0);
+
+        $resident->update(['is_active' => true, 'role' => UserRole::Morador, 'unit_id' => $unit->id]);
+        $unit->update(['status' => 'active']);
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('visitor-invitations/completed')
+                ->has('qr_svg'));
+
+        $authorization->refresh();
+
+        $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->status);
+        $this->assertNotNull($authorization->visitor_id);
+        $this->assertSame($unit->id, $authorization->visitor->unit_id);
+        $this->assertNotNull($authorization->access_code);
+        $this->assertNotNull($authorization->invitation_used_at);
+        $this->assertNull($authorization->invitation_token_hash);
+        $this->assertDatabaseCount('visitors', 1);
+
+        $completedAttributes = $authorization->getAttributes();
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertNotFound();
+
+        $this->assertSame($completedAttributes, $authorization->refresh()->getAttributes());
+        $this->assertDatabaseCount('visitors', 1);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function invalidInvitationContexts(): array
+    {
+        return [
+            'resident becomes inactive' => ['inactive_resident'],
+            'resident becomes an administrator' => ['admin_resident'],
+            'resident becomes a doorman' => ['doorman_resident'],
+            'resident loses the unit' => ['resident_without_unit'],
+            'resident moves to another unit' => ['resident_in_another_unit'],
+            'unit becomes inactive' => ['inactive_unit'],
+        ];
+    }
+
+    public function test_invalid_invitation_context_does_not_restore_a_soft_deleted_visitor(): void
+    {
+        $this->travelTo(now()->startOfMinute());
+        $unit = Unit::factory()->create(['status' => 'active']);
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $visitor = Visitor::factory()->for($unit)->create(['cpf' => '529.982.247-25']);
+        $visitor->delete();
+        $visitorAttributes = $visitor->refresh()->getAttributes();
+
+        $response = $this->actingAs($resident)
+            ->from(route('morador.visitors.index'))
+            ->post(route('morador.visitor-invitations.store'), [
+                'start_date' => now()->addDays(2),
+                'end_date' => now()->addDays(3),
+            ])
+            ->assertRedirect(route('morador.visitors.index'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('invitation_url');
+
+        $token = Str::afterLast((string) $response->getSession()->get('invitation_url'), '/');
+        $authorization = VisitorAuthorization::query()->sole();
+        $pendingAttributes = $authorization->getAttributes();
+        $this->assertSame(hash('sha256', $token), $authorization->invitation_token_hash);
+
+        Auth::logout();
+        $resident->update(['is_active' => false]);
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertNotFound();
+
+        $this->assertSame($pendingAttributes, $authorization->refresh()->getAttributes());
+        $this->assertSame($visitorAttributes, $visitor->refresh()->getAttributes());
+        $this->assertSoftDeleted($visitor);
+        $this->assertDatabaseCount('visitors', 1);
+
+        $resident->update(['is_active' => true]);
+
+        $this->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertOk();
+
+        $authorization->refresh();
+        $visitor->refresh();
+
+        $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->status);
+        $this->assertSame($visitor->id, $authorization->visitor_id);
+        $this->assertSame($unit->id, $visitor->unit_id);
+        $this->assertNotSoftDeleted($visitor);
+        $this->assertSame($visitorAttributes['name'], $visitor->name);
+        $this->assertSame($visitorAttributes['phone'], $visitor->phone);
+        $this->assertNotNull($authorization->access_code);
+        $this->assertNotNull($authorization->invitation_used_at);
+        $this->assertNull($authorization->invitation_token_hash);
+        $this->assertDatabaseCount('visitors', 1);
     }
 
     /** @return array{name: string, cpf: string, phone: string, confirmed: string} */
