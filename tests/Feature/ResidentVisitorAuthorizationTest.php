@@ -44,6 +44,24 @@ class ResidentVisitorAuthorizationTest extends TestCase
         ]);
     }
 
+    public function test_utc_instants_submitted_by_the_local_datetime_form_are_preserved(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $start = now()->addDay()->startOfHour();
+        $end = $start->copy()->addHour();
+
+        $this->actingAs(User::factory()->morador()->create())
+            ->post(route('morador.visitors.store'), $this->validData([
+                'start_date' => $start->toISOString(),
+                'end_date' => $end->toISOString(),
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $authorization = VisitorAuthorization::query()->sole();
+        $this->assertTrue($start->equalTo($authorization->start_date));
+        $this->assertTrue($end->equalTo($authorization->end_date));
+    }
+
     public function test_request_ownership_fields_are_ignored(): void
     {
         $unit = Unit::factory()->create(['status' => 'active']);

@@ -123,9 +123,9 @@ class PortariaVisitorPresenceTest extends TestCase
             'visitor_authorization_id' => $authorization->id,
         ]);
 
-        $authorization->update([
+        $authorization->forceFill([
             'status' => VisitorAuthorizationStatus::Expired,
-        ]);
+        ])->save();
 
         $this->actingAs(User::factory()->porteiro()->create())
             ->get(route('portaria.visitor-accesses.index'))

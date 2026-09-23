@@ -15,12 +15,12 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('visitor_authorization_id')
-            ->constrained('visitor_authorizations')
-            ->restrictOnDelete();
+                ->constrained('visitor_authorizations')
+                ->restrictOnDelete();
 
             $table->foreignId('doorman_id')
-            ->constrained('users')
-            ->restrictOnDelete();
+                ->constrained('users')
+                ->restrictOnDelete();
 
             $table->dateTime('entry_time')->nullable();
             $table->dateTime('exit_time')->nullable();

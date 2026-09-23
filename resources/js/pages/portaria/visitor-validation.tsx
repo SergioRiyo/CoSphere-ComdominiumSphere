@@ -12,7 +12,7 @@ import {
     UserRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import VisitorQrScanner from '@/components/portaria/visitor-qr-scanner';
@@ -49,21 +49,22 @@ type ValidationFormData = {
 export default function VisitorValidationPage({
     timezone,
 }: VisitorValidationPageProps) {
-    const { data, setData, submit, processing, errors, clearErrors } = useHttp<
-        ValidationFormData,
-        PortariaValidationResult
-    >({
-        access_code: '',
-    });
+    const { transform, submit, processing, errors, clearErrors, cancel } =
+        useHttp<ValidationFormData, PortariaValidationResult>({
+            access_code: '',
+        });
     const {
-        setData: setEntryData,
+        transform: transformEntry,
         submit: submitEntry,
         processing: entryProcessing,
         errors: entryErrors,
         clearErrors: clearEntryErrors,
+        cancel: cancelEntry,
     } = useHttp<ValidationFormData, PortariaEntryResult>({
         access_code: '',
     });
+    const [manualAccessCode, setManualAccessCode] = useState('');
+    const pendingAccessCodeRef = useRef<string | null>(null);
     const [result, setResult] = useState<PortariaValidationResult | null>(null);
     const [entryResult, setEntryResult] = useState<PortariaEntryResult | null>(
         null,
@@ -74,9 +75,17 @@ export default function VisitorValidationPage({
     const isProcessing = processing || entryProcessing;
     const accessCodeError = errors.access_code ?? entryErrors.access_code;
 
+    useEffect(() => {
+        return () => {
+            pendingAccessCodeRef.current = null;
+            cancel();
+            cancelEntry();
+        };
+    }, [cancel, cancelEntry]);
+
     const handleCodeChange = (accessCode: string) => {
-        setData('access_code', accessCode);
-        setEntryData('access_code', accessCode);
+        pendingAccessCodeRef.current = null;
+        setManualAccessCode(accessCode);
         clearErrors('access_code');
         clearEntryErrors('access_code');
         setResult(null);
@@ -85,13 +94,18 @@ export default function VisitorValidationPage({
     };
 
     const validateAccessCode = async (accessCode: string) => {
-        if (isProcessing || validationSubmissionRef.current) {
+        if (
+            isProcessing ||
+            validationSubmissionRef.current ||
+            entrySubmissionRef.current
+        ) {
             return;
         }
 
         validationSubmissionRef.current = true;
-        setData('access_code', accessCode);
-        setEntryData('access_code', accessCode);
+        pendingAccessCodeRef.current = accessCode.trim();
+        setManualAccessCode('');
+        transform(() => ({ access_code: pendingAccessCodeRef.current ?? '' }));
         clearErrors();
         clearEntryErrors();
         setResult(null);
@@ -115,7 +129,12 @@ export default function VisitorValidationPage({
             });
 
             setResult(validationResult);
+
+            if (!validationResult.allowed) {
+                pendingAccessCodeRef.current = null;
+            }
         } catch {
+            pendingAccessCodeRef.current = null;
             setResult(null);
         } finally {
             validationSubmissionRef.current = false;
@@ -125,15 +144,24 @@ export default function VisitorValidationPage({
     const submitValidation = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
 
-        await validateAccessCode(data.access_code);
+        await validateAccessCode(manualAccessCode);
     };
 
     const registerEntry = async () => {
-        if (isProcessing || entrySubmissionRef.current) {
+        if (
+            isProcessing ||
+            entrySubmissionRef.current ||
+            validationSubmissionRef.current ||
+            !result?.allowed ||
+            !pendingAccessCodeRef.current
+        ) {
             return;
         }
 
         entrySubmissionRef.current = true;
+        transformEntry(() => ({
+            access_code: pendingAccessCodeRef.current ?? '',
+        }));
         clearEntryErrors();
         setEntryResult(null);
         setRequestError(null);
@@ -157,7 +185,10 @@ export default function VisitorValidationPage({
             setEntryResult(nextEntryResult);
         } catch {
             setEntryResult(null);
+            setResult(null);
         } finally {
+            pendingAccessCodeRef.current = null;
+            setManualAccessCode('');
             entrySubmissionRef.current = false;
         }
     };
@@ -214,7 +245,7 @@ export default function VisitorValidationPage({
                                         <Input
                                             id="access-code"
                                             name="access_code"
-                                            value={data.access_code}
+                                            value={manualAccessCode}
                                             onChange={(event) =>
                                                 handleCodeChange(
                                                     event.target.value,

@@ -383,9 +383,9 @@ class VisitorService
                 VisitorAuthorizationStatus::Active,
                 VisitorAuthorizationStatus::Expired,
             ], true)) {
-                $authorization->update([
+                $authorization->forceFill([
                     'status' => VisitorAuthorizationStatus::Used,
-                ]);
+                ])->save();
             }
 
             $authorization->loadMissing('visitor');

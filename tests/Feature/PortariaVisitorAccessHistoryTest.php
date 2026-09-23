@@ -73,6 +73,7 @@ class PortariaVisitorAccessHistoryTest extends TestCase
             ->where('accesses.data.0.situation_label', 'Finalizado')
             ->where('accesses.data.1.situation', 'present')
             ->where('accesses.data.2.situation', 'denied')
+            ->where('accesses.data.2.situation_label', 'Entrada negada')
             ->where('accesses.data.2.entry_time', null)
             ->where('accesses.data.2.exit_time', null)
             ->missing('accesses.data.0.id')
@@ -94,6 +95,59 @@ class PortariaVisitorAccessHistoryTest extends TestCase
         $this->assertStringNotContainsString('Informação interna', $serializedResponse);
         $this->assertModelExists($openAccess);
         $this->assertModelExists($deniedAccess);
+    }
+
+    public function test_denied_validation_is_not_history_until_an_entry_denial_is_persisted(): void
+    {
+        $authorization = VisitorAuthorization::factory()->expired()->create();
+        $this->actingAs(User::factory()->porteiro()->create());
+
+        $this->postJson(route('portaria.visitor-authorizations.validate'), [
+            'access_code' => $authorization->access_code,
+        ])->assertOk()->assertJsonPath('allowed', false);
+
+        $this->assertDatabaseCount('visitor_accesses', 0);
+        $this->get(route('portaria.visitor-access-history.index'))
+            ->assertInertia(fn (Assert $page) => $page->has('accesses.data', 0));
+
+        $this->postJson(route('portaria.visitor-accesses.store'), [
+            'access_code' => $authorization->access_code,
+        ])->assertOk()->assertJsonPath('registered', false);
+
+        $this->assertDatabaseCount('visitor_accesses', 1);
+        $this->get(route('portaria.visitor-access-history.index', ['situation' => 'denied']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('accesses.data', 1)
+                ->where('accesses.data.0.situation', 'denied')
+                ->where('accesses.data.0.situation_label', 'Entrada negada')
+                ->where('accesses.data.0.entry_time', null)
+                ->where('accesses.data.0.exit_time', null));
+    }
+
+    public function test_history_preserves_and_identifies_legacy_records_without_entry(): void
+    {
+        VisitorAccess::factory()->pending()->create();
+        VisitorAccess::factory()->create([
+            'entry_time' => null,
+            'exit_time' => null,
+            'validation_status' => VisitorAccessStatus::Validated,
+        ]);
+
+        $this->actingAs(User::factory()->porteiro()->create());
+
+        foreach ([
+            'pending' => 'Aguardando (legado)',
+            'validated' => 'Validado sem entrada (legado)',
+        ] as $situation => $label) {
+            $this->get(route('portaria.visitor-access-history.index', ['situation' => $situation]))
+                ->assertInertia(fn (Assert $page) => $page
+                    ->has('accesses.data', 1)
+                    ->where('accesses.data.0.situation', $situation)
+                    ->where('accesses.data.0.situation_label', $label)
+                    ->where('accesses.data.0.entry_time', null)
+                    ->where('accesses.data.0.exit_time', null)
+                    ->where('filters.situation', $situation));
+        }
     }
 
     public function test_history_filters_are_combined_on_the_backend(): void
