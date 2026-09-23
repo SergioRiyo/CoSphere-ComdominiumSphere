@@ -123,8 +123,11 @@ export default function VisitorAccessHistoryPage({
                         Histórico de acessos
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Consulte entradas, saídas e recusas registradas pela
-                        portaria.
+                        Consulte entradas, saídas e tentativas de entrada
+                        negadas que foram registradas pela portaria. Consultas
+                        de QR ou código recusadas, sem tentativa de entrada, não
+                        são registradas neste histórico. Registros legados sem
+                        entrada continuam disponíveis nos filtros.
                     </p>
                 </header>
 

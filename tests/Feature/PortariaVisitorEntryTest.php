@@ -113,7 +113,7 @@ class PortariaVisitorEntryTest extends TestCase
             'Autorização já utilizada.' => VisitorAuthorization::factory()->used()->create(),
             'Autorização aguardando preenchimento de dados.' => VisitorAuthorization::factory()
                 ->pendingData()
-                ->create(['access_code' => 'csa_pendente_para_entrada']),
+                ->create(['access_code' => 'csa_'.str_repeat('P', 32)]),
         ];
 
         foreach ($authorizations as $expectedMessage => $authorization) {
@@ -190,7 +190,7 @@ class PortariaVisitorEntryTest extends TestCase
             ])
             ->assertJsonPath('allowed', true);
 
-        $authorization->update(['status' => VisitorAuthorizationStatus::Canceled]);
+        $authorization->forceFill(['status' => VisitorAuthorizationStatus::Canceled])->save();
 
         $this->postJson(route('portaria.visitor-accesses.store'), [
             'access_code' => $authorization->access_code,
@@ -209,7 +209,7 @@ class PortariaVisitorEntryTest extends TestCase
 
         $this->actingAs($doorman)
             ->postJson(route('portaria.visitor-accesses.store'), [
-                'access_code' => 'csa_codigo_inexistente',
+                'access_code' => 'csa_'.str_repeat('A', 32),
             ])
             ->assertOk()
             ->assertExactJson([

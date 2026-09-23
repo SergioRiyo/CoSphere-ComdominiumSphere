@@ -77,6 +77,7 @@ class ResidentVisitorListTest extends TestCase
         $unit = Unit::factory()->create();
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'Maria Pesquisável',
             'cpf' => '529.982.247-25',
         ]);
@@ -154,6 +155,7 @@ class ResidentVisitorListTest extends TestCase
         $unit = Unit::factory()->create();
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'cpf' => '529.982.247-25',
             'phone' => '(11) 99876-5432',
         ]);
@@ -179,6 +181,7 @@ class ResidentVisitorListTest extends TestCase
         $responsibleResident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $coResident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'cpf' => '529.982.247-25',
             'phone' => '(11) 99876-5432',
         ]);

@@ -221,12 +221,12 @@ class VisitorAccessQueryService
     private function situation(VisitorAccess $access): array
     {
         if ($access->validation_status === VisitorAccessStatus::Rejected) {
-            return ['denied', 'Negado'];
+            return ['denied', 'Entrada negada'];
         }
 
         if ($access->validation_status === VisitorAccessStatus::Validated) {
             if ($access->entry_time === null) {
-                return ['validated', VisitorAccessStatus::Validated->label()];
+                return ['validated', 'Validado sem entrada (legado)'];
             }
 
             return $access->exit_time === null
@@ -234,6 +234,6 @@ class VisitorAccessQueryService
                 : ['finished', 'Finalizado'];
         }
 
-        return [$access->validation_status->value, $access->validation_status->label()];
+        return [$access->validation_status->value, 'Aguardando (legado)'];
     }
 }

@@ -16,14 +16,9 @@ class VisitorAuthorization extends Model
     protected $table = 'visitor_authorizations';
 
     protected $fillable = [
-        'visitor_id',
         'vehicle_plate',
-        'invitation_expires_at',
-        'invitation_used_at',
         'start_date',
         'end_date',
-        'status',
-        'authorized_date',
     ];
 
     protected $casts = [

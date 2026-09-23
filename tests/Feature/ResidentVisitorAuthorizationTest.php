@@ -34,6 +34,7 @@ class ResidentVisitorAuthorizationTest extends TestCase
         $this->assertSame('BRA-2E19', $authorization->vehicle_plate);
         $this->assertSame($resident->id, $authorization->resident_id);
         $this->assertSame($unit->id, $authorization->unit_id);
+        $this->assertSame($unit->id, $visitor->unit_id);
         $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->status);
         $this->assertNotEmpty($authorization->access_code);
         $this->assertNotNull($authorization->authorized_date);
@@ -41,6 +42,24 @@ class ResidentVisitorAuthorizationTest extends TestCase
             'recipient_id' => $resident->id,
             'title' => 'Visitante autorizado',
         ]);
+    }
+
+    public function test_utc_instants_submitted_by_the_local_datetime_form_are_preserved(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $start = now()->addDay()->startOfHour();
+        $end = $start->copy()->addHour();
+
+        $this->actingAs(User::factory()->morador()->create())
+            ->post(route('morador.visitors.store'), $this->validData([
+                'start_date' => $start->toISOString(),
+                'end_date' => $end->toISOString(),
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $authorization = VisitorAuthorization::query()->sole();
+        $this->assertTrue($start->equalTo($authorization->start_date));
+        $this->assertTrue($end->equalTo($authorization->end_date));
     }
 
     public function test_request_ownership_fields_are_ignored(): void
@@ -72,6 +91,7 @@ class ResidentVisitorAuthorizationTest extends TestCase
         $unit = Unit::factory()->create(['status' => 'active']);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'Nome anterior',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 98888-7777',
@@ -87,13 +107,14 @@ class ResidentVisitorAuthorizationTest extends TestCase
         $this->assertSame('(65) 98888-7777', $visitor->phone);
     }
 
-    public function test_reusing_a_visitor_does_not_change_data_from_another_unit(): void
+    public function test_same_cpf_in_another_unit_creates_an_independent_visitor(): void
     {
         $unit = Unit::factory()->create(['status' => 'active']);
         $otherUnit = Unit::factory()->create(['status' => 'active']);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $otherResident = User::factory()->morador()->create(['unit_id' => $otherUnit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $otherUnit->id,
             'name' => 'Visitante Compartilhado',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 98888-7777',
@@ -111,13 +132,19 @@ class ResidentVisitorAuthorizationTest extends TestCase
         $this->assertSame('Visitante Compartilhado', $visitor->refresh()->name);
         $this->assertSame('(65) 98888-7777', $visitor->phone);
         $this->assertDatabaseCount('visitor_authorizations', 2);
+        $this->assertDatabaseCount('visitors', 2);
+        $createdAuthorization = VisitorAuthorization::where('resident_id', $resident->id)->sole();
+        $this->assertNotSame($visitor->id, $createdAuthorization->visitor_id);
+        $this->assertSame($unit->id, $createdAuthorization->visitor->unit_id);
+        $this->assertSame('Maria Visitante', $createdAuthorization->visitor->name);
+        $this->assertSame('(65) 99999-9999', $createdAuthorization->visitor->phone);
     }
 
     public function test_trashed_visitor_is_restored_and_reused_by_cpf(): void
     {
         $unit = Unit::factory()->create(['status' => 'active']);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
-        $visitor = Visitor::factory()->create(['cpf' => '529.982.247-25']);
+        $visitor = Visitor::factory()->create(['unit_id' => $unit->id, 'cpf' => '529.982.247-25']);
         $visitor->delete();
 
         $this->actingAs($resident)

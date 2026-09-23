@@ -139,6 +139,7 @@ class ResidentVisitorQrCodeTest extends TestCase
         $unit = Unit::factory()->create(['status' => 'active']);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'cpf' => '529.982.247-25',
             'phone' => '(65) 99999-9999',
         ]);

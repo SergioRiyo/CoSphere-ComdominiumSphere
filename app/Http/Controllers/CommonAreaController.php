@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\CommonArea;
 use App\Http\Requests\StoreCommonAreaRequest;
 use App\Http\Requests\UpdateCommonAreaRequest;
+use App\Models\CommonArea;
 
 class CommonAreaController extends Controller
 {

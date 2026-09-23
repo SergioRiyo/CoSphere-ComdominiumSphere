@@ -34,20 +34,13 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * The legacy schema cannot preserve both entry and exit operators.
+     * Reconciliation requires an explicit forward migration, not a lossy rollback.
      */
     public function down(): void
     {
-        DB::table('visitor_accesses')
-            ->whereNull('doorman_id')
-            ->whereNotNull('exit_doorman_id')
-            ->update(['doorman_id' => DB::raw('exit_doorman_id')]);
-
-        Schema::table('visitor_accesses', function (Blueprint $table) {
-            $table->dropForeign(['exit_doorman_id']);
-            $table->dropIndex('visitor_accesses_exit_doorman_id_index');
-            $table->dropColumn('exit_doorman_id');
-            $table->unsignedBigInteger('doorman_id')->nullable(false)->change();
-        });
+        throw new RuntimeException(
+            'Cannot roll back exit_doorman_id without losing entry or exit operator history. Use an explicit forward migration after reconciliation.',
+        );
     }
 };

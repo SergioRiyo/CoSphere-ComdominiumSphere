@@ -25,9 +25,9 @@ class PortariaVisitorAccessHistoryController extends Controller
             'situationOptions' => [
                 ['value' => 'present', 'label' => 'Presente'],
                 ['value' => 'finished', 'label' => 'Finalizado'],
-                ['value' => 'denied', 'label' => 'Negado'],
-                ['value' => 'pending', 'label' => 'Aguardando'],
-                ['value' => 'validated', 'label' => 'Validado'],
+                ['value' => 'denied', 'label' => 'Entrada negada'],
+                ['value' => 'pending', 'label' => 'Aguardando (legado)'],
+                ['value' => 'validated', 'label' => 'Validado sem entrada (legado)'],
             ],
             'filters' => [
                 'search' => $filters['search'] ?? '',

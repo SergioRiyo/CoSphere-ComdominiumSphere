@@ -13,6 +13,7 @@ use App\Models\VisitorAuthorization;
 use App\Services\VisitorService;
 use DomainException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class VisitorServiceTest extends TestCase
@@ -211,6 +212,7 @@ class VisitorServiceTest extends TestCase
         ]);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'Visitante da Portaria',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 98888-7777',
@@ -295,6 +297,93 @@ class VisitorServiceTest extends TestCase
         $this->assertFalse($result['allowed']);
         $this->assertSame('expired', $result['reason']);
         $this->assertSame(VisitorAuthorizationStatus::Expired, $authorization->refresh()->status);
+        $this->assertDatabaseCount('visitor_accesses', 0);
+    }
+
+    public function test_stale_validation_cannot_expire_an_authorization_after_its_exit_was_registered(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $doorman = User::factory()->porteiro()->create();
+        $authorization = VisitorAuthorization::factory()->active()->create([
+            'end_date' => now()->addMinute(),
+        ]);
+        $access = $this->visitorService->registerEntry($authorization->access_code, $doorman);
+        $staleAuthorization = $authorization->fresh();
+
+        $this->travel(2)->minutes();
+        $this->visitorService->registerExit($access, $doorman);
+
+        $this->assertSame(VisitorAuthorizationStatus::Active, $staleAuthorization->status);
+        $this->assertTrue($staleAuthorization->end_date->isPast());
+
+        try {
+            $this->visitorService->validateAuthorization($staleAuthorization);
+            $this->fail('A autorização usada não pode ser liberada por uma instância antiga.');
+        } catch (DomainException $exception) {
+            $this->assertSame('Autorização já utilizada.', $exception->getMessage());
+        }
+
+        $this->assertSame(VisitorAuthorizationStatus::Used, $authorization->refresh()->status);
+        $this->assertSame(VisitorAuthorizationStatus::Used, $staleAuthorization->status);
+        $this->assertNotNull($access->refresh()->exit_time);
+        $this->assertSame(1, $authorization->visitorAccesses()->count());
+    }
+
+    #[DataProvider('nonActiveExpirationStates')]
+    public function test_stale_expiration_preserves_the_current_non_active_state(
+        VisitorAuthorizationStatus $currentStatus,
+        string $expectedMessage,
+    ): void {
+        $authorization = VisitorAuthorization::factory()->active()->create([
+            'start_date' => now()->subHours(2),
+            'end_date' => now()->subMinute(),
+        ]);
+        $staleAuthorization = $authorization->fresh();
+        $authorization->forceFill(['status' => $currentStatus])->save();
+
+        try {
+            $this->visitorService->validateAuthorization($staleAuthorization);
+            $this->fail('A validação deve recusar o estado atual da autorização.');
+        } catch (DomainException $exception) {
+            $this->assertSame($expectedMessage, $exception->getMessage());
+        }
+
+        $this->assertSame($currentStatus, $authorization->refresh()->status);
+        $this->assertSame($currentStatus, $staleAuthorization->status);
+        $this->assertDatabaseCount('visitor_accesses', 0);
+        $this->assertDatabaseCount('notifications', 0);
+    }
+
+    /** @return array<string, array{VisitorAuthorizationStatus, string}> */
+    public static function nonActiveExpirationStates(): array
+    {
+        return [
+            'used' => [VisitorAuthorizationStatus::Used, 'Autorização já utilizada.'],
+            'canceled' => [VisitorAuthorizationStatus::Canceled, 'Autorização cancelada.'],
+            'expired' => [VisitorAuthorizationStatus::Expired, 'Autorização expirada.'],
+            'pending_data' => [VisitorAuthorizationStatus::PendingData, 'Autorização aguardando preenchimento de dados.'],
+        ];
+    }
+
+    public function test_stale_expiration_does_not_override_a_period_extended_in_the_database(): void
+    {
+        $this->travelTo(now()->startOfSecond());
+        $authorization = VisitorAuthorization::factory()->active()->create([
+            'start_date' => now()->subHours(2),
+            'end_date' => now()->subMinute(),
+        ]);
+        $staleAuthorization = $authorization->fresh();
+        $extendedEnd = now()->addHour();
+        $authorization->forceFill(['end_date' => $extendedEnd])->save();
+
+        $this->assertTrue($staleAuthorization->end_date->isPast());
+
+        $validatedAuthorization = $this->visitorService->validateAuthorization($staleAuthorization);
+
+        $this->assertTrue($validatedAuthorization->is($authorization));
+        $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->refresh()->status);
+        $this->assertTrue($extendedEnd->equalTo($authorization->end_date));
+        $this->assertTrue($extendedEnd->equalTo($validatedAuthorization->end_date));
         $this->assertDatabaseCount('visitor_accesses', 0);
     }
 
