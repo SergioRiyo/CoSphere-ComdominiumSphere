@@ -2,466 +2,369 @@
 
 ## 1. Objetivo
 
-O Módulo 3 do CoSphere contempla dois domínios principais:
+O Módulo 3 do CoSphere contempla dois fluxos principais:
 
-1. **Reservas de áreas comuns**
-2. **Controle de encomendas**
+- **Reservas de áreas comuns**;
+- **Controle de encomendas**.
 
-O módulo também utiliza o sistema de **notificações internas** para comunicar eventos relevantes aos usuários.
+O módulo também utiliza **notificações internas** para comunicar eventos relevantes aos usuários.
 
-O objetivo deste documento é definir as regras de negócio, permissões, estados, transições e restrições que devem ser respeitadas durante a implementação dos cards do Módulo 3.
+Este documento define as regras funcionais que devem ser respeitadas durante o desenvolvimento dos cards M3-02 a M3-14.
 
-Este documento representa o contrato funcional do módulo.
-
-As regras devem ser aplicadas principalmente no backend. A interface pode antecipar validações para melhorar a experiência do usuário, mas não deve ser considerada mecanismo de segurança ou fonte final das regras de negócio.
+As regras de negócio devem ser garantidas no backend. Validações no frontend existem apenas para melhorar a experiência do usuário.
 
 ---
 
-# 2. Perfis envolvidos
+# 2. Perfis e responsabilidades
 
-Os perfis existentes no sistema continuam sendo:
+## Administrador
 
-- Administrador
-- Morador
-- Porteiro
-
-Cada domínio possui responsabilidades diferentes.
-
-## 2.1 Administrador
-
-No contexto de reservas, o Administrador é responsável por:
+No fluxo de reservas, o Administrador pode:
 
 - cadastrar e editar áreas comuns;
-- ativar e inativar áreas comuns;
+- ativar, inativar ou colocar áreas em manutenção;
 - consultar reservas;
-- aprovar solicitações;
-- recusar solicitações;
-- cancelar reservas quando necessário;
-- criar bloqueios de datas e horários;
-- consultar histórico de reservas.
+- aprovar ou recusar solicitações;
+- cancelar reservas;
+- criar bloqueios de disponibilidade;
+- consultar histórico.
 
 O Administrador não solicita reservas como Morador.
 
-No fluxo de encomendas, o Administrador não participa das operações de recebimento e retirada neste módulo.
+## Morador
 
----
+O Morador pode:
 
-## 2.2 Morador
-
-No contexto de reservas, o Morador pode:
-
-- consultar áreas comuns ativas;
-- consultar disponibilidade;
-- solicitar reserva;
+- consultar áreas disponíveis;
+- consultar calendário e disponibilidade;
+- solicitar reservas;
 - consultar suas reservas;
-- consultar status;
-- cancelar sua própria reserva quando permitido.
+- cancelar suas próprias reservas quando permitido;
+- cadastrar previsão de encomenda;
+- consultar encomendas da própria unidade.
 
-No contexto de encomendas, o Morador pode:
+## Porteiro
 
-- cadastrar uma encomenda prevista;
-- consultar encomendas da própria unidade;
-- consultar status e histórico das encomendas.
+O Porteiro atua somente no fluxo operacional de encomendas deste módulo.
 
-O Morador não pode:
-
-- aprovar reservas;
-- recusar reservas;
-- criar bloqueios;
-- registrar recebimento de encomendas;
-- confirmar retirada de encomendas.
-
----
-
-## 2.3 Porteiro
-
-O Porteiro não participa da gestão de reservas.
-
-No fluxo de encomendas, o Porteiro pode:
+Pode:
 
 - registrar recebimento;
 - identificar a unidade destinatária;
-- associar o recebimento a uma previsão existente quando aplicável;
-- registrar/confirmar retirada;
-- consultar informações operacionais necessárias às encomendas.
+- confirmar retirada.
 
-O Porteiro não pode acessar funcionalidades exclusivas do Morador ou do Administrador apenas por possuir usuário autenticado.
+O Porteiro não participa da gestão de reservas.
 
 ---
 
-# 3. Regras gerais de autorização
+# 3. Regras gerais de segurança
 
 Todas as operações devem validar no backend:
 
-- usuário autenticado;
+- autenticação;
 - usuário ativo;
-- usuário verificado quando exigido pelo padrão atual do sistema;
-- papel correto para a operação.
+- verificação de e-mail quando aplicável;
+- papel correto;
+- propriedade ou vínculo com o recurso.
 
-A interface não substitui autorização backend.
-
-IDs enviados pelo frontend não devem ser considerados fonte de verdade quando a informação puder ser obtida pela sessão.
+Dados que podem ser obtidos pela sessão não devem ser confiados ao frontend.
 
 Exemplos:
 
-- `resident_id` deve ser derivado do Morador autenticado;
-- unidade do Morador deve ser derivada de seu vínculo atual;
-- operador que recebe uma encomenda deve ser derivado do Porteiro autenticado;
-- operador que confirma uma retirada deve ser derivado do Porteiro autenticado.
+- Morador e unidade de uma reserva;
+- unidade de uma encomenda cadastrada pelo Morador;
+- Porteiro responsável pelo recebimento;
+- Porteiro responsável pela retirada.
+
+Um Morador nunca pode acessar recursos pertencentes a outra unidade.
 
 ---
 
-# 4. Isolamento por unidade
+# 4. Áreas comuns
 
-As regras de isolamento utilizadas pelo restante do CoSphere também se aplicam ao Módulo 3.
+Uma área comum representa um espaço do condomínio que pode receber reservas.
 
-Um Morador só pode operar sobre dados pertencentes à sua própria unidade.
-
-Exemplo:
-
-```text
-Morador da Unidade A
-→ não pode consultar reserva privada ou encomenda da Unidade B
-```
-
-Nunca confiar em `unit_id` recebido do frontend quando a unidade puder ser obtida através do usuário autenticado.
-
-Consultas, Policies, Services e Controllers devem preservar esse isolamento.
-
----
-
-# 5. Reservas de áreas comuns
-
----
-
-## 5.1 Área comum
-
-Uma área comum representa um espaço do condomínio que pode possuir disponibilidade para reservas.
-
-Uma área pode possuir informações como:
+A implementação deve utilizar os campos já existentes na modelagem, incluindo quando disponíveis:
 
 - nome;
 - descrição;
-- capacidade;
+- horário inicial;
+- horário final;
+- duração máxima;
 - regras de utilização;
-- horário inicial de funcionamento;
-- horário final de funcionamento;
-- status ativo/inativo.
+- necessidade de aprovação;
+- status.
 
-A implementação deve reaproveitar os campos já existentes em `CommonArea` quando aplicável.
-
-Não devem ser adicionados campos apenas para aumentar artificialmente a complexidade do módulo.
+Não será adicionada capacidade máxima neste módulo, pois ela não é necessária para o fluxo principal do TCC.
 
 ---
 
-## 5.2 Área ativa
+## 4.1 Estados da área
 
-Somente áreas ativas podem receber novas solicitações de reserva.
+As áreas podem utilizar:
+
+- `active`;
+- `inactive`;
+- `maintenance`.
+
+### Active
+
+Permite novas solicitações, respeitando as demais regras de disponibilidade.
+
+### Inactive
+
+Não aceita novas reservas.
+
+### Maintenance
+
+Representa indisponibilidade temporária e também não aceita novas reservas.
+
+Alterar uma área para `inactive` ou `maintenance` não cancela automaticamente reservas existentes.
+
+Quando necessário, o Administrador deve cancelar explicitamente as reservas afetadas.
+
+---
+
+# 5. Reservas
+
+Uma reserva representa a solicitação de uso de uma área comum durante determinado intervalo.
+
+Estados:
+
+- `PENDING`;
+- `APPROVED`;
+- `REJECTED`;
+- `CANCELED`.
+
+---
+
+## 5.1 Transições
+
+Fluxo quando a área exige aprovação:
 
 ```text
-Área ativa
-→ pode receber novas reservas
+PENDING → APPROVED
+PENDING → REJECTED
+PENDING → CANCELED
+APPROVED → CANCELED
 ```
 
-```text
-Área inativa
-→ não pode receber novas reservas
-```
-
-Inativar uma área não deve apagar seu histórico.
-
-Reservas antigas devem continuar disponíveis para consulta.
-
----
-
-# 6. Estados de uma reserva
-
-O fluxo utilizará os seguintes estados de negócio:
-
-```text
-PENDING
-APPROVED
-REJECTED
-CANCELED
-```
-
-Os nomes concretos do Enum podem seguir o padrão já utilizado pelo projeto.
-
----
-
-## 6.1 PENDING
-
-Representa uma solicitação criada pelo Morador e aguardando decisão administrativa.
-
----
-
-## 6.2 APPROVED
-
-Representa uma reserva autorizada pelo Administrador.
-
----
-
-## 6.3 REJECTED
-
-Representa uma solicitação recusada pelo Administrador.
-
-É um estado terminal.
-
----
-
-## 6.4 CANCELED
-
-Representa uma reserva ou solicitação cancelada.
-
-É um estado terminal.
-
----
-
-# 7. Transições de reserva
-
-Transições permitidas:
-
-```text
-PENDING
-├── APPROVED
-├── REJECTED
-└── CANCELED
-```
-
-Uma reserva aprovada também pode ser cancelada:
-
-```text
-APPROVED
-└── CANCELED
-```
-
-Não permitir:
+Não são permitidas transições como:
 
 ```text
 REJECTED → APPROVED
 CANCELED → APPROVED
 REJECTED → PENDING
-CANCELED → PENDING
 ```
 
-Alterações desse tipo exigiriam uma nova solicitação.
+Uma nova tentativa deve gerar uma nova solicitação.
 
 ---
 
-# 8. Solicitação de reserva
+# 6. Aprovação configurável
+
+A necessidade de aprovação é definida pela configuração da área.
+
+## Área com aprovação
+
+Quando:
+
+```text
+requires_approval = true
+```
+
+uma solicitação válida inicia como:
+
+```text
+PENDING
+```
+
+e precisa ser analisada pelo Administrador.
+
+## Área sem aprovação
+
+Quando:
+
+```text
+requires_approval = false
+```
+
+uma solicitação válida pode iniciar diretamente como:
+
+```text
+APPROVED
+```
+
+A aprovação automática não ignora nenhuma regra de disponibilidade ou conflito.
+
+A decisão é tomada pelo backend com base na configuração da área.
+
+---
+
+# 7. Solicitação de reserva
 
 Somente Morador pode solicitar reserva.
 
-Para criar uma solicitação:
+Uma solicitação só pode ser criada quando:
 
-- Morador deve estar ativo;
-- Morador deve possuir unidade válida;
-- área deve existir;
-- área deve estar ativa;
-- início deve ser anterior ao fim;
-- intervalo deve respeitar disponibilidade da área;
-- intervalo não pode conflitar com bloqueios;
-- intervalo não pode conflitar com reservas consideradas ocupantes daquele horário.
+- o Morador está ativo;
+- possui unidade válida;
+- a área existe;
+- a área está `active`;
+- início é anterior ao fim;
+- início e fim pertencem ao mesmo dia;
+- o horário respeita o funcionamento da área;
+- a duração respeita o limite configurado;
+- não existe reserva conflitante;
+- não existe bloqueio conflitante.
 
-O Morador e sua unidade devem ser derivados da sessão.
+Morador e unidade devem ser obtidos pelo backend.
 
 ---
 
-# 9. Datas e horários
+# 8. Datas e horários
 
-Toda reserva deve possuir intervalo válido:
+Toda reserva deve obedecer:
 
 ```text
 start_at < end_at
 ```
 
-Não permitir intervalo completamente no passado.
+Reservas não podem começar e terminar em dias diferentes.
 
-Quando a área possuir horário de funcionamento:
+Exemplo permitido:
+
+```text
+18:00 → 22:00
+```
+
+no mesmo dia.
+
+Não permitido:
+
+```text
+22:00 → 02:00 do dia seguinte
+```
+
+Reservas completamente no passado não podem ser solicitadas.
+
+Quando houver horário configurado para a área:
 
 ```text
 opening_time <= start_at
-```
-
-e:
-
-```text
 end_at <= closing_time
 ```
 
-A aplicação deve interpretar datas e horários segundo a política de timezone definida pelo projeto.
-
-O frontend não deve converter silenciosamente `datetime-local` para UTC de maneira que altere o horário escolhido pelo usuário.
+O frontend deve preservar o horário local informado pelo usuário.
 
 ---
 
-# 10. Regra de conflito
+# 9. Duração máxima
 
-A prevenção de conflito é uma das principais regras do domínio de reservas.
+Quando uma área possuir limite de duração:
+
+```text
+duração da reserva <= duração máxima da área
+```
+
+A validação deve ocorrer no backend.
+
+Solicitações acima desse limite são recusadas.
+
+---
+
+# 10. Conflitos de reserva
 
 Duas reservas da mesma área entram em conflito quando:
 
 ```text
-novo_inicio < reserva_existente_fim
+novo_inicio < existente_fim
 AND
-novo_fim > reserva_existente_inicio
+novo_fim > existente_inicio
 ```
 
 Exemplo:
 
 ```text
-Reserva existente:
-14:00 -------- 16:00
-
-Nova:
-15:00 -------- 17:00
-
-CONFLITO
+Existente: 14:00 → 16:00
+Nova:      15:00 → 17:00
 ```
 
-Também é conflito:
+Existe conflito.
+
+Intervalos adjacentes são permitidos:
 
 ```text
-13:00 -------- 15:00
-```
-
-Não é conflito:
-
-```text
-16:00 -------- 18:00
-```
-
-Intervalos adjacentes são permitidos.
-
----
-
-# 11. Estados que bloqueiam disponibilidade
-
-Para simplificar o fluxo e evitar múltiplas solicitações concorrentes para o mesmo horário, reservas nos estados:
-
-```text
-PENDING
-APPROVED
-```
-
-ocupam o intervalo para fins de nova solicitação.
-
-Reservas:
-
-```text
-REJECTED
-CANCELED
-```
-
-não bloqueiam disponibilidade.
-
-Dessa forma:
-
-```text
-PENDING → horário indisponível
-APPROVED → horário indisponível
-REJECTED → horário disponível
-CANCELED → horário disponível
+14:00 → 16:00
+16:00 → 18:00
 ```
 
 ---
 
-# 12. Revalidação de conflito
+## 10.1 Estados que ocupam disponibilidade
 
-A ausência de conflito deve ser validada no backend.
+Bloqueiam novos horários:
 
-A regra precisa ser verificada:
+- `PENDING`;
+- `APPROVED`.
 
-1. ao solicitar a reserva;
-2. novamente quando houver uma operação capaz de tornar a reserva efetiva, principalmente aprovação quando necessário.
+Não bloqueiam:
 
-O calendário no frontend é apenas representação visual.
+- `REJECTED`;
+- `CANCELED`.
 
-Ele não substitui a verificação no backend.
-
----
-
-# 13. Concorrência em reservas
-
-Duas requisições simultâneas não devem conseguir criar reservas conflitantes para a mesma área.
-
-A implementação dos cards posteriores deve considerar:
-
-- transação;
-- revalidação no backend;
-- locks ou estratégia equivalente quando necessário.
-
-O M3-01 define a regra, mas não exige implementação específica.
+Assim, duas solicitações concorrentes não podem permanecer pendentes para o mesmo intervalo.
 
 ---
 
-# 14. Aprovação de reserva
+# 11. Concorrência
 
-Somente Administrador pode aprovar uma reserva.
+A ausência de conflito deve ser garantida no backend.
 
-Apenas reservas:
+O frontend e o calendário não são suficientes para proteger disponibilidade.
 
-```text
-PENDING
-```
+A implementação deve impedir que duas requisições simultâneas consigam reservar o mesmo intervalo da mesma área.
 
-podem ser aprovadas.
+A estratégia técnica será definida nos cards responsáveis pela implementação.
 
-Antes da aprovação, o sistema deve confirmar novamente:
+---
 
-- área ainda existe;
-- área ainda está ativa;
-- intervalo continua válido;
-- não existe conflito;
-- não existe bloqueio sobre o período.
+# 12. Aprovação e recusa
 
-Resultado:
+Somente Administrador pode aprovar ou recusar.
+
+Apenas reservas `PENDING` podem ser analisadas.
+
+Antes de aprovar, o sistema deve revalidar:
+
+- status da área;
+- disponibilidade;
+- bloqueios;
+- conflitos;
+- horário.
+
+Uma aprovação bem-sucedida resulta em:
 
 ```text
 PENDING → APPROVED
 ```
 
----
-
-# 15. Recusa de reserva
-
-Somente Administrador pode recusar uma solicitação.
-
-Apenas reservas:
-
-```text
-PENDING
-```
-
-podem ser recusadas.
-
-Resultado:
+Uma recusa resulta em:
 
 ```text
 PENDING → REJECTED
 ```
 
-Reserva recusada permanece disponível no histórico.
-
-Ela não pode voltar para `PENDING`.
-
 ---
 
-# 16. Cancelamento de reserva
+# 13. Cancelamento
 
-O Morador pode cancelar sua própria reserva quando ela estiver:
+O Morador pode cancelar sua própria reserva enquanto ela estiver:
 
-```text
-PENDING
-```
+- `PENDING`;
+- `APPROVED`;
 
-ou:
-
-```text
-APPROVED
-```
-
-desde que ainda não tenha iniciado.
+desde que o período da reserva ainda não tenha iniciado.
 
 O Administrador também pode cancelar reservas quando necessário.
 
@@ -477,22 +380,13 @@ ou:
 APPROVED → CANCELED
 ```
 
-Reservas:
-
-```text
-REJECTED
-CANCELED
-```
-
-não podem ser canceladas novamente.
-
-O histórico não deve ser apagado.
+Reservas recusadas ou já canceladas não podem ser canceladas novamente.
 
 ---
 
-# 17. Reserva passada
+# 14. Reservas concluídas
 
-Não será necessário criar um estado persistido `COMPLETED`.
+Não será criado um estado persistido `COMPLETED`.
 
 Uma reserva:
 
@@ -501,364 +395,238 @@ status = APPROVED
 end_at < agora
 ```
 
-pode ser apresentada visualmente como:
-
-```text
-Concluída
-```
-
-mas seu status persistido continua `APPROVED`.
-
-Isso evita uma transição automática desnecessária apenas por passagem do tempo.
+pode ser apresentada na interface como concluída, mantendo `APPROVED` no banco.
 
 ---
 
-# 18. Bloqueios de área comum
+# 15. Alteração das regras da área
 
-O Administrador pode tornar uma área indisponível durante determinado intervalo.
+Alterar:
 
-Um bloqueio deve possuir conceitualmente:
+- horário;
+- duração;
+- regras;
+- aprovação obrigatória;
+- status;
+
+não modifica automaticamente reservas existentes.
+
+As novas configurações são aplicadas às novas solicitações.
+
+Qualquer alteração de uma reserva já existente deve ocorrer por ação explícita do fluxo de reservas.
+
+---
+
+# 16. Bloqueios de disponibilidade
+
+O Administrador pode bloquear uma área durante determinado período.
+
+Um bloqueio representa:
 
 - área;
 - início;
 - fim;
 - motivo;
-- responsável pela criação.
+- responsável.
 
-A implementação concreta pode adaptar essa estrutura à arquitetura existente.
+Durante o bloqueio, novas reservas no intervalo são proibidas.
 
----
-
-# 19. Regra de bloqueio
-
-Durante um bloqueio:
-
-```text
-nenhuma nova reserva pode ser solicitada
-```
-
-para o intervalo correspondente.
-
-A mesma regra de sobreposição utilizada nas reservas deve ser utilizada para verificar bloqueios.
+A mesma regra de sobreposição utilizada em reservas deve ser aplicada aos bloqueios.
 
 ---
 
-# 20. Conflito entre bloqueio e reservas existentes
+## 16.1 Bloqueio contra reserva existente
 
-Um bloqueio não deve sobrescrever silenciosamente reservas existentes.
+Um bloqueio não pode ser criado sobre uma reserva `PENDING` ou `APPROVED`.
 
-Se existir reserva:
+O Administrador deve primeiro resolver a reserva conflitante.
 
-```text
-PENDING
-```
-
-ou:
-
-```text
-APPROVED
-```
-
-no mesmo intervalo, a criação do bloqueio deve ser recusada.
-
-O Administrador deve primeiro:
-
-- resolver;
-- recusar;
-- ou cancelar
-
-as reservas conflitantes.
-
-Depois poderá criar o bloqueio.
-
-Isso preserva histórico explícito das decisões.
+Isso evita alterações silenciosas no histórico.
 
 ---
 
-# 21. Calendário e disponibilidade
+# 17. Disponibilidade e calendário
 
-A consulta de disponibilidade deve considerar:
+A disponibilidade deve considerar:
 
-- áreas ativas;
+- status da área;
+- horário de funcionamento;
+- duração máxima;
 - reservas `PENDING`;
 - reservas `APPROVED`;
 - bloqueios.
 
-Reservas:
+Reservas `REJECTED` e `CANCELED` não ocupam horário.
 
-```text
-REJECTED
-CANCELED
-```
-
-não ocupam disponibilidade.
-
-O calendário não deve carregar todos os dados históricos do sistema quando apenas um intervalo for necessário.
+O calendário apresenta a disponibilidade, mas a confirmação final sempre ocorre no backend.
 
 ---
 
-# 22. Histórico de reservas
+# 18. Histórico de reservas
 
-Reservas não devem ser excluídas apenas porque:
+Reservas não devem ser apagadas quando:
 
-- foram recusadas;
-- foram canceladas;
-- já aconteceram.
+- recusadas;
+- canceladas;
+- finalizadas temporalmente.
 
-O histórico deve permitir identificar pelo menos:
+O histórico deve permitir identificar:
 
 - área;
-- intervalo;
+- período;
 - status;
-- unidade/Morador conforme permissão;
+- Morador/unidade quando autorizado;
 - datas relevantes.
 
-O histórico é somente leitura no contexto do M3-08.
+O histórico é somente leitura.
 
 ---
 
-# 23. Permissões de reservas
+# 19. Permissões de reservas
 
-| Operação | Morador | Administrador | Porteiro |
-|---|---:|---:|---:|
-| Consultar áreas | Sim | Sim | Não |
-| Consultar disponibilidade | Sim | Sim | Não |
-| Solicitar reserva | Sim | Não | Não |
-| Consultar próprias reservas | Sim | - | Não |
-| Consultar reservas administrativas | Não | Sim | Não |
-| Aprovar | Não | Sim | Não |
-| Recusar | Não | Sim | Não |
-| Cancelar própria reserva | Sim | - | Não |
-| Cancelar administrativamente | Não | Sim | Não |
-| Cadastrar/editar área | Não | Sim | Não |
-| Ativar/inativar área | Não | Sim | Não |
-| Criar bloqueios | Não | Sim | Não |
+| Operação | Morador | Admin | Porteiro |
+|---|:---:|:---:|:---:|
+| Consultar áreas | ✅ | ✅ | ❌ |
+| Consultar disponibilidade | ✅ | ✅ | ❌ |
+| Solicitar reserva | ✅ | ❌ | ❌ |
+| Consultar próprias reservas | ✅ | — | ❌ |
+| Consultar reservas administrativas | ❌ | ✅ | ❌ |
+| Aprovar | ❌ | ✅ | ❌ |
+| Recusar | ❌ | ✅ | ❌ |
+| Cancelar própria reserva | ✅ | — | ❌ |
+| Cancelar administrativamente | ❌ | ✅ | ❌ |
+| Gerenciar áreas | ❌ | ✅ | ❌ |
+| Criar bloqueios | ❌ | ✅ | ❌ |
 
 ---
 
-# 24. Notificações relacionadas a reservas
-
-O fluxo de reservas deve utilizar notificações internas.
+# 20. Notificações de reservas
 
 Eventos mínimos:
 
-## Reserva aprovada
+### Reserva aprovada
 
-```text
-APPROVED
-→ notificar o Morador responsável
-```
+Notificar o Morador responsável.
 
-## Reserva recusada
+### Reserva recusada
 
-```text
-REJECTED
-→ notificar o Morador responsável
-```
+Notificar o Morador responsável.
 
-## Reserva cancelada pelo Administrador
+### Reserva cancelada pelo Administrador
 
-```text
-CANCELED
-→ notificar o Morador responsável
-```
+Notificar o Morador responsável.
 
-Quando o próprio Morador cancelar sua reserva, não é necessário enviar notificação para ele mesmo.
+Quando o próprio Morador cancelar sua reserva, não é necessário notificá-lo sobre sua própria ação.
+
+O M3-02 fornece a infraestrutura de notificações.
+
+O M3-09 integra essa infraestrutura ao fluxo de reservas.
 
 ---
 
-# 25. Encomendas
+# 21. Encomendas
 
-Uma encomenda representa um item destinado a uma unidade do condomínio.
+Uma encomenda representa um item destinado a uma unidade.
 
 O sistema suporta:
 
-1. encomenda prevista previamente pelo Morador;
-2. encomenda recebida sem previsão anterior.
+1. encomenda prevista pelo Morador;
+2. encomenda recebida sem previsão.
 
-Cadastrar previsão não é requisito para que a Portaria possa registrar um recebimento.
+A previsão não é obrigatória para que a Portaria possa receber uma encomenda.
 
 ---
 
-# 26. Estados de encomenda
+# 22. Estados de encomenda
 
-Estados de negócio:
+Estados:
+
+- `EXPECTED`;
+- `RECEIVED`;
+- `WITHDRAWN`.
+
+---
+
+## 22.1 Fluxo previsto
 
 ```text
-EXPECTED
-RECEIVED
-WITHDRAWN
+EXPECTED → RECEIVED → WITHDRAWN
 ```
 
-Os nomes concretos podem seguir o Enum existente no projeto.
-
----
-
-# 27. EXPECTED
-
-Representa uma encomenda que o Morador informou que espera receber.
-
-Ainda não representa um recebimento físico na Portaria.
-
----
-
-# 28. RECEIVED
-
-Representa uma encomenda que foi efetivamente recebida pela Portaria.
-
-O sistema deve registrar:
-
-- horário do recebimento;
-- Porteiro responsável;
-- unidade destinatária.
-
----
-
-# 29. WITHDRAWN
-
-Representa uma encomenda retirada da Portaria.
-
-O sistema deve registrar:
-
-- horário da retirada;
-- operador responsável pela confirmação.
-
-É um estado terminal.
-
----
-
-# 30. Transições de encomenda
-
-Fluxo com previsão:
+## 22.2 Fluxo sem previsão
 
 ```text
-EXPECTED
-→ RECEIVED
-→ WITHDRAWN
-```
-
-Fluxo sem previsão:
-
-```text
-RECEIVED
-→ WITHDRAWN
+RECEIVED → WITHDRAWN
 ```
 
 Não permitir:
 
 ```text
 EXPECTED → WITHDRAWN
-```
-
-Também não permitir:
-
-```text
 WITHDRAWN → RECEIVED
 ```
 
-ou segunda retirada.
+Uma retirada já confirmada não pode ser registrada novamente.
 
 ---
 
-# 31. Cadastro de encomenda prevista
+# 23. Encomenda prevista
 
-Somente Morador pode cadastrar previsão.
+Somente Morador pode registrar previsão.
 
-A unidade deve ser obtida através do usuário autenticado.
+A unidade deve ser derivada do usuário autenticado.
 
-O frontend não controla a unidade efetiva da encomenda.
-
-A previsão pode conter informações existentes no modelo, como:
+A previsão pode incluir informações existentes na modelagem, como:
 
 - descrição;
 - remetente;
-- código de rastreio quando disponível.
+- código de rastreio.
 
-Não é obrigatória integração com transportadoras.
+Integrações com transportadoras não fazem parte do escopo.
 
 ---
 
-# 32. Recebimento com previsão
+# 24. Recebimento
 
-Quando existir previsão correspondente, o Porteiro pode registrar seu recebimento.
+Somente Porteiro pode registrar o recebimento físico.
 
-Resultado:
+Quando existir previsão correspondente:
 
 ```text
 EXPECTED → RECEIVED
 ```
 
-Devem ser registrados:
+O mesmo registro deve ser atualizado.
 
-- `received_at`;
+Não criar um segundo registro apenas para representar o recebimento.
+
+Ao receber, registrar:
+
+- data/hora;
 - Porteiro responsável;
-- demais dados necessários existentes no modelo.
+- unidade destinatária.
 
-O operador deve vir da sessão.
+O Porteiro responsável deve ser derivado da sessão.
 
 ---
 
-# 33. Recebimento sem previsão
+# 25. Recebimento sem previsão
 
-A ausência de previsão não pode impedir recebimento.
+A Portaria pode receber encomenda sem cadastro anterior.
 
-O Porteiro deve conseguir registrar uma nova encomenda diretamente como:
+Nesse caso, ela é criada diretamente como:
 
 ```text
 RECEIVED
 ```
 
-desde que consiga identificar a unidade destinatária.
-
-Isso representa um recebimento real que não foi previamente cadastrado pelo Morador.
+desde que a unidade destinatária seja identificada.
 
 ---
 
-# 34. Associação com previsão existente
+# 26. Retirada
 
-Quando uma previsão for utilizada no recebimento, ela deve representar o mesmo registro de encomenda.
-
-Não criar:
-
-```text
-EXPECTED #1
-```
-
-e depois outro registro independente:
-
-```text
-RECEIVED #2
-```
-
-para o mesmo recebimento quando a previsão foi identificada.
-
-A transição deve ocorrer sobre a previsão existente.
-
----
-
-# 35. Registro de recebimento
-
-Somente Porteiro pode registrar recebimento.
-
-O sistema deve impedir:
-
-- recebimento duplicado;
-- alteração arbitrária de status pelo frontend;
-- escolha de operador enviada pelo frontend.
-
----
-
-# 36. Retirada
-
-Somente encomendas:
-
-```text
-RECEIVED
-```
-
-podem ser retiradas.
-
-A retirada deve ser confirmada pelo Porteiro.
+Somente encomendas `RECEIVED` podem ser retiradas.
 
 Resultado:
 
@@ -868,68 +636,40 @@ RECEIVED → WITHDRAWN
 
 Registrar:
 
-- horário da retirada;
+- data/hora da retirada;
 - operador responsável.
 
-Não permitir retirada duplicada.
+Retirada duplicada deve ser bloqueada.
 
 ---
 
-# 37. Encomenda já retirada
+# 27. Isolamento de encomendas
 
-Uma encomenda `WITHDRAWN` é histórica.
+Moradores só podem consultar encomendas de sua própria unidade.
 
-Ela não deve retornar para:
+Um Morador da Unidade A não pode consultar dados da Unidade B.
 
-```text
-RECEIVED
-```
+O Porteiro possui acesso operacional necessário para registrar recebimento e retirada.
 
-nem:
-
-```text
-EXPECTED
-```
-
-através dos fluxos normais.
+IDs de unidade enviados pelo Morador não substituem o vínculo determinado pela sessão.
 
 ---
 
-# 38. Isolamento das encomendas
+# 28. Histórico de encomendas
 
-Morador só pode consultar encomendas da própria unidade.
+O histórico deve preservar encomendas:
 
-Exemplo:
+- previstas;
+- recebidas;
+- retiradas.
 
-```text
-Morador Unit A
-→ não acessa encomendas Unit B
-```
+Encomendas finalizadas não devem ser excluídas.
 
-A unidade não pode ser alterada através de manipulação da requisição.
-
-Porteiros possuem acesso operacional necessário para recebimento e retirada.
+A consulta deve mostrar apenas dados permitidos ao perfil autenticado.
 
 ---
 
-# 39. Histórico de encomendas
-
-O histórico deve permitir consultar:
-
-- encomenda;
-- unidade;
-- status;
-- previsão, quando existente;
-- recebimento;
-- retirada.
-
-O histórico deve preservar registros `WITHDRAWN`.
-
-Encomendas não devem ser apagadas quando finalizadas.
-
----
-
-# 40. Notificação de recebimento
+# 29. Notificação de encomendas
 
 Quando uma encomenda passar para:
 
@@ -937,7 +677,7 @@ Quando uma encomenda passar para:
 RECEIVED
 ```
 
-o sistema deve notificar os usuários Moradores vinculados à unidade destinatária conforme a política atual do sistema.
+o sistema deve notificar os Moradores da unidade destinatária conforme a política definida pelo módulo.
 
 Exemplo:
 
@@ -945,75 +685,36 @@ Exemplo:
 Sua encomenda foi recebida pela Portaria.
 ```
 
-Não incluir informações sensíveis desnecessárias na notificação.
+A notificação de retirada é opcional.
 
 ---
 
-# 41. Notificação de retirada
+# 30. Notificações internas
 
-Uma confirmação interna de retirada pode ser gerada caso seja útil para o fluxo implementado.
+O sistema de notificações deve permitir:
 
-Não é obrigatório enviar uma nova notificação ao próprio usuário apenas para repetir uma operação já confirmada presencialmente.
+- listar notificações do usuário;
+- identificar não lidas;
+- marcar como lida;
+- impedir acesso a notificações de outros usuários.
 
-A funcionalidade mínima obrigatória é a notificação do recebimento.
-
----
-
-# 42. Notificações internas
-
-O M3-02 deve disponibilizar uma infraestrutura genérica de notificações internas.
-
-Uma notificação deve pertencer a um usuário.
-
-Deve possuir conceitualmente:
-
-- tipo;
-- título;
-- mensagem;
-- data;
-- indicação lida/não lida;
-- relacionamento com o usuário.
-
-Pode possuir referência ao recurso relacionado se a arquitetura atual suportar isso.
-
----
-
-# 43. Isolamento das notificações
-
-Um usuário:
-
-```text
-só pode visualizar suas próprias notificações
-```
-
-Não pode:
-
-- consultar notificações de outro usuário;
-- marcar notificação de outro usuário como lida.
-
----
-
-# 44. Estados da notificação
-
-O estado pode ser representado por:
+Conceitualmente:
 
 ```text
 read_at = null
 → não lida
-```
 
-```text
 read_at preenchido
 → lida
 ```
 
-Não é necessário criar workflow complexo.
+A notificação pertence a um usuário.
 
 ---
 
-# 45. Eventos mínimos de notificação
+# 31. Contrato de notificações
 
-O contrato entre Reservas, Encomendas e Notificações será:
+Eventos mínimos do Módulo 3:
 
 | Evento | Destinatário |
 |---|---|
@@ -1023,87 +724,20 @@ O contrato entre Reservas, Encomendas e Notificações será:
 | Encomenda recebida | Moradores da unidade |
 | Encomenda retirada | Opcional |
 
-M3-02 implementa a infraestrutura.
+A notificação não é a fonte de verdade do estado.
 
-M3-09 integra os eventos de reservas.
-
-M3-11/M3-12 integram os eventos de encomendas quando necessário.
+O estado da `Reservation` ou da encomenda continua sendo a informação oficial.
 
 ---
 
-# 46. Notificação não é fonte de verdade
+# 32. Idempotência
 
-O estado da entidade continua sendo a fonte de verdade.
-
-Exemplo:
-
-```text
-Reservation.status = APPROVED
-```
-
-é a informação oficial.
-
-A existência de uma notificação de aprovação não substitui o status da reserva.
-
-O mesmo se aplica às encomendas.
-
----
-
-# 47. Dados derivados da sessão
-
-Campos operacionais não devem ser controlados diretamente pelo frontend quando puderem ser determinados pelo contexto autenticado.
+Operações devem impedir repetições inválidas.
 
 Exemplos:
 
 ```text
-reservation.resident_id
-reservation.unit_id
-order.unit_id quando criada pelo Morador
-received_by / doorman_id
-withdrawn_by / operador
-```
-
-Devem ser derivados no backend.
-
----
-
-# 48. Estados controlados pelo backend
-
-O frontend não deve enviar livremente:
-
-```text
-reservation.status
-order.status
-notification.read_at de outra notificação
-received_at
-withdrawn_at
-approved_by
-received_by
-withdrawn_by
-```
-
-Transições devem acontecer através de operações específicas do domínio.
-
----
-
-# 49. Idempotência
-
-Operações importantes devem impedir repetição inválida.
-
-Exemplos:
-
-```text
-aprovar duas vezes
-→ recusado/controlado
-```
-
-```text
-receber mesma encomenda duas vezes
-→ recusado
-```
-
-```text
-retirar duas vezes
+aprovar reserva já aprovada
 → recusado
 ```
 
@@ -1112,246 +746,189 @@ cancelar reserva já cancelada
 → recusado
 ```
 
+```text
+registrar recebimento duas vezes
+→ recusado
+```
+
+```text
+registrar retirada duas vezes
+→ recusado
+```
+
 ---
 
-# 50. Histórico e integridade
+# 33. Histórico e integridade
 
-Mudanças de estado não devem excluir registros históricos.
-
-Estados terminais precisam permanecer consultáveis.
+Mudanças de estado não devem apagar registros históricos.
 
 Isso se aplica a:
 
+- reservas aprovadas;
 - reservas recusadas;
 - reservas canceladas;
-- reservas realizadas;
+- encomendas recebidas;
 - encomendas retiradas.
 
----
-
-# 51. Soft delete
-
-Caso Models utilizem SoftDeletes, sua utilização não deve permitir perda de histórico operacional.
-
-Registros utilizados por histórico não devem desaparecer simplesmente por exclusão de um recurso relacionado.
-
-A estratégia deve seguir o padrão existente no projeto.
+Quando houver SoftDeletes, eles não devem ser utilizados de forma que quebrem consultas históricas necessárias.
 
 ---
 
-# 52. Tratamento de erros
+# 34. Tratamento de erros
 
-Violações de regra de negócio devem gerar respostas controladas.
+Violações das regras devem produzir respostas controladas.
 
 Exemplos:
 
-- horário indisponível;
-- conflito de reserva;
-- área inativa;
-- reserva já aprovada;
+- área indisponível;
+- horário inválido;
+- conflito;
+- bloqueio;
+- reserva em estado incompatível;
+- encomenda já recebida;
 - retirada duplicada;
-- encomenda ainda não recebida;
 - recurso de outra unidade.
 
-Não retornar erros internos ou stack traces ao usuário.
+Não expor erros internos ou stack traces.
 
 ---
 
-# 53. Responsabilidade do backend
-
-Toda regra relevante deve possuir validação backend.
-
-Especialmente:
-
-- permissões;
-- isolamento;
-- conflitos;
-- estados;
-- transições;
-- bloqueios;
-- unidade;
-- operadores.
-
-Validação frontend existe apenas para melhorar a experiência.
-
----
-
-# 54. Fora do escopo
+# 35. Fora do escopo
 
 Não fazem parte do Módulo 3:
 
 - pagamento por reserva;
-- cobrança automática;
-- multas;
-- lista de espera;
-- integração com PIX;
+- cobrança e multas;
+- PIX;
+- fila de espera;
+- reservas recorrentes;
+- reservas atravessando dias;
 - integração com Correios;
-- integração com Amazon/Mercado Livre;
 - rastreamento externo;
-- reconhecimento facial;
-- assinatura digital para retirada;
-- push notification;
+- integração com marketplaces;
 - SMS;
 - WhatsApp;
-- email transacional;
-- reserva recorrente;
+- push notification;
+- assinatura digital;
+- reconhecimento facial;
 - múltiplos condomínios.
 
 Esses recursos podem ser considerados evoluções futuras.
 
 ---
 
-# 55. Dependências entre cards
+# 36. Dependências dos cards
 
 ## Base compartilhada
 
 ```text
-M3-01
-Definição das regras e contratos
+M3-01 — Regras e contratos
 ```
 
-Depois:
+Após o M3-01:
 
 ```text
-M3-02
-Infraestrutura de notificações
+M3-02 — Notificações
 ```
 
 e:
 
 ```text
-M3-03
-Gestão de áreas comuns
+M3-03 — Áreas comuns
 ```
 
-podem avançar em paralelo.
+podem ser desenvolvidos em paralelo.
 
 ---
 
-# 56. Sequência de Reservas
+## Trilha de Reservas — SM
 
 ```text
-M3-03
-Áreas comuns
+M3-03 — Gestão de áreas
    ↓
-M3-04
-Disponibilidade
+M3-04 — Calendário e disponibilidade
    ↓
-M3-05
-Solicitação + conflitos
+M3-05 — Solicitação e conflitos
    ↓
-M3-06
-Aprovação / recusa / cancelamento
+M3-06 — Aprovação, recusa e cancelamento
    ↓
-M3-07
-Bloqueios
+M3-07 — Bloqueios
    ↓
-M3-08
-Histórico
+M3-08 — Histórico
    ↓
-M3-09
-Notificações
-```
-
-M3-06 e M3-07 podem compartilhar partes da lógica de disponibilidade.
-
----
-
-# 57. Sequência de Encomendas
-
-```text
-M3-02
-Notificações
-   ↓
-M3-10
-Previsão
-   ↓
-M3-11
-Recebimento
-   ↓
-M3-12
-Retirada
-   ↓
-M3-13
-Histórico/status
+M3-09 — Notificações
 ```
 
 ---
 
-# 58. Encerramento do módulo
-
-Após as duas trilhas:
+## Trilha de Encomendas — YF
 
 ```text
-Reservas concluídas
-+
-Encomendas concluídas
-+
-Notificações integradas
-```
-
-executar:
-
-```text
-M3-14
-Validação integrada e preparação da demonstração
+M3-02 — Notificações internas
+   ↓
+M3-10 — Encomenda prevista
+   ↓
+M3-11 — Recebimento
+   ↓
+M3-12 — Retirada
+   ↓
+M3-13 — Status e histórico
 ```
 
 ---
 
-# 59. Critérios gerais de aceite do Módulo 3
+# 37. Validação final
 
-O módulo estará funcional quando:
+Após conclusão das duas trilhas:
+
+```text
+M3-14 — Validar módulo e preparar demonstração
+```
+
+Deve comprovar o funcionamento integrado de:
+
+- áreas comuns;
+- reservas;
+- conflitos;
+- bloqueios;
+- notificações;
+- encomendas;
+- recebimento;
+- retirada;
+- isolamento por perfil/unidade.
+
+---
+
+# 38. Critério geral de conclusão
+
+O Módulo 3 estará concluído quando:
 
 ## Reservas
 
-- Admin consegue gerenciar áreas;
+- Admin gerencia áreas;
 - Morador consulta disponibilidade;
 - Morador solicita reserva;
-- conflitos são bloqueados;
-- Admin aprova ou recusa;
-- reservas podem ser canceladas corretamente;
-- bloqueios impedem novas reservas;
-- histórico é consultável;
-- Morador é notificado sobre decisões relevantes.
+- conflitos são impedidos;
+- aprovação automática ou administrativa respeita a configuração da área;
+- Admin aprova, recusa e cancela;
+- bloqueios funcionam;
+- histórico funciona;
+- notificações são entregues nos eventos definidos.
 
 ## Encomendas
 
 - Morador registra previsão;
-- Porteiro registra encomenda prevista;
-- Porteiro registra encomenda sem previsão;
-- recebimento gera notificação;
-- Porteiro registra retirada;
-- retirada duplicada é bloqueada;
-- Morador consulta status e histórico da própria unidade.
+- Porteiro recebe encomenda prevista;
+- Porteiro recebe encomenda não prevista;
+- Morador é notificado;
+- retirada é registrada;
+- retirada duplicada é impedida;
+- histórico e status podem ser consultados.
 
 ## Segurança
 
-- regras são aplicadas no backend;
-- perfis não acessam operações indevidas;
-- unidade não é confiada ao frontend quando derivável;
-- dados permanecem isolados;
-- estados não podem ser manipulados livremente.
-
----
-
-# 60. Princípio de implementação
-
-Os cards posteriores devem preservar o padrão arquitetural atual do CoSphere.
-
-Conceitualmente:
-
-```text
-Route
-→ Middleware / Policy
-→ FormRequest
-→ Controller
-→ Service
-→ Model / Database
-```
-
-Controllers devem permanecer enxutos.
-
-Regras de negócio devem ficar centralizadas em Services ou estruturas equivalentes já utilizadas pelo projeto.
-
-Não criar camadas ou abstrações adicionais sem necessidade concreta.
+- backend aplica todas as regras;
+- perfis possuem apenas as permissões necessárias;
+- Morador não acessa outra unidade;
+- IDs derivados da sessão não são confiados ao frontend;
+- estados só mudam através das operações previstas no domínio.
