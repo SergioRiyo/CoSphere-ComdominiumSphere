@@ -6,12 +6,79 @@ use App\Enums\ReservationStatus;
 use App\Models\CommonArea;
 use App\Models\Reservation;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ReservationService
 {
+    /**
+     * Null boundaries represent the beginning/end of the day, without adding
+     * opening/closing restrictions to areas with no configured schedule.
+     *
+     * @return array{date: string, occupied_periods: list<array{start: ?string, end: ?string}>, free_periods: list<array{start: ?string, end: ?string}>}
+     */
+    public function availability(CommonArea $commonArea, Carbon $date): array
+    {
+        $this->ensureCommonAreaIsAvailable($commonArea);
+        $dayStart = $date->copy()->startOfDay();
+        $dayEnd = $dayStart->copy()->addDay();
+        $opening = $commonArea->available_from === null
+            ? $dayStart : Carbon::parse($date->toDateString().' '.$commonArea->available_from);
+        $closing = $commonArea->available_until === null
+            ? $dayEnd : Carbon::parse($date->toDateString().' '.$commonArea->available_until);
+
+        $reservations = $this->conflictingReservations($commonArea, $dayStart, $dayEnd)
+            ->orderBy('starts_at')->orderBy('ends_at')->get(['starts_at', 'ends_at']);
+        $occupied = [];
+        $free = [];
+        $cursor = $opening->copy();
+
+        foreach ($reservations as $reservation) {
+            $start = $reservation->starts_at->max($opening);
+            $end = $reservation->ends_at->min($closing);
+
+            if ($start->greaterThanOrEqualTo($end)) {
+                continue;
+            }
+
+            $occupied[] = $this->availabilityPeriod($start, $end, $dayStart, $dayEnd);
+
+            if ($cursor->lessThan($start)) {
+                $free[] = $this->availabilityPeriod($cursor, $start, $dayStart, $dayEnd);
+            }
+
+            $cursor = $cursor->max($end);
+        }
+
+        if ($cursor->lessThan($closing)) {
+            $free[] = $this->availabilityPeriod($cursor, $closing, $dayStart, $dayEnd);
+        }
+
+        return ['date' => $date->toDateString(), 'occupied_periods' => $occupied, 'free_periods' => $free];
+    }
+
+    /** @return array{start: ?string, end: ?string} */
+    private function availabilityPeriod(CarbonInterface $start, CarbonInterface $end, CarbonInterface $dayStart, CarbonInterface $dayEnd): array
+    {
+        return [
+            'start' => $start->equalTo($dayStart) ? null : $start->format('H:i:s'),
+            'end' => $end->equalTo($dayEnd) ? null : $end->format('H:i:s'),
+        ];
+    }
+
+    /** @return Builder<Reservation> */
+    private function conflictingReservations(CommonArea $commonArea, Carbon $startsAt, Carbon $endsAt): Builder
+    {
+        return Reservation::query()
+            ->where('common_area_id', $commonArea->id)
+            ->whereIn('status', [ReservationStatus::Pending->value, ReservationStatus::Approved->value])
+            ->where('starts_at', '<', $endsAt)
+            ->where('ends_at', '>', $startsAt);
+    }
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -140,15 +207,7 @@ class ReservationService
         Carbon $startsAt,
         Carbon $endsAt
     ): void {
-        $hasConflict = Reservation::query()
-            ->where('common_area_id', $commonArea->id)
-            ->whereIn('status', [
-                ReservationStatus::Pending->value,
-                ReservationStatus::Approved->value,
-            ])
-            ->where('starts_at', '<', $endsAt)
-            ->where('ends_at', '>', $startsAt)
-            ->exists();
+        $hasConflict = $this->conflictingReservations($commonArea, $startsAt, $endsAt)->exists();
 
         if ($hasConflict) {
             throw ValidationException::withMessages([

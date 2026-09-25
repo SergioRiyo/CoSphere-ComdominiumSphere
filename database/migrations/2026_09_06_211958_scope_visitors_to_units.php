@@ -76,6 +76,7 @@ return new class extends Migration
             });
 
             if (DB::table('visitors')->whereNotNull('unit_id')
+                ->selectRaw('1')
                 ->groupBy('unit_id', 'cpf')->havingRaw('COUNT(*) > 1')->exists()) {
                 throw new RuntimeException('Visitor isolation requires reconciliation of duplicate normalized CPFs within a unit.');
             }
@@ -97,7 +98,7 @@ return new class extends Migration
                 DB::statement('LOCK TABLE visitors, visitor_authorizations IN SHARE ROW EXCLUSIVE MODE');
             }
 
-            if (DB::table('visitors')->groupBy('cpf')->havingRaw('COUNT(*) > 1')->exists()) {
+            if (DB::table('visitors')->selectRaw('1')->groupBy('cpf')->havingRaw('COUNT(*) > 1')->exists()) {
                 throw new RuntimeException('Cannot restore global CPF uniqueness without merging personal data. Use a forward migration.');
             }
 

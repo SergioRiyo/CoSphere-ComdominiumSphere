@@ -19,6 +19,32 @@ class VisitorUnitMigrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_empty_migration_roundtrip_uses_grouped_projections_compatible_with_postgresql(): void
+    {
+        DB::enableQueryLog();
+
+        try {
+            $migration = $this->migration();
+            $migration->down();
+            $migration->up();
+
+            $duplicateChecks = collect(DB::getQueryLog())
+                ->pluck('query')
+                ->filter(fn (string $sql): bool => str_contains($sql, 'select exists(') && str_contains($sql, 'group by'));
+
+            $this->assertCount(2, $duplicateChecks);
+
+            foreach ($duplicateChecks as $sql) {
+                $this->assertStringContainsString('select exists(select 1 from "visitors"', $sql);
+            }
+
+            $this->assertTrue(Schema::hasColumn('visitors', 'unit_id'));
+        } finally {
+            DB::disableQueryLog();
+            DB::flushQueryLog();
+        }
+    }
+
     public function test_backfill_uses_the_only_historical_unit_including_soft_deleted_authorizations(): void
     {
         $migration = $this->migration();
