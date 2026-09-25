@@ -12,22 +12,22 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('unit_id')
-            ->constrained('units')
-            ->restrictOnDelete();
+                ->constrained('units')
+                ->restrictOnDelete();
 
             $table->foreignId('resident_id')
-            ->constrained('users')
-            ->restrictOnDelete();
+                ->constrained('users')
+                ->restrictOnDelete();
 
             $table->foreignId('received_by_id')
-            ->nullable()
-            ->constrained('users')
-            ->restrictOnDelete();
+                ->nullable()
+                ->constrained('users')
+                ->restrictOnDelete();
 
             $table->foreignId('picked_up_by_id')
-            ->nullable()
-            ->constrained('users')
-            ->restrictOnDelete();
+                ->nullable()
+                ->constrained('users')
+                ->restrictOnDelete();
 
             $table->string('tracking_code')->nullable();
             $table->string('sender')->nullable();
@@ -42,7 +42,7 @@ return new class extends Migration
                 'waiting_delivery',
                 'received_at_gate',
                 'picked_up',
-                'cancelled'
+                'cancelled',
             ])->default('waiting_delivery');
 
             $table->timestamps();

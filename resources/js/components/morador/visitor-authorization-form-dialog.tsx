@@ -60,7 +60,9 @@ function dateTimeValue(hoursFromNow: number): string {
 
     date.setSeconds(0, 0);
 
-    return date.toISOString().slice(0, 16);
+    const pad = (value: number) => String(value).padStart(2, '0');
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export default function VisitorAuthorizationFormDialog({
@@ -98,6 +100,18 @@ export default function VisitorAuthorizationFormDialog({
                 <Form
                     key={open ? 'open' : 'closed'}
                     {...store.form()}
+                    transform={(data) => ({
+                        ...data,
+                        start_date:
+                            typeof data.start_date === 'string' &&
+                            data.start_date
+                                ? new Date(data.start_date).toISOString()
+                                : data.start_date,
+                        end_date:
+                            typeof data.end_date === 'string' && data.end_date
+                                ? new Date(data.end_date).toISOString()
+                                : data.end_date,
+                    })}
                     options={{ preserveScroll: true }}
                     resetOnSuccess
                     onSuccess={() => handleOpenChange(false)}
@@ -228,8 +242,9 @@ export default function VisitorAuthorizationFormDialog({
                             </div>
 
                             <p className="text-xs text-muted-foreground">
-                                Os horários são registrados no timezone da
-                                aplicação: {timezone}.
+                                Informe os horários locais do seu navegador.
+                                Eles serão enviados em UTC e exibidos no
+                                timezone da aplicação: {timezone}.
                             </p>
 
                             <DialogFooter>

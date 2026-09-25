@@ -9,6 +9,7 @@ use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 /**
@@ -18,11 +19,34 @@ class VisitorAuthorizationFactory extends Factory
 {
     protected $model = VisitorAuthorization::class;
 
+    /** @return array<string, mixed> */
+    protected function getRawAttributes(?Model $parent): array
+    {
+        $attributes = parent::getRawAttributes($parent);
+
+        // Resolve an explicitly supplied unit factory before the visitor's dependent closure.
+        return $attributes['unit_id'] instanceof Factory
+            ? ['unit_id' => $attributes['unit_id'], ...$attributes]
+            : $attributes;
+    }
+
     public function definition(): array
     {
         return [
-            'visitor_id' => Visitor::factory(),
-            'unit_id' => Unit::factory(),
+            'visitor_id' => fn (array $attributes): int => Visitor::factory()->create([
+                'unit_id' => value($attributes['unit_id'], $attributes),
+            ])->id,
+            'unit_id' => function (array $attributes): int {
+                $visitor = $attributes['visitor_id'] ?? null;
+
+                if ($visitor instanceof Visitor) {
+                    return $visitor->unit_id;
+                }
+
+                return is_numeric($visitor)
+                    ? Visitor::withTrashed()->findOrFail($visitor)->unit_id
+                    : Unit::factory()->create()->id;
+            },
             'resident_id' => function (array $attributes): int {
                 return User::factory()->morador()->create([
                     'unit_id' => $attributes['unit_id'],

@@ -20,7 +20,7 @@ class VisitorAuthorizationSeeder extends Seeder
             ->where('role', UserRole::Morador)
             ->whereNotNull('unit_id')
             ->first();
-        $visitor = Visitor::query()->first();
+        $visitor = $resident === null ? null : Visitor::query()->where('unit_id', $resident->unit_id)->first();
 
         if (! $resident || ! $visitor) {
             $this->command->warn('Crie um morador vinculado a uma unidade e visitantes antes das autorizações.');

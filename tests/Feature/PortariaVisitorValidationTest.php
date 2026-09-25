@@ -8,8 +8,11 @@ use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
+use App\Services\VisitorQrCodeService;
+use App\Services\VisitorService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PortariaVisitorValidationTest extends TestCase
@@ -69,6 +72,7 @@ class PortariaVisitorValidationTest extends TestCase
         ]);
         $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
         $visitor = Visitor::factory()->create([
+            'unit_id' => $unit->id,
             'name' => 'João Visitante',
             'cpf' => '529.982.247-25',
             'phone' => '(65) 99999-9999',
@@ -120,7 +124,7 @@ class PortariaVisitorValidationTest extends TestCase
 
         $this->actingAs($doorman)
             ->postJson(route('portaria.visitor-authorizations.validate'), [
-                'access_code' => 'csa_codigo_desconhecido',
+                'access_code' => 'csa_'.str_repeat('A', 32),
             ])
             ->assertOk()
             ->assertExactJson([
@@ -138,7 +142,7 @@ class PortariaVisitorValidationTest extends TestCase
         $doorman = User::factory()->porteiro()->create();
         $authorizations = [
             'pending_data' => VisitorAuthorization::factory()->pendingData()->create([
-                'access_code' => 'csa_pending_validation',
+                'access_code' => 'csa_'.str_repeat('P', 32),
             ]),
             'future' => VisitorAuthorization::factory()->future()->create(),
             'expired' => VisitorAuthorization::factory()->expired()->create(),
@@ -171,6 +175,79 @@ class PortariaVisitorValidationTest extends TestCase
             ->postJson(route('portaria.visitor-authorizations.validate'))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('access_code');
+    }
+
+    #[DataProvider('invalidAccessCodes')]
+    public function test_validation_and_entry_reject_malformed_access_codes(mixed $accessCode): void
+    {
+        $this->actingAs(User::factory()->porteiro()->create());
+
+        foreach (['portaria.visitor-authorizations.validate', 'portaria.visitor-accesses.store'] as $routeName) {
+            $this->postJson(route($routeName), ['access_code' => $accessCode])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors('access_code');
+        }
+
+        $this->assertDatabaseCount('visitor_accesses', 0);
+    }
+
+    /** @return array<string, array{mixed}> */
+    public static function invalidAccessCodes(): array
+    {
+        return [
+            'wrong prefix' => ['abc_'.str_repeat('A', 32)],
+            'uppercase prefix' => ['CSA_'.str_repeat('A', 32)],
+            'too short' => ['csa_'.str_repeat('A', 31)],
+            'too long' => ['csa_'.str_repeat('A', 33)],
+            'internal whitespace' => ['csa_'.str_repeat('A', 30).' B'],
+            'punctuation' => ['csa_'.str_repeat('A', 31).'_'],
+            'non ascii' => ['csa_'.str_repeat('A', 31).'é'],
+            'oversized string' => [str_repeat('A', 10000)],
+            'empty' => [''],
+            'whitespace only' => [" \t\n "],
+            'array' => [['csa_'.str_repeat('A', 32)]],
+            'integer' => [123],
+            'null' => [null],
+        ];
+    }
+
+    public function test_generated_qr_payload_is_accepted_by_validation_and_entry_with_external_whitespace(): void
+    {
+        $code = app(VisitorService::class)->generateVisitorCode();
+        $authorization = VisitorAuthorization::factory()->active()->create(['access_code' => $code]);
+        $qrPayload = app(VisitorQrCodeService::class)->payload($authorization);
+
+        $this->assertMatchesRegularExpression('/\Acsa_[A-Za-z0-9]{32}\z/', $code);
+        $this->assertSame($code, $qrPayload);
+
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->postJson(route('portaria.visitor-authorizations.validate'), [
+                'access_code' => " \t{$qrPayload}\n ",
+            ])
+            ->assertOk()
+            ->assertJsonPath('allowed', true);
+
+        $this->postJson(route('portaria.visitor-accesses.store'), [
+            'access_code' => " \t{$qrPayload}\n ",
+        ])->assertCreated();
+
+        $this->assertSame($code, $authorization->refresh()->access_code);
+        $this->assertSame($authorization->id, VisitorAccess::query()->sole()->visitor_authorization_id);
+    }
+
+    public function test_access_code_case_is_preserved(): void
+    {
+        $code = 'csa_'.str_repeat('aB1', 10).'Z9';
+        VisitorAuthorization::factory()->active()->create(['access_code' => $code]);
+        $this->actingAs(User::factory()->porteiro()->create());
+
+        $this->postJson(route('portaria.visitor-authorizations.validate'), [
+            'access_code' => strtolower($code),
+        ])->assertOk()->assertJsonPath('reason', 'not_found');
+
+        $this->postJson(route('portaria.visitor-authorizations.validate'), [
+            'access_code' => $code,
+        ])->assertOk()->assertJsonPath('allowed', true);
     }
 
     public function test_guest_cannot_validate_an_authorization(): void
