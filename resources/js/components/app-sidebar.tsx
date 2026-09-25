@@ -24,6 +24,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
+import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-access-history';
@@ -64,6 +65,11 @@ export function AppSidebar() {
                       title: 'Visitantes',
                       href: visitorsIndex(),
                       icon: ContactRound,
+                  },
+                  {
+                      title: 'Áreas comuns',
+                      href: residentCommonAreasIndex(),
+                      icon: Building2,
                   },
               ]
             : []),

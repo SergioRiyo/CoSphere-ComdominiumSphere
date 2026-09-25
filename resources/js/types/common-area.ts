@@ -25,3 +25,12 @@ export type PaginatedCommonAreas = {
     prev_page_url: string | null;
     next_page_url: string | null;
 };
+
+export type AvailabilityPeriod = { start: string | null; end: string | null };
+
+export type CommonAreaAvailability = {
+    area: Omit<CommonArea, 'status'>;
+    date: string;
+    occupied_periods: AvailabilityPeriod[];
+    free_periods: AvailabilityPeriod[];
+};
