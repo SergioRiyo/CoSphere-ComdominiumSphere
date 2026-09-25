@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Building2,
     ClipboardCheck,
     ContactRound,
     History,
@@ -20,6 +21,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
@@ -48,6 +50,11 @@ export function AppSidebar() {
                       title: 'Gestão de usuários',
                       href: usersIndex(),
                       icon: Users,
+                  },
+                  {
+                      title: 'Áreas comuns',
+                      href: commonAreasIndex(),
+                      icon: Building2,
                   },
               ]
             : []),

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\PortariaVisitorAccessController;
@@ -27,6 +28,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
             ->name('users.status.update');
 
         Route::resource('users', UserController::class)->only(['index', 'store', 'update']);
+        Route::resource('common-areas', CommonAreaController::class)->only(['index', 'store', 'update']);
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {

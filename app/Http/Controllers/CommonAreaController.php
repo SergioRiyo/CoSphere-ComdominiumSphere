@@ -5,62 +5,40 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCommonAreaRequest;
 use App\Http\Requests\UpdateCommonAreaRequest;
 use App\Models\CommonArea;
+use Illuminate\Http\RedirectResponse;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class CommonAreaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): Response
     {
-        //
+        return Inertia::render('admin/common-areas', [
+            'areas' => CommonArea::query()->orderBy('name')->orderBy('id')->paginate(15),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function store(StoreCommonAreaRequest $request): RedirectResponse
     {
-        //
+        CommonArea::create($request->validated());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Área cadastrada com sucesso.',
+        ]);
+
+        return back();
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreCommonAreaRequest $request)
+    public function update(UpdateCommonAreaRequest $request, CommonArea $commonArea): RedirectResponse
     {
-        //
-    }
+        $commonArea->update($request->validated());
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CommonArea $commonArea)
-    {
-        //
-    }
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Área atualizada com sucesso.',
+        ]);
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(CommonArea $commonArea)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateCommonAreaRequest $request, CommonArea $commonArea)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CommonArea $commonArea)
-    {
-        //
+        return back();
     }
 }
