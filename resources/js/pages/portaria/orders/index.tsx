@@ -2,6 +2,7 @@ import { Form, Head, Link, router } from '@inertiajs/react';
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { OrderPickupButton } from '@/components/order-pickup-button';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -14,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes/portaria';
-import { index, receive, store } from '@/routes/portaria/orders';
+import { index, pickup, receive, store } from '@/routes/portaria/orders';
 
 type Unit = { id: number; block: string | null; number: string };
 type ExpectedOrder = {
@@ -28,6 +29,21 @@ type ExpectedOrder = {
     can_receive: boolean;
 };
 type Props = {
+    timezone: string;
+    receivedOrders: {
+        data: {
+            id: number;
+            description: string | null;
+            tracking_code: string | null;
+            unit: Unit;
+            resident_name: string | null;
+            received_at: string | null;
+            can_pickup: boolean;
+        }[];
+        current_page: number;
+        last_page: number;
+        total: number;
+    };
     orders: {
         data: ExpectedOrder[];
         current_page: number;
@@ -46,6 +62,8 @@ const selectClass =
     'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 
 export default function PortariaOrdersPage({
+    receivedOrders,
+    timezone,
     orders,
     unitOptions,
     residentOptions,
@@ -167,6 +185,134 @@ export default function PortariaOrdersPage({
 
                 <section
                     className="flex flex-col gap-4"
+                    aria-labelledby="pickup-heading"
+                >
+                    <h2 id="pickup-heading" className="text-xl font-semibold">
+                        Aguardando retirada ({receivedOrders.total})
+                    </h2>
+                    {receivedOrders.data.length === 0 && (
+                        <p className="rounded-lg border p-6 text-sm text-muted-foreground">
+                            Nenhuma encomenda aguardando retirada para esta
+                            busca.
+                        </p>
+                    )}
+                    <ul className="grid gap-4 lg:grid-cols-2">
+                        {receivedOrders.data.map((order) => (
+                            <li key={order.id}>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>
+                                            Encomenda #{order.id}
+                                        </CardTitle>
+                                        <p className="text-sm">
+                                            {unitLabel(order.unit)} ·{' '}
+                                            {order.resident_name}
+                                        </p>
+                                    </CardHeader>
+                                    <CardContent className="flex flex-col gap-3 text-sm">
+                                        <p className="break-words whitespace-pre-wrap">
+                                            {order.description ||
+                                                'Sem descrição'}
+                                        </p>
+                                        <p>
+                                            Rastreio:{' '}
+                                            {order.tracking_code ||
+                                                'Não informado'}
+                                        </p>
+                                        <p>
+                                            Recebida em:{' '}
+                                            {order.received_at
+                                                ? new Intl.DateTimeFormat(
+                                                      'pt-BR',
+                                                      {
+                                                          dateStyle: 'short',
+                                                          timeStyle: 'short',
+                                                          timeZone: timezone,
+                                                      },
+                                                  ).format(
+                                                      new Date(
+                                                          order.received_at,
+                                                      ),
+                                                  )
+                                                : 'Data não informada'}
+                                        </p>
+                                        {order.can_pickup ? (
+                                            <OrderPickupButton
+                                                action={pickup.url(order.id)}
+                                                orderId={order.id}
+                                                label="Registrar retirada"
+                                            />
+                                        ) : (
+                                            <p className="text-destructive">
+                                                Confirmação indisponível:
+                                                verifique o vínculo do
+                                                destinatário com a
+                                                administração.
+                                            </p>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </li>
+                        ))}
+                    </ul>
+                    {receivedOrders.last_page > 1 && (
+                        <nav
+                            aria-label="Paginação de encomendas aguardando retirada"
+                            className="flex items-center justify-between gap-3"
+                        >
+                            <p className="text-sm">
+                                Página {receivedOrders.current_page} de{' '}
+                                {receivedOrders.last_page}
+                            </p>
+                            <div className="flex gap-2">
+                                {receivedOrders.current_page > 1 && (
+                                    <Button variant="outline" asChild>
+                                        <Link
+                                            href={index({
+                                                query: {
+                                                    ...filters,
+                                                    page: orders.current_page,
+                                                    received_page:
+                                                        receivedOrders.current_page -
+                                                        1,
+                                                },
+                                            })}
+                                            preserveScroll
+                                            onHttpException={handleFailure}
+                                            onNetworkError={handleFailure}
+                                        >
+                                            Anterior
+                                        </Link>
+                                    </Button>
+                                )}
+                                {receivedOrders.current_page <
+                                    receivedOrders.last_page && (
+                                    <Button variant="outline" asChild>
+                                        <Link
+                                            href={index({
+                                                query: {
+                                                    ...filters,
+                                                    page: orders.current_page,
+                                                    received_page:
+                                                        receivedOrders.current_page +
+                                                        1,
+                                                },
+                                            })}
+                                            preserveScroll
+                                            onHttpException={handleFailure}
+                                            onNetworkError={handleFailure}
+                                        >
+                                            Próxima
+                                        </Link>
+                                    </Button>
+                                )}
+                            </div>
+                        </nav>
+                    )}
+                </section>
+
+                <section
+                    className="flex flex-col gap-4"
                     aria-labelledby="expected-heading"
                     aria-busy={busy}
                 >
@@ -281,7 +427,12 @@ export default function PortariaOrdersPage({
                                         >
                                             <Link
                                                 href={index({
-                                                    query: { ...filters, page },
+                                                    query: {
+                                                        ...filters,
+                                                        page,
+                                                        received_page:
+                                                            receivedOrders.current_page,
+                                                    },
                                                 })}
                                                 preserveScroll
                                                 onHttpException={handleFailure}
