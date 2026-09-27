@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexOrderHistoryRequest;
 use App\Http\Requests\PickupOrderRequest;
 use App\Http\Requests\StoreExpectedOrderRequest;
 use App\Models\Order;
+use App\Services\OrderHistoryService;
 use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,33 +15,18 @@ use Inertia\Response;
 
 class ResidentOrderController extends Controller
 {
-    public function __construct(private readonly OrderService $orderService) {}
+    public function __construct(private readonly OrderService $orderService, private readonly OrderHistoryService $historyService) {}
 
-    public function index(Request $request): Response
+    public function index(IndexOrderHistoryRequest $request): Response
     {
         $unit = $request->user()->unit;
 
         return Inertia::render('morador/orders/index', [
             'unit' => $unit?->only(['id', 'block', 'number']),
             'timezone' => config('app.timezone'),
-            'orders' => Order::query()
-                ->with(['resident:id,unit_id,role,is_active', 'pickupConfirmedBy:id,name'])
-                ->where('unit_id', $unit?->id)
-                ->orderByDesc('id')
-                ->paginate(10)
-                ->through(static fn (Order $order): array => [
-                    'id' => $order->id,
-                    'description' => $order->description,
-                    'carrier' => $order->carrier,
-                    'sender' => $order->sender,
-                    'tracking_code' => $order->tracking_code,
-                    'status' => $order->status->value,
-                    'status_label' => $order->status->label(),
-                    'received_at' => $order->received_at?->toISOString(),
-                    'picked_up_at' => $order->picked_up_at?->toISOString(),
-                    'pickup_confirmed_by' => $order->pickupConfirmedBy?->name,
-                    'can_pickup' => $order->canConfirmPickup(),
-                ]),
+            'orders' => $this->historyService->paginate($request->user(), $request->validated()),
+            'filters' => $this->historyService->filters($request->validated()),
+            'statusOptions' => $this->historyService->statusOptions(),
         ]);
     }
 
@@ -53,6 +40,15 @@ class ResidentOrderController extends Controller
         ]);
 
         return to_route('morador.orders.index');
+    }
+
+    public function show(Request $request, int $order): Response
+    {
+        return Inertia::render('orders/show', [
+            'order' => $this->historyService->details($request->user(), $order),
+            'timezone' => config('app.timezone'),
+            'portaria' => false,
+        ]);
     }
 
     public function pickup(PickupOrderRequest $request, Order $order): RedirectResponse

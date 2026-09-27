@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
+use App\Http\Controllers\PortariaOrderHistoryController;
 use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
@@ -36,7 +37,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
-        Route::resource('orders', ResidentOrderController::class)->only(['index', 'store']);
+        Route::resource('orders', ResidentOrderController::class)->only(['index', 'store', 'show'])->whereNumber('order');
         Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
@@ -68,6 +69,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
         Route::resource('orders', PortariaOrderController::class)->only(['index', 'store']);
+        Route::get('order-history', [PortariaOrderHistoryController::class, 'index'])->name('order-history.index');
+        Route::get('orders/{order}', [PortariaOrderHistoryController::class, 'show'])->whereNumber('order')->name('orders.show');
         Route::patch('orders/{order}/pickup', [PortariaOrderController::class, 'pickup'])->name('orders.pickup');
         Route::patch('orders/{order}/receive', [PortariaOrderController::class, 'receive'])->name('orders.receive');
         Route::get('dashboard', [DashboardController::class, 'porteiro'])->name('dashboard');

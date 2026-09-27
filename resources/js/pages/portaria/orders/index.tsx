@@ -15,6 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes/portaria';
+import { index as historyIndex } from '@/routes/portaria/order-history';
 import { index, pickup, receive, store } from '@/routes/portaria/orders';
 
 type Unit = { id: number; block: string | null; number: string };
@@ -101,6 +102,13 @@ export default function PortariaOrdersPage({
     return (
         <>
             <Head title="Recebimento de encomendas" />
+            <div className="px-4 pt-4 sm:px-6">
+                <Button variant="outline" asChild>
+                    <Link href={historyIndex()}>
+                        Consultar histórico de encomendas
+                    </Link>
+                </Button>
+            </div>
             <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
                 <header className="flex flex-col gap-2">
                     <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">

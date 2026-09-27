@@ -31,6 +31,7 @@ import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
+import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
 import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
 import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-access-history';
 import { index as visitorAccessesIndex } from '@/routes/portaria/visitor-accesses';
@@ -94,6 +95,11 @@ export function AppSidebar() {
                       title: 'Receber encomendas',
                       href: portariaOrdersIndex(),
                       icon: Package,
+                  },
+                  {
+                      title: 'Histórico de encomendas',
+                      href: orderHistoryIndex(),
+                      icon: History,
                   },
                   {
                       title: 'Validar visitante',
