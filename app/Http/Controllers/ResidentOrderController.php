@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PickupOrderRequest;
 use App\Http\Requests\StoreExpectedOrderRequest;
 use App\Models\Order;
 use App\Services\OrderService;
@@ -20,7 +21,9 @@ class ResidentOrderController extends Controller
 
         return Inertia::render('morador/orders/index', [
             'unit' => $unit?->only(['id', 'block', 'number']),
+            'timezone' => config('app.timezone'),
             'orders' => Order::query()
+                ->with(['resident:id,unit_id,role,is_active', 'pickupConfirmedBy:id,name'])
                 ->where('unit_id', $unit?->id)
                 ->orderByDesc('id')
                 ->paginate(10)
@@ -32,6 +35,10 @@ class ResidentOrderController extends Controller
                     'tracking_code' => $order->tracking_code,
                     'status' => $order->status->value,
                     'status_label' => $order->status->label(),
+                    'received_at' => $order->received_at?->toISOString(),
+                    'picked_up_at' => $order->picked_up_at?->toISOString(),
+                    'pickup_confirmed_by' => $order->pickupConfirmedBy?->name,
+                    'can_pickup' => $order->canConfirmPickup(),
                 ]),
         ]);
     }
@@ -46,5 +53,13 @@ class ResidentOrderController extends Controller
         ]);
 
         return to_route('morador.orders.index');
+    }
+
+    public function pickup(PickupOrderRequest $request, Order $order): RedirectResponse
+    {
+        $this->orderService->pickup($order, $request->user());
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Retirada da encomenda #{$order->id} confirmada."]);
+
+        return back();
     }
 }

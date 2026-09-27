@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\IndexPortariaOrderRequest;
+use App\Http\Requests\PickupOrderRequest;
 use App\Http\Requests\ReceiveOrderRequest;
 use App\Http\Requests\StoreUnexpectedOrderRequest;
 use App\Models\Order;
@@ -26,6 +27,8 @@ class PortariaOrderController extends Controller
 
         return Inertia::render('portaria/orders/index', [
             'orders' => $this->queryService->expectedOrders($filters),
+            'receivedOrders' => $this->queryService->receivedOrders($filters),
+            'timezone' => config('app.timezone'),
             'unitOptions' => $this->queryService->unitOptions(),
             'residentOptions' => $this->queryService->residentOptions($unitId),
             'filters' => ['unit_id' => $unitId, 'search' => $filters['search'] ?? ''],
@@ -46,5 +49,13 @@ class PortariaOrderController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => "Encomenda #{$order->id} cadastrada e recebida. Destinatário notificado."]);
 
         return to_route('portaria.orders.index', ['unit_id' => $order->unit_id]);
+    }
+
+    public function pickup(PickupOrderRequest $request, Order $order): RedirectResponse
+    {
+        $this->orderService->pickup($order, $request->user());
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Retirada da encomenda #{$order->id} registrada."]);
+
+        return back();
     }
 }

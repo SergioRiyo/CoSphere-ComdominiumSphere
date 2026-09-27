@@ -124,12 +124,17 @@ class OrderService
     {
         return DB::transaction(function () use ($order, $user) {
             $order = Order::query()
-                ->with('resident')
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
-            $this->ensureOrderResidentMatchesUnit($order);
+            $users = User::query()->whereIn('id', [$user->id, $order->resident_id])
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $user = $users->get($user->id);
+            abort_unless($user instanceof User, 403);
             $this->ensureUserCanPickUpOrder($order, $user);
+            $order->setRelation('resident', $users->get($order->resident_id));
+            $this->ensureOrderResidentMatchesUnit($order);
+            $this->ensureResidentCanReceiveOrders($order->resident);
             $this->ensureCanBePickedUp($order);
 
             $order->update([
@@ -250,24 +255,20 @@ class OrderService
 
         if (! $resident instanceof User || (int) $resident->unit_id !== (int) $order->unit_id) {
             throw ValidationException::withMessages([
-                'order' => 'O destinatário não pertence mais à unidade original. Confirme o destino da encomenda antes de registrar um novo recebimento.',
+                'order' => 'O destinatário não pertence mais à unidade original. Confirme o vínculo com a administração antes de continuar.',
             ]);
         }
     }
 
     private function ensureUserCanPickUpOrder(Order $order, User $user): void
     {
-        if ($user->unit_id === null) {
-            throw ValidationException::withMessages([
-                'user' => 'O usuario precisa estar vinculado a unidade da encomenda.',
-            ]);
+        abort_unless($user->is_active, 403);
+        if ($user->role === UserRole::Porteiro) {
+            return;
         }
 
-        if ((int) $user->unit_id !== (int) $order->unit_id) {
-            throw ValidationException::withMessages([
-                'user' => 'Somente moradores da unidade da encomenda podem retira-la.',
-            ]);
-        }
+        abort_unless($user->role === UserRole::Morador, 403);
+        abort_unless($user->unit_id !== null && (int) $user->unit_id === (int) $order->unit_id, 404);
     }
 
     private function notifyResidentOrderReceived(Order $order): void

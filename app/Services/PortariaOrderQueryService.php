@@ -51,6 +51,33 @@ class PortariaOrderQueryService
         return Unit::query()->orderBy('block')->orderBy('number')->get(['id', 'block', 'number']);
     }
 
+    public function receivedOrders(array $filters): LengthAwarePaginator
+    {
+        $query = Order::query()->with(['unit:id,block,number', 'resident:id,name,unit_id,role,is_active'])
+            ->where('status', OrderStatus::ReceivedAtGate);
+        if (! empty($filters['unit_id'])) {
+            $query->where('unit_id', $filters['unit_id']);
+        }
+        if (isset($filters['search']) && trim($filters['search']) !== '') {
+            $search = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], trim($filters['search'])).'%';
+            $query->where(function (Builder $query) use ($search): void {
+                $query->whereRaw("LOWER(tracking_code) LIKE LOWER(?) ESCAPE '!'", [$search])
+                    ->orWhereRaw("LOWER(sender) LIKE LOWER(?) ESCAPE '!'", [$search]);
+            });
+        }
+
+        return $query->orderBy('received_at')->orderBy('id')->paginate(10, ['*'], 'received_page')->withQueryString()
+            ->through(static fn (Order $order): array => [
+                'id' => $order->id,
+                'description' => $order->description,
+                'tracking_code' => $order->tracking_code,
+                'unit' => $order->unit->only(['id', 'block', 'number']),
+                'resident_name' => $order->resident?->name,
+                'received_at' => $order->received_at?->toISOString(),
+                'can_pickup' => $order->canConfirmPickup(),
+            ]);
+    }
+
     public function residentOptions(?int $unitId): Collection
     {
         if ($unitId === null) {

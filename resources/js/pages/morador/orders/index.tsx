@@ -2,13 +2,14 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { OrderPickupButton } from '@/components/order-pickup-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes/morador';
-import { index, store } from '@/routes/morador/orders';
+import { index, pickup, store } from '@/routes/morador/orders';
 
 type Order = {
     id: number;
@@ -18,9 +19,14 @@ type Order = {
     tracking_code: string | null;
     status: string;
     status_label: string;
+    received_at: string | null;
+    picked_up_at: string | null;
+    pickup_confirmed_by: string | null;
+    can_pickup: boolean;
 };
 
 type OrdersPageProps = {
+    timezone: string;
     unit: { id: number; block: string | null; number: string } | null;
     orders: {
         data: Order[];
@@ -30,7 +36,11 @@ type OrdersPageProps = {
     };
 };
 
-export default function OrdersPage({ unit, orders }: OrdersPageProps) {
+export default function OrdersPage({
+    unit,
+    orders,
+    timezone,
+}: OrdersPageProps) {
     const [requestError, setRequestError] = useState<string | null>(null);
     const handleFailure = () => {
         setRequestError(
@@ -216,6 +226,70 @@ export default function OrdersPage({ unit, orders }: OrdersPageProps) {
                                                 {order.description ||
                                                     'Sem descrição'}
                                             </p>
+                                            {order.received_at && (
+                                                <p>
+                                                    Recebida em{' '}
+                                                    {new Intl.DateTimeFormat(
+                                                        'pt-BR',
+                                                        {
+                                                            dateStyle: 'short',
+                                                            timeStyle: 'short',
+                                                            timeZone: timezone,
+                                                        },
+                                                    ).format(
+                                                        new Date(
+                                                            order.received_at,
+                                                        ),
+                                                    )}
+                                                </p>
+                                            )}
+                                            {order.picked_up_at && (
+                                                <div className="flex flex-col gap-1">
+                                                    <p>
+                                                        Retirada em{' '}
+                                                        {new Intl.DateTimeFormat(
+                                                            'pt-BR',
+                                                            {
+                                                                dateStyle:
+                                                                    'short',
+                                                                timeStyle:
+                                                                    'short',
+                                                                timeZone:
+                                                                    timezone,
+                                                            },
+                                                        ).format(
+                                                            new Date(
+                                                                order.picked_up_at,
+                                                            ),
+                                                        )}
+                                                    </p>
+                                                    <p>
+                                                        Confirmada por:{' '}
+                                                        {order.pickup_confirmed_by ||
+                                                            'Usuário indisponível'}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {order.can_pickup && (
+                                                <OrderPickupButton
+                                                    action={pickup.url(
+                                                        order.id,
+                                                    )}
+                                                    orderId={order.id}
+                                                    label="Confirmar retirada"
+                                                />
+                                            )}
+                                            {order.status ===
+                                                'received_at_gate' &&
+                                                !order.can_pickup && (
+                                                    <p className="text-destructive">
+                                                        Confirmação
+                                                        indisponível: verifique
+                                                        o vínculo do
+                                                        destinatário com a
+                                                        administração.
+                                                    </p>
+                                                )}
                                             <dl className="grid gap-2 break-words">
                                                 <div>
                                                     <dt className="text-muted-foreground">

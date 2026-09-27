@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -51,8 +52,18 @@ class Order extends Model
         return $this->belongsTo(User::class, 'received_by_id');
     }
 
-    public function pickedUpBy(): BelongsTo
+    /** User who recorded the confirmation, not necessarily the physical collector. */
+    public function pickupConfirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'picked_up_by_id');
+    }
+
+    public function canConfirmPickup(): bool
+    {
+        return $this->status === OrderStatus::ReceivedAtGate
+            && $this->resident !== null
+            && $this->resident->is_active
+            && $this->resident->role === UserRole::Morador
+            && $this->resident->unit_id === $this->unit_id;
     }
 }
