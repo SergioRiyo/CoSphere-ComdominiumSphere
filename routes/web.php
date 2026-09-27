@@ -3,6 +3,7 @@
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
@@ -33,6 +34,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
+            ->whereNumber('notification')
+            ->name('notifications.read');
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
         Route::get('common-areas', [ResidentCommonAreaController::class, 'index'])->name('common-areas.index');
         Route::get('common-areas/{commonArea}/availability', [ResidentCommonAreaController::class, 'availability'])

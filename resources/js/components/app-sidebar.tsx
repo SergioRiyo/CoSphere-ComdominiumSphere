@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Bell,
     Building2,
     ClipboardCheck,
     ContactRound,
@@ -25,6 +26,7 @@ import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-access-history';
@@ -70,6 +72,11 @@ export function AppSidebar() {
                       title: 'Áreas comuns',
                       href: residentCommonAreasIndex(),
                       icon: Building2,
+                  },
+                  {
+                      title: 'Notificações',
+                      href: notificationsIndex(),
+                      icon: Bell,
                   },
               ]
             : []),
