@@ -4,6 +4,7 @@ use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PortariaOrderController;
 use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
@@ -65,6 +66,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
+        Route::resource('orders', PortariaOrderController::class)->only(['index', 'store']);
+        Route::patch('orders/{order}/receive', [PortariaOrderController::class, 'receive'])->name('orders.receive');
         Route::get('dashboard', [DashboardController::class, 'porteiro'])->name('dashboard');
         Route::get('visitor-access-history', [PortariaVisitorAccessHistoryController::class, 'index'])
             ->name('visitor-access-history.index');
