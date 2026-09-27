@@ -6,6 +6,7 @@ import {
     ContactRound,
     History,
     LayoutGrid,
+    Package,
     Users,
     UsersRound,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as notificationsIndex } from '@/routes/morador/notifications';
+import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-access-history';
@@ -77,6 +79,11 @@ export function AppSidebar() {
                       title: 'Notificações',
                       href: notificationsIndex(),
                       icon: Bell,
+                  },
+                  {
+                      title: 'Encomendas',
+                      href: ordersIndex(),
+                      icon: Package,
                   },
               ]
             : []),
