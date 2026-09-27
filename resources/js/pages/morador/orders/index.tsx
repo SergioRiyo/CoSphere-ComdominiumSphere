@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { Package } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { OrderHistoryFilterForm } from '@/components/order-history-filters';
 import { OrderPickupButton } from '@/components/order-pickup-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes/morador';
-import { index, pickup, store } from '@/routes/morador/orders';
+import { index, pickup, show, store } from '@/routes/morador/orders';
+import type { OrderHistoryFilters } from '@/types/order-history';
 
 type Order = {
     id: number;
@@ -23,9 +25,14 @@ type Order = {
     picked_up_at: string | null;
     pickup_confirmed_by: string | null;
     can_pickup: boolean;
+    created_at: string | null;
+    available_for_pickup: boolean;
+    received_by: string | null;
 };
 
 type OrdersPageProps = {
+    filters: OrderHistoryFilters;
+    statusOptions: { value: string; label: string }[];
     timezone: string;
     unit: { id: number; block: string | null; number: string } | null;
     orders: {
@@ -40,6 +47,8 @@ export default function OrdersPage({
     unit,
     orders,
     timezone,
+    filters,
+    statusOptions,
 }: OrdersPageProps) {
     const [requestError, setRequestError] = useState<string | null>(null);
     const handleFailure = () => {
@@ -204,24 +213,80 @@ export default function OrdersPage({
                     <h2 id="orders-heading" className="text-xl font-semibold">
                         Encomendas da unidade
                     </h2>
+                    <OrderHistoryFilterForm
+                        action={index.url()}
+                        filters={filters}
+                        statusOptions={statusOptions}
+                    />
                     {orders.data.length === 0 ? (
                         <p className="rounded-lg border p-6 text-sm text-muted-foreground">
-                            Nenhuma encomenda cadastrada nesta página.
+                            {Object.values(filters).some(Boolean)
+                                ? 'Nenhuma encomenda encontrada para os filtros informados.'
+                                : 'Nenhuma encomenda cadastrada nesta página.'}
                         </p>
                     ) : (
                         <ul className="grid gap-4 lg:grid-cols-2">
                             {orders.data.map((order) => (
                                 <li key={order.id}>
-                                    <Card className="h-full">
+                                    <Card
+                                        className={
+                                            order.available_for_pickup
+                                                ? 'h-full border-primary/40'
+                                                : 'h-full'
+                                        }
+                                    >
                                         <CardHeader>
                                             <CardTitle>
                                                 Encomenda #{order.id}
                                             </CardTitle>
-                                            <Badge variant="secondary">
+                                            <Badge
+                                                variant={
+                                                    order.available_for_pickup
+                                                        ? 'default'
+                                                        : 'secondary'
+                                                }
+                                            >
                                                 {order.status_label}
                                             </Badge>
+                                            {order.available_for_pickup && (
+                                                <p className="text-sm font-semibold text-primary">
+                                                    Disponível para retirada
+                                                </p>
+                                            )}
                                         </CardHeader>
                                         <CardContent className="flex flex-col gap-3 text-sm">
+                                            <Button
+                                                variant="outline"
+                                                className="self-start"
+                                                asChild
+                                            >
+                                                <Link href={show(order.id)}>
+                                                    Ver detalhes
+                                                </Link>
+                                            </Button>
+                                            {order.created_at && (
+                                                <p>
+                                                    Cadastrada em{' '}
+                                                    {new Intl.DateTimeFormat(
+                                                        'pt-BR',
+                                                        {
+                                                            dateStyle: 'short',
+                                                            timeStyle: 'short',
+                                                            timeZone: timezone,
+                                                        },
+                                                    ).format(
+                                                        new Date(
+                                                            order.created_at,
+                                                        ),
+                                                    )}
+                                                </p>
+                                            )}
+                                            {order.received_by && (
+                                                <p>
+                                                    Recebida por:{' '}
+                                                    {order.received_by}
+                                                </p>
+                                            )}
                                             <p className="break-words whitespace-pre-wrap">
                                                 {order.description ||
                                                     'Sem descrição'}
@@ -342,6 +407,7 @@ export default function OrdersPage({
                                                 query: {
                                                     page:
                                                         orders.current_page - 1,
+                                                    ...filters,
                                                 },
                                             })}
                                             preserveState
@@ -360,6 +426,7 @@ export default function OrdersPage({
                                                 query: {
                                                     page:
                                                         orders.current_page + 1,
+                                                    ...filters,
                                                 },
                                             })}
                                             preserveState
