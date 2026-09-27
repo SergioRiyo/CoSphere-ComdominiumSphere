@@ -27,6 +27,7 @@ class IndexPortariaOrderRequest extends FormRequest
             'unit_id' => ['nullable', 'integer', 'exists:units,id'],
             'search' => ['nullable', 'string', 'max:255'],
             'page' => ['nullable', 'integer', 'min:1'],
+            'received_page' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

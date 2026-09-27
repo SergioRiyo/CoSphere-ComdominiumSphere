@@ -37,6 +37,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
         Route::resource('orders', ResidentOrderController::class)->only(['index', 'store']);
+        Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
             ->whereNumber('notification')
@@ -67,6 +68,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('portaria')->name('portaria.')->middleware('role:porteiro')->group(function () {
         Route::resource('orders', PortariaOrderController::class)->only(['index', 'store']);
+        Route::patch('orders/{order}/pickup', [PortariaOrderController::class, 'pickup'])->name('orders.pickup');
         Route::patch('orders/{order}/receive', [PortariaOrderController::class, 'receive'])->name('orders.receive');
         Route::get('dashboard', [DashboardController::class, 'porteiro'])->name('dashboard');
         Route::get('visitor-access-history', [PortariaVisitorAccessHistoryController::class, 'index'])
