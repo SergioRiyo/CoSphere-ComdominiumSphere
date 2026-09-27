@@ -9,6 +9,7 @@ use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ResidentCommonAreaController;
+use App\Http\Controllers\ResidentOrderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
 use App\Http\Controllers\VisitorInvitationController;
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::resource('orders', ResidentOrderController::class)->only(['index', 'store']);
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
             ->whereNumber('notification')

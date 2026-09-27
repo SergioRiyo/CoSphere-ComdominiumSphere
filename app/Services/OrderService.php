@@ -22,10 +22,12 @@ class OrderService
             $resident = $resident->fresh() ?? $resident;
 
             $this->ensureResidentCanCreateExpectedOrder($resident);
-            $this->ensureUnitMatchesResident(
-                resident: $resident,
-                unitId: $data['unit_id'] ?? null,
-            );
+            if (array_key_exists('unit_id', $data)) {
+                $this->ensureUnitMatchesResident(
+                    resident: $resident,
+                    unitId: $data['unit_id'],
+                );
+            }
 
             return Order::create([
                 'unit_id' => $resident->unit_id,
@@ -196,7 +198,7 @@ class OrderService
     {
         $this->ensureResidentCanReceiveOrders($resident);
 
-        if ($resident->unit_id === null) {
+        if ($resident->unit_id === null || ! $resident->unit()->exists()) {
             throw ValidationException::withMessages([
                 'resident' => 'O morador precisa estar vinculado a uma unidade.',
             ]);
