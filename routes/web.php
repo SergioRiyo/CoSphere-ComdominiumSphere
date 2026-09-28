@@ -7,6 +7,7 @@ use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
+use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
@@ -34,6 +35,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
+        Route::post('reservations', [ReservationController::class, 'store'])->name('reservations.store');
         Route::get('common-areas', [ResidentCommonAreaController::class, 'index'])->name('common-areas.index');
         Route::get('common-areas/{commonArea}/availability', [ResidentCommonAreaController::class, 'availability'])
             ->name('common-areas.availability');

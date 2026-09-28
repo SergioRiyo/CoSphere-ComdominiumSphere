@@ -1,6 +1,7 @@
 import { Head, useHttp } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import type { FormEvent } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,10 +17,13 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { dashboard } from '@/routes/morador';
 import { availability, index } from '@/routes/morador/common-areas';
+import { store } from '@/routes/morador/reservations';
 import type {
     AvailabilityPeriod,
     CommonArea,
     CommonAreaAvailability,
+    ReservationConfirmation,
+    ReservationRequest,
 } from '@/types/common-area';
 
 export default function CommonAreasPage({
@@ -34,6 +38,7 @@ export default function CommonAreasPage({
     const [result, setResult] = useState<CommonAreaAvailability | null>(null);
     const [failed, setFailed] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const requestNumber = useRef(0);
     const http = useHttp<Record<string, never>, CommonAreaAvailability>({});
 
@@ -99,6 +104,7 @@ export default function CommonAreasPage({
                                 <div className="grid min-w-0 gap-2">
                                     <Label htmlFor="common-area">Área</Label>
                                     <Select
+                                        disabled={isSubmitting}
                                         value={areaId}
                                         onValueChange={(value) => {
                                             setAreaId(value);
@@ -129,6 +135,7 @@ export default function CommonAreasPage({
                                     </Label>
                                     <Input
                                         id="availability-date"
+                                        disabled={isSubmitting}
                                         type="date"
                                         value={date}
                                         onChange={(event) => {
@@ -175,10 +182,187 @@ export default function CommonAreasPage({
                                 </p>
                             )}
                         </div>
+                        {areaId && date && (
+                            <ReservationForm
+                                key={`${areaId}-${date}`}
+                                areaId={Number(areaId)}
+                                date={date}
+                                disabled={isLoading || failed || !result}
+                                onProcessingChange={setIsSubmitting}
+                                refresh={() => consult(areaId, date)}
+                            />
+                        )}
                     </>
                 )}
             </div>
         </>
+    );
+}
+
+function ReservationForm({
+    areaId,
+    date,
+    disabled,
+    onProcessingChange,
+    refresh,
+}: {
+    areaId: number;
+    date: string;
+    disabled: boolean;
+    onProcessingChange: (processing: boolean) => void;
+    refresh: () => Promise<void>;
+}) {
+    const form = useHttp<ReservationRequest, ReservationConfirmation>({
+        common_area_id: areaId,
+        starts_at: '',
+        ends_at: '',
+    });
+    const [confirmation, setConfirmation] =
+        useState<ReservationConfirmation | null>(null);
+    const [failure, setFailure] = useState<string | null>(null);
+    const submitting = useRef(false);
+
+    async function submit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        if (disabled || submitting.current) {
+            return;
+        }
+
+        submitting.current = true;
+        onProcessingChange(true);
+        setConfirmation(null);
+        setFailure(null);
+        let validationFailed = false;
+        form.transform((data) => ({
+            ...data,
+            starts_at: `${date} ${data.starts_at}`,
+            ends_at: `${date} ${data.ends_at}`,
+        }));
+
+        try {
+            const response = await form.post(store.url(), {
+                onError: () => {
+                    validationFailed = true;
+                },
+            });
+            setConfirmation(response);
+            form.setData({
+                common_area_id: areaId,
+                starts_at: '',
+                ends_at: '',
+            });
+            toast.success(
+                response.status === 'pending'
+                    ? 'Reserva solicitada. Aguardando aprovação.'
+                    : 'Reserva confirmada.',
+            );
+            await refresh();
+        } catch {
+            if (validationFailed) {
+                await refresh();
+            } else {
+                setFailure(
+                    'Não foi possível confirmar o resultado da solicitação. Atualize a disponibilidade antes de tentar novamente.',
+                );
+                await refresh();
+            }
+        } finally {
+            submitting.current = false;
+            onProcessingChange(false);
+        }
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Solicitar reserva</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+                <p className="text-sm text-muted-foreground">
+                    Informe os horários na data selecionada. Períodos já
+                    encerrados não podem ser solicitados. A disponibilidade será
+                    verificada novamente ao enviar.
+                </p>
+                <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid min-w-0 gap-2">
+                        <Label htmlFor="reservation-start">Início</Label>
+                        <Input
+                            id="reservation-start"
+                            type="time"
+                            step="1"
+                            required
+                            value={form.data.starts_at}
+                            disabled={form.processing}
+                            onChange={(event) =>
+                                form.setData('starts_at', event.target.value)
+                            }
+                        />
+                    </div>
+                    <div className="grid min-w-0 gap-2">
+                        <Label htmlFor="reservation-end">Fim</Label>
+                        <Input
+                            id="reservation-end"
+                            type="time"
+                            step="1"
+                            required
+                            value={form.data.ends_at}
+                            disabled={form.processing}
+                            onChange={(event) =>
+                                form.setData('ends_at', event.target.value)
+                            }
+                        />
+                    </div>
+                    {form.hasErrors && (
+                        <ul
+                            role="alert"
+                            className="grid gap-1 text-sm text-destructive sm:col-span-2"
+                        >
+                            {Object.entries(form.errors).map(
+                                ([field, message]) => (
+                                    <li key={field}>{message}</li>
+                                ),
+                            )}
+                        </ul>
+                    )}
+                    {failure && (
+                        <p
+                            role="alert"
+                            className="text-sm text-destructive sm:col-span-2"
+                        >
+                            {failure}
+                        </p>
+                    )}
+                    <Button
+                        type="submit"
+                        disabled={disabled || form.processing}
+                        className="sm:col-span-2 sm:justify-self-start"
+                    >
+                        {form.processing
+                            ? 'Enviando solicitação…'
+                            : 'Solicitar reserva'}
+                    </Button>
+                </form>
+                {confirmation && (
+                    <div
+                        role="status"
+                        className="grid gap-1 rounded-md border bg-muted/30 p-4 text-sm"
+                    >
+                        <p className="font-medium">
+                            {confirmation.status === 'pending'
+                                ? 'Reserva solicitada. Aguardando aprovação.'
+                                : 'Reserva confirmada.'}
+                        </p>
+                        <p>
+                            {confirmation.area} ·{' '}
+                            {confirmation.date.split('-').reverse().join('/')} ·{' '}
+                            {time(confirmation.start)}–{time(confirmation.end)}
+                        </p>
+                        <p>Status: {confirmation.status_label}</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
     );
 }
 
