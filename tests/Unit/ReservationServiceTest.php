@@ -36,7 +36,7 @@ class ReservationServiceTest extends TestCase
 
     public function test_deve_aprovar_reserva_quando_area_nao_exige_aprovacao(): void
     {
-        $reservation = $this->reservationService->create(
+        $reservation = $this->reservationService->create($this->user,
             $this->reservationData($this->createCommonArea([
                 'requires_approval' => false,
             ])),
@@ -47,7 +47,7 @@ class ReservationServiceTest extends TestCase
 
     public function test_deve_deixar_reserva_pendente_quando_area_exige_aprovacao(): void
     {
-        $reservation = $this->reservationService->create(
+        $reservation = $this->reservationService->create($this->user,
             $this->reservationData($this->createCommonArea([
                 'requires_approval' => true,
             ])),
@@ -63,7 +63,7 @@ class ReservationServiceTest extends TestCase
         ]);
 
         $this->assertValidationError('common_area_id', function () use ($commonArea): void {
-            $this->reservationService->create($this->reservationData($commonArea));
+            $this->reservationService->create($this->user, $this->reservationData($commonArea));
         });
     }
 
@@ -73,7 +73,7 @@ class ReservationServiceTest extends TestCase
         $startsAt = now()->addDay()->setTime(12, 0);
 
         $this->assertValidationError('starts_at', function () use ($commonArea, $startsAt): void {
-            $this->reservationService->create($this->reservationData($commonArea, [
+            $this->reservationService->create($this->user, $this->reservationData($commonArea, [
                 'starts_at' => $startsAt,
                 'ends_at' => $startsAt->copy()->subHour(),
             ]));
@@ -85,13 +85,13 @@ class ReservationServiceTest extends TestCase
         $commonArea = $this->createCommonArea();
         $startsAt = now()->addDay()->setTime(10, 0);
 
-        $this->reservationService->create($this->reservationData($commonArea, [
+        $this->reservationService->create($this->user, $this->reservationData($commonArea, [
             'starts_at' => $startsAt,
             'ends_at' => $startsAt->copy()->addHours(2),
         ]));
 
         $this->assertValidationError('starts_at', function () use ($commonArea, $startsAt): void {
-            $this->reservationService->create($this->reservationData($commonArea, [
+            $this->reservationService->create($this->user, $this->reservationData($commonArea, [
                 'starts_at' => $startsAt->copy()->addHour(),
                 'ends_at' => $startsAt->copy()->addHours(3),
             ]));
@@ -106,7 +106,7 @@ class ReservationServiceTest extends TestCase
         ]);
 
         $this->assertValidationError('common_area_id', function () use ($commonArea): void {
-            $this->reservationService->create($this->reservationData($commonArea));
+            $this->reservationService->create($this->user, $this->reservationData($commonArea));
         });
     }
 

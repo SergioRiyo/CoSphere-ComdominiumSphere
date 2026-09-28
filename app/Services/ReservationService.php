@@ -3,12 +3,16 @@
 namespace App\Services;
 
 use App\Enums\ReservationStatus;
+use App\Enums\UserRole;
 use App\Models\CommonArea;
 use App\Models\Reservation;
+use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -82,12 +86,19 @@ class ReservationService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data): Reservation
+    public function create(User $resident, array $data): Reservation
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($resident, $data) {
+            Validator::make($data, ['common_area_id' => ['required', 'integer']])->validate();
             $commonArea = CommonArea::query()
                 ->lockForUpdate()
-                ->findOrFail($data['common_area_id']);
+                ->find($data['common_area_id']);
+
+            if ($commonArea === null) {
+                throw ValidationException::withMessages(['common_area_id' => 'A área selecionada não existe mais.']);
+            }
+
+            $resident = $this->resolveResident($resident);
 
             [$startsAt, $endsAt] = $this->parseRequestedPeriod($data);
 
@@ -97,8 +108,8 @@ class ReservationService
 
             return Reservation::create([
                 'common_area_id' => $commonArea->id,
-                'user_id' => $data['user_id'],
-                'unit_id' => $data['unit_id'],
+                'user_id' => $resident->id,
+                'unit_id' => $resident->unit_id,
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
                 'status' => $commonArea->requires_approval
@@ -106,6 +117,29 @@ class ReservationService
                     : ReservationStatus::Approved,
             ]);
         });
+    }
+
+    private function resolveResident(User $resident): User
+    {
+        $currentResident = $resident->exists
+            ? User::query()->lockForUpdate()->find($resident->getKey()) : null;
+
+        if ($currentResident === null
+            || $currentResident->role !== UserRole::Morador
+            || ! $currentResident->is_active
+            || ! $currentResident->hasVerifiedEmail()) {
+            throw ValidationException::withMessages([
+                'reservation' => 'Somente moradores ativos e verificados podem solicitar reservas.',
+            ]);
+        }
+
+        if ($currentResident->unit_id === null || ! $currentResident->unit()->exists()) {
+            throw ValidationException::withMessages([
+                'reservation' => 'Seu cadastro não possui uma unidade válida vinculada. Contate a administração.',
+            ]);
+        }
+
+        return $currentResident;
     }
 
     public function approve(Reservation $reservation): Reservation
@@ -134,10 +168,23 @@ class ReservationService
      */
     private function parseRequestedPeriod(array $data): array
     {
+        $period = [];
+        foreach (['starts_at', 'ends_at'] as $field) {
+            $value = $data[$field] ?? null;
+            $period[$field] = $value instanceof DateTimeInterface ? $value->format('Y-m-d H:i:s') : $value;
+        }
+        Validator::make($period, [
+            'starts_at' => ['required', 'date_format:Y-m-d H:i,Y-m-d H:i:s'],
+            'ends_at' => ['required', 'date_format:Y-m-d H:i,Y-m-d H:i:s'],
+        ], [
+            '*.required' => 'Informe o início e o fim da reserva.',
+            '*.date_format' => 'Informe uma data e horário válidos para a reserva.',
+        ])->validate();
+
         try {
             return [
-                Carbon::parse($data['starts_at']),
-                Carbon::parse($data['ends_at']),
+                Carbon::parse($period['starts_at']),
+                Carbon::parse($period['ends_at']),
             ];
         } catch (Throwable) {
             throw ValidationException::withMessages([
@@ -169,6 +216,12 @@ class ReservationService
         if (! $startsAt->isSameDay($endsAt)) {
             throw ValidationException::withMessages([
                 'ends_at' => 'A reserva deve iniciar e terminar no mesmo dia.',
+            ]);
+        }
+
+        if ($endsAt->lessThanOrEqualTo(now())) {
+            throw ValidationException::withMessages([
+                'ends_at' => 'Não é possível solicitar uma reserva para um período já encerrado.',
             ]);
         }
 
@@ -211,7 +264,7 @@ class ReservationService
 
         if ($hasConflict) {
             throw ValidationException::withMessages([
-                'starts_at' => 'Ja existe uma reserva para esta area no horario informado.',
+                'starts_at' => 'O horário selecionado não está mais disponível. Escolha outro período.',
             ]);
         }
     }

@@ -34,3 +34,18 @@ export type CommonAreaAvailability = {
     occupied_periods: AvailabilityPeriod[];
     free_periods: AvailabilityPeriod[];
 };
+
+export type ReservationRequest = {
+    common_area_id: number;
+    starts_at: string;
+    ends_at: string;
+};
+
+export type ReservationConfirmation = {
+    area: string;
+    date: string;
+    start: string;
+    end: string;
+    status: 'pending' | 'confirmed';
+    status_label: string;
+};

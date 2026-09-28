@@ -7,6 +7,7 @@ use App\Models\CommonArea;
 use App\Models\Reservation;
 use App\Models\User;
 use App\Services\ReservationService;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -16,6 +17,12 @@ use Tests\TestCase;
 class CommonAreaAvailabilityTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->travelTo(Carbon::parse('2026-09-25 07:00:00'));
+    }
 
     public function test_only_active_areas_are_listed_and_empty_state_is_supported(): void
     {
@@ -60,7 +67,7 @@ class CommonAreaAvailabilityTest extends TestCase
         if ($blocks) {
             $this->expectException(ValidationException::class);
         }
-        $created = app(ReservationService::class)->create($data);
+        $created = app(ReservationService::class)->create($resident, $data);
         $this->assertModelExists($created);
     }
 
@@ -85,7 +92,7 @@ class CommonAreaAvailabilityTest extends TestCase
         if ($conflict) {
             $this->expectException(ValidationException::class);
         }
-        $created = app(ReservationService::class)->create([
+        $created = app(ReservationService::class)->create($resident, [
             'common_area_id' => $area->id, 'user_id' => $resident->id, 'unit_id' => $reservation->unit_id,
             'starts_at' => '2026-09-25 '.$start, 'ends_at' => '2026-09-25 '.$end,
         ]);
@@ -142,7 +149,7 @@ class CommonAreaAvailabilityTest extends TestCase
         $this->getJson($this->url($area))->assertJsonPath('free_periods', [
             ['start' => null, 'end' => '10:00:00'], ['start' => '12:00:00', 'end' => null],
         ]);
-        $created = app(ReservationService::class)->create([
+        $created = app(ReservationService::class)->create($resident, [
             'common_area_id' => $area->id, 'user_id' => $resident->id, 'unit_id' => $reservation->unit_id,
             'starts_at' => '2026-09-25 23:00', 'ends_at' => '2026-09-25 23:59:59',
         ]);
@@ -201,7 +208,7 @@ class CommonAreaAvailabilityTest extends TestCase
         $area = CommonArea::factory()->create();
         $resident = User::factory()->morador()->create();
         try {
-            app(ReservationService::class)->create([
+            app(ReservationService::class)->create($resident, [
                 'common_area_id' => $area->id, 'user_id' => $resident->id, 'unit_id' => $resident->unit_id,
                 'starts_at' => $start, 'ends_at' => $end,
             ]);
