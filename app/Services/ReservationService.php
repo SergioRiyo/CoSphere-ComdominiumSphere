@@ -10,7 +10,9 @@ use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -142,24 +144,99 @@ class ReservationService
         return $currentResident;
     }
 
-    public function approve(Reservation $reservation): Reservation
+    public function approve(User $admin, Reservation $reservation): Reservation
     {
-        return $this->updateStatus($reservation, ReservationStatus::Approved);
+        return $this->transition($admin, $reservation, ReservationStatus::Approved, UserRole::Admin);
     }
 
-    public function reject(Reservation $reservation, ?string $reason = null): Reservation
+    public function reject(User $admin, Reservation $reservation, string $reason): Reservation
     {
-        $reservation->update([
-            'status' => ReservationStatus::Rejected,
-            'rejection_reason' => $reason,
-        ]);
-
-        return $reservation->refresh();
+        return $this->transition($admin, $reservation, ReservationStatus::Rejected, UserRole::Admin, $reason);
     }
 
-    public function cancel(Reservation $reservation): Reservation
+    public function cancelByAdmin(User $admin, Reservation $reservation): Reservation
     {
-        return $this->updateStatus($reservation, ReservationStatus::Cancelled);
+        return $this->transition($admin, $reservation, ReservationStatus::Cancelled, UserRole::Admin);
+    }
+
+    public function cancelByResident(User $resident, Reservation $reservation): Reservation
+    {
+        return $this->transition($resident, $reservation, ReservationStatus::Cancelled, UserRole::Morador);
+    }
+
+    private function transition(User $actor, Reservation $reservation, ReservationStatus $target, UserRole $requiredRole, ?string $reason = null): Reservation
+    {
+        return DB::transaction(function () use ($actor, $reservation, $target, $requiredRole, $reason): Reservation {
+            $current = Reservation::query()->lockForUpdate()->findOrFail($reservation->getKey());
+            $area = $target === ReservationStatus::Approved
+                ? CommonArea::query()->lockForUpdate()->findOrFail($current->common_area_id) : null;
+            $currentActor = $actor->exists ? User::query()->lockForUpdate()->find($actor->getKey()) : null;
+
+            if ($currentActor === null || $currentActor->role !== $requiredRole
+                || ! $currentActor->is_active || ! $currentActor->hasVerifiedEmail()
+                || ($requiredRole === UserRole::Morador && $current->user_id !== $currentActor->id)) {
+                throw new AuthorizationException('Você não tem permissão para alterar esta reserva.');
+            }
+
+            $allowed = $target === ReservationStatus::Cancelled
+                ? [ReservationStatus::Pending, ReservationStatus::Approved] : [ReservationStatus::Pending];
+            if (! in_array($current->status, $allowed, true)) {
+                throw ValidationException::withMessages(['reservation' => 'Esta reserva não permite mais a operação solicitada. Atualize a lista.']);
+            }
+
+            if ($requiredRole === UserRole::Morador && $current->starts_at->lessThanOrEqualTo(now())) {
+                throw ValidationException::withMessages(['reservation' => 'O cancelamento pelo morador só é permitido antes do início da reserva.']);
+            }
+
+            if ($target === ReservationStatus::Approved) {
+                [$start, $end] = $this->parseRequestedPeriod($current->only(['starts_at', 'ends_at']));
+                $this->ensureCommonAreaIsAvailable($area);
+                $this->ensureRequestedScheduleIsValid($area, $start, $end);
+                if ($this->conflictingReservations($area, $start, $end)->whereKeyNot($current->id)->exists()) {
+                    throw ValidationException::withMessages(['reservation' => 'Há outra reserva ocupando este período. Não foi possível aprovar.']);
+                }
+            }
+
+            $changes = ['status' => $target];
+            if ($target === ReservationStatus::Rejected) {
+                $validated = Validator::make(['rejection_reason' => trim($reason ?? '')], [
+                    'rejection_reason' => ['required', 'string', 'max:255'],
+                ], [
+                    'rejection_reason.required' => 'Informe o motivo da recusa.',
+                    'rejection_reason.max' => 'O motivo deve ter no máximo 255 caracteres.',
+                ])->validate();
+                $changes['rejection_reason'] = $validated['rejection_reason'];
+            }
+            $current->update($changes);
+
+            return $current;
+        });
+    }
+
+    /** @return LengthAwarePaginator<int, array<string, mixed>> */
+    public function operationalReservations(?User $resident = null): LengthAwarePaginator
+    {
+        return Reservation::query()
+            ->select(['id', 'common_area_id', 'user_id', 'unit_id', 'starts_at', 'ends_at', 'status'])
+            ->with($resident === null ? ['commonArea:id,name', 'user:id,name', 'unit:id,block,number'] : ['commonArea:id,name'])
+            ->whereIn('status', [ReservationStatus::Pending, ReservationStatus::Approved])
+            ->when($resident !== null, fn (Builder $query) => $query->where('user_id', $resident->id)->where('ends_at', '>', now()))
+            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [ReservationStatus::Pending->value])
+            ->orderBy('starts_at')->orderBy('id')->paginate(15)
+            ->through(fn (Reservation $reservation): array => [
+                'id' => $reservation->id,
+                'area' => $reservation->commonArea->name,
+                'date' => $reservation->starts_at->toDateString(),
+                'start' => $reservation->starts_at->format('H:i:s'),
+                'end' => $reservation->ends_at->format('H:i:s'),
+                'status' => $reservation->status->value,
+                'status_label' => $reservation->status->label(),
+                'can_cancel' => $resident === null || $reservation->starts_at->greaterThan(now()),
+                ...($resident === null ? [
+                    'resident' => $reservation->user->name,
+                    'unit' => $reservation->unit->only(['block', 'number']),
+                ] : []),
+            ]);
     }
 
     /**
@@ -267,14 +344,5 @@ class ReservationService
                 'starts_at' => 'O horário selecionado não está mais disponível. Escolha outro período.',
             ]);
         }
-    }
-
-    private function updateStatus(Reservation $reservation, ReservationStatus $status): Reservation
-    {
-        $reservation->update([
-            'status' => $status,
-        ]);
-
-        return $reservation->refresh();
     }
 }

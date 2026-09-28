@@ -1,4 +1,4 @@
-import { Head, useHttp } from '@inertiajs/react';
+import { Head, Link, useHttp } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -17,7 +17,10 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { dashboard } from '@/routes/morador';
 import { availability, index } from '@/routes/morador/common-areas';
-import { store } from '@/routes/morador/reservations';
+import {
+    index as reservationsIndex,
+    store,
+} from '@/routes/morador/reservations';
 import type {
     AvailabilityPeriod,
     CommonArea,
@@ -359,6 +362,12 @@ function ReservationForm({
                             {time(confirmation.start)}–{time(confirmation.end)}
                         </p>
                         <p>Status: {confirmation.status_label}</p>
+                        <Link
+                            href={reservationsIndex()}
+                            className="font-medium text-primary underline"
+                        >
+                            Ver minhas reservas
+                        </Link>
                     </div>
                 )}
             </CardContent>
