@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     Bell,
     Building2,
+    CalendarDays,
     ClipboardCheck,
     ContactRound,
     History,
@@ -24,11 +25,13 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
+import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
@@ -63,6 +66,11 @@ export function AppSidebar() {
                       href: commonAreasIndex(),
                       icon: Building2,
                   },
+                  {
+                      title: 'Reservas',
+                      href: adminReservationsIndex(),
+                      icon: CalendarDays,
+                  },
               ]
             : []),
         ...(auth.user.role === 'morador'
@@ -76,6 +84,11 @@ export function AppSidebar() {
                       title: 'Áreas comuns',
                       href: residentCommonAreasIndex(),
                       icon: Building2,
+                  },
+                  {
+                      title: 'Minhas reservas',
+                      href: residentReservationsIndex(),
+                      icon: CalendarDays,
                   },
                   {
                       title: 'Notificações',

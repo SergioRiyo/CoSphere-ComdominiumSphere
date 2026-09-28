@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Enums\ReservationStatus;
 use App\Models\CommonArea;
-use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ReservationService;
@@ -112,18 +111,17 @@ class ReservationServiceTest extends TestCase
 
     public function test_deve_aprovar_recusar_e_cancelar_reservas(): void
     {
-        $reservation = Reservation::factory()->create([
-            'status' => ReservationStatus::Pending,
-        ]);
-
-        $reservation = $this->reservationService->approve($reservation);
+        $admin = User::factory()->admin()->create();
+        $reservation = $this->reservationService->create($this->user, $this->reservationData($this->createCommonArea()));
+        $reservation = $this->reservationService->approve($admin, $reservation);
         $this->assertSame(ReservationStatus::Approved, $reservation->status);
 
-        $reservation = $this->reservationService->reject($reservation, 'Documentacao incompleta.');
-        $this->assertSame(ReservationStatus::Rejected, $reservation->status);
-        $this->assertSame('Documentacao incompleta.', $reservation->rejection_reason);
+        $pending = $this->reservationService->create($this->user, $this->reservationData($this->createCommonArea()));
+        $rejected = $this->reservationService->reject($admin, $pending, 'Documentacao incompleta.');
+        $this->assertSame(ReservationStatus::Rejected, $rejected->status);
+        $this->assertSame('Documentacao incompleta.', $rejected->rejection_reason);
 
-        $reservation = $this->reservationService->cancel($reservation);
+        $reservation = $this->reservationService->cancelByAdmin($admin, $reservation);
         $this->assertSame(ReservationStatus::Cancelled, $reservation->status);
     }
 
