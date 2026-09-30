@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ReservationStatus;
 use App\Enums\UserRole;
 use App\Models\CommonArea;
+use App\Models\CommonAreaBlock;
 use App\Models\Reservation;
 use App\Models\User;
 use Carbon\Carbon;
@@ -24,7 +25,7 @@ class ReservationService
      * Null boundaries represent the beginning/end of the day, without adding
      * opening/closing restrictions to areas with no configured schedule.
      *
-     * @return array{date: string, occupied_periods: list<array{start: ?string, end: ?string}>, free_periods: list<array{start: ?string, end: ?string}>}
+     * @return array{date: string, occupied_periods: list<array{start: ?string, end: ?string}>, blocked_periods: list<array{start: ?string, end: ?string}>, free_periods: list<array{start: ?string, end: ?string}>}
      */
     public function availability(CommonArea $commonArea, Carbon $date): array
     {
@@ -38,11 +39,15 @@ class ReservationService
 
         $reservations = $this->conflictingReservations($commonArea, $dayStart, $dayEnd)
             ->orderBy('starts_at')->orderBy('ends_at')->get(['starts_at', 'ends_at']);
+        $blocks = CommonAreaBlock::query()->conflicting($commonArea, $dayStart, $dayEnd)
+            ->get(['starts_at', 'ends_at']);
+        $periods = $reservations->toBase()->concat($blocks)->sortBy('starts_at');
         $occupied = [];
+        $blocked = [];
         $free = [];
         $cursor = $opening->copy();
 
-        foreach ($reservations as $reservation) {
+        foreach ($periods as $reservation) {
             $start = $reservation->starts_at->max($opening);
             $end = $reservation->ends_at->min($closing);
 
@@ -50,7 +55,12 @@ class ReservationService
                 continue;
             }
 
-            $occupied[] = $this->availabilityPeriod($start, $end, $dayStart, $dayEnd);
+            $period = $this->availabilityPeriod($start, $end, $dayStart, $dayEnd);
+            if ($reservation instanceof CommonAreaBlock) {
+                $blocked[] = $period;
+            } else {
+                $occupied[] = $period;
+            }
 
             if ($cursor->lessThan($start)) {
                 $free[] = $this->availabilityPeriod($cursor, $start, $dayStart, $dayEnd);
@@ -63,7 +73,19 @@ class ReservationService
             $free[] = $this->availabilityPeriod($cursor, $closing, $dayStart, $dayEnd);
         }
 
-        return ['date' => $date->toDateString(), 'occupied_periods' => $occupied, 'free_periods' => $free];
+        return ['date' => $date->toDateString(), 'occupied_periods' => $occupied, 'blocked_periods' => $blocked, 'free_periods' => $free];
+    }
+
+    public function hasConflictingReservations(CommonArea $area, Carbon $start, Carbon $end): bool
+    {
+        return $this->conflictingReservations($area, $start, $end)->exists();
+    }
+
+    private function ensurePeriodHasNoBlock(CommonArea $area, Carbon $start, Carbon $end): void
+    {
+        if (CommonAreaBlock::query()->conflicting($area, $start, $end)->exists()) {
+            throw ValidationException::withMessages(['starts_at' => 'O horário selecionado está indisponível.']);
+        }
     }
 
     /** @return array{start: ?string, end: ?string} */
@@ -107,6 +129,7 @@ class ReservationService
             $this->ensureCommonAreaIsAvailable($commonArea);
             $this->ensureRequestedScheduleIsValid($commonArea, $startsAt, $endsAt);
             $this->ensurePeriodHasNoConflict($commonArea, $startsAt, $endsAt);
+            $this->ensurePeriodHasNoBlock($commonArea, $startsAt, $endsAt);
 
             return Reservation::create([
                 'common_area_id' => $commonArea->id,
@@ -192,6 +215,7 @@ class ReservationService
                 [$start, $end] = $this->parseRequestedPeriod($current->only(['starts_at', 'ends_at']));
                 $this->ensureCommonAreaIsAvailable($area);
                 $this->ensureRequestedScheduleIsValid($area, $start, $end);
+                $this->ensurePeriodHasNoBlock($area, $start, $end);
                 if ($this->conflictingReservations($area, $start, $end)->whereKeyNot($current->id)->exists()) {
                     throw ValidationException::withMessages(['reservation' => 'Há outra reserva ocupando este período. Não foi possível aprovar.']);
                 }

@@ -32,6 +32,7 @@ export type CommonAreaAvailability = {
     area: Omit<CommonArea, 'status'>;
     date: string;
     occupied_periods: AvailabilityPeriod[];
+    blocked_periods: AvailabilityPeriod[];
     free_periods: AvailabilityPeriod[];
 };
 

@@ -24,6 +24,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -69,6 +70,11 @@ export function AppSidebar() {
                   {
                       title: 'Reservas',
                       href: adminReservationsIndex(),
+                      icon: CalendarDays,
+                  },
+                  {
+                      title: 'Bloqueios de áreas',
+                      href: commonAreaBlocksIndex(),
                       icon: CalendarDays,
                   },
               ]

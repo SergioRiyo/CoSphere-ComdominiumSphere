@@ -454,6 +454,10 @@ function AvailabilityDetails({ result }: { result: CommonAreaAvailability }) {
                     )}
                     <Periods title="Livre" periods={result.free_periods} />
                     <Periods
+                        title="Indisponível"
+                        periods={result.blocked_periods}
+                    />
+                    <Periods
                         title="Ocupado"
                         periods={result.occupied_periods}
                     />

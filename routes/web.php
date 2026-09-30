@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminReservationController;
+use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
@@ -40,6 +41,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
         Route::resource('users', UserController::class)->only(['index', 'store', 'update']);
         Route::resource('common-areas', CommonAreaController::class)->only(['index', 'store', 'update']);
+        Route::resource('common-area-blocks', CommonAreaBlockController::class)
+            ->parameters(['common-area-blocks' => 'commonAreaBlock'])
+            ->only(['index', 'store', 'destroy'])->whereNumber('commonAreaBlock');
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {

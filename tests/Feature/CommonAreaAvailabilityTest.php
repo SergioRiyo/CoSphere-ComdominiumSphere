@@ -47,6 +47,7 @@ class CommonAreaAvailabilityTest extends TestCase
                 'area' => $area->refresh()->only(['id', 'name', 'description', 'available_from', 'available_until', 'max_reservation_minutes', 'rules', 'requires_approval']),
                 'date' => '2026-09-25',
                 'occupied_periods' => [['start' => '10:00:00', 'end' => '12:00:00']],
+                'blocked_periods' => [],
                 'free_periods' => [['start' => '08:00:00', 'end' => '10:00:00'], ['start' => '12:00:00', 'end' => '22:00:00']],
             ])->assertHeader('Cache-Control', 'no-store, private');
             $this->assertSame($original, $reservation->refresh()->getRawOriginal());
