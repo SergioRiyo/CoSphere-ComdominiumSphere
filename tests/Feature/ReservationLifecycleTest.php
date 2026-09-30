@@ -53,7 +53,7 @@ class ReservationLifecycleTest extends TestCase
             $this->assertSame($original, $reservation->refresh()->getRawOriginal());
         }
         $this->assertDatabaseCount('reservations', 1);
-        $this->assertDatabaseCount('notifications', 0);
+        $this->assertDatabaseCount('notifications', $valid && $operation !== 'residentCancel' ? 1 : 0);
     }
 
     public static function transitions(): array
