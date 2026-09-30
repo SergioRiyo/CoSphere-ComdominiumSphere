@@ -124,7 +124,9 @@ class CommonAreaBlockTest extends TestCase
         $response = $this->actingAs($resident)->postJson(route('morador.reservations.store'), $data);
         $conflicts ? $response->assertUnprocessable()->assertJsonValidationErrors('starts_at') : $response->assertCreated();
         $this->assertDatabaseCount('reservations', $conflicts ? 0 : 1);
-        Reservation::query()->delete();
+        if (! $conflicts) {
+            app(ReservationService::class)->cancelByResident($resident, Reservation::sole());
+        }
         $pending = Reservation::factory()->create(array_intersect_key($data, $this->period($area)) + ['status' => ReservationStatus::Pending]);
         $response = $this->actingAs($admin)->patchJson(route('admin.reservations.approve', $pending));
         $conflicts ? $response->assertUnprocessable() : $response->assertOk();

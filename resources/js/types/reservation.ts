@@ -24,3 +24,29 @@ export type PaginatedReservations = {
     last_page: number;
     total: number;
 };
+
+export type ReservationFilters = {
+    status?: ReservationStatus | '' | null;
+    date_from?: string | null;
+    date_to?: string | null;
+};
+
+export type ReservationListProps = {
+    reservations: PaginatedReservations;
+    filters: ReservationFilters;
+    statuses: { value: ReservationStatus; label: string }[];
+};
+
+export type ReservationDetails = OperationalReservation & {
+    rejection_reason: string | null;
+    history: {
+        id: number;
+        from_status: ReservationStatus | null;
+        from_label: string | null;
+        to_status: ReservationStatus;
+        to_label: string;
+        actor: string;
+        reason: string | null;
+        created_at: string;
+    }[];
+};

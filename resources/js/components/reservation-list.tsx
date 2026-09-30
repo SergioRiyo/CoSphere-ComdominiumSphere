@@ -2,6 +2,7 @@ import { Head, Link, router, useHttp } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
+import ReservationFiltersForm from '@/components/reservation-filters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,15 +21,17 @@ import {
     reject,
     cancel as adminCancel,
     index as adminIndex,
+    show as adminShow,
 } from '@/routes/admin/reservations';
 import { index as areasIndex } from '@/routes/morador/common-areas';
 import {
     cancel as residentCancel,
     index as residentIndex,
+    show as residentShow,
 } from '@/routes/morador/reservations';
 import type {
     OperationalReservation,
-    PaginatedReservations,
+    ReservationListProps,
 } from '@/types/reservation';
 
 type Action = 'approve' | 'reject' | 'cancel';
@@ -40,9 +43,10 @@ const actionLabels: Record<Action, string> = {
 
 export default function ReservationList({
     reservations,
+    filters,
+    statuses,
     admin = false,
-}: {
-    reservations: PaginatedReservations;
+}: ReservationListProps & {
     admin?: boolean;
 }) {
     const [selection, setSelection] = useState<{
@@ -128,8 +132,8 @@ export default function ReservationList({
                         </h1>
                         <p className="text-sm text-muted-foreground">
                             {admin
-                                ? 'Analise as pendências e gerencie reservas pendentes ou aprovadas.'
-                                : 'Reservas atuais e próximas. Você pode cancelar antes do início.'}
+                                ? 'Consulte reservas atuais e anteriores e gerencie as pendências.'
+                                : 'Acompanhe suas reservas e o histórico de status. As mais recentes aparecem primeiro.'}
                         </p>
                     </div>
                     {!admin && (
@@ -138,6 +142,14 @@ export default function ReservationList({
                         </Button>
                     )}
                 </header>
+                <ReservationFiltersForm
+                    key={JSON.stringify(filters)}
+                    filters={filters}
+                    statuses={statuses}
+                    admin={admin}
+                    busy={busy}
+                    onBusy={setBusy}
+                />
                 <div aria-live="polite" aria-busy={busy} className="grid gap-4">
                     {busy && (
                         <p
@@ -150,9 +162,9 @@ export default function ReservationList({
                     {reservations.data.length === 0 ? (
                         <Card>
                             <CardContent className="py-10 text-center">
-                                {admin
-                                    ? 'Nenhuma reserva pendente ou aprovada nesta página.'
-                                    : 'Nenhuma reserva atual ou próxima nesta página.'}
+                                {Object.values(filters).some(Boolean)
+                                    ? 'Nenhuma reserva encontrada para os filtros selecionados.'
+                                    : 'Nenhuma reserva encontrada.'}
                             </CardContent>
                         </Card>
                     ) : (
@@ -198,6 +210,26 @@ export default function ReservationList({
                                             </div>
                                         )}
                                         <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                asChild
+                                                variant="outline"
+                                                disabled={busy}
+                                            >
+                                                <Link
+                                                    onBefore={() => !busy}
+                                                    href={
+                                                        admin
+                                                            ? adminShow(
+                                                                  reservation.id,
+                                                              )
+                                                            : residentShow(
+                                                                  reservation.id,
+                                                              )
+                                                    }
+                                                >
+                                                    Ver detalhes
+                                                </Link>
+                                            </Button>
                                             {admin &&
                                                 reservation.status ===
                                                     'pending' && (
@@ -227,27 +259,27 @@ export default function ReservationList({
                                                         </Button>
                                                     </>
                                                 )}
-                                            {reservation.can_cancel &&
+                                            {reservation.can_cancel && (
+                                                <Button
+                                                    variant="destructive"
+                                                    disabled={busy}
+                                                    onClick={() =>
+                                                        choose(
+                                                            reservation,
+                                                            'cancel',
+                                                        )
+                                                    }
+                                                >
+                                                    Cancelar
+                                                </Button>
+                                            )}
+                                            {!admin &&
                                                 [
                                                     'pending',
                                                     'confirmed',
                                                 ].includes(
                                                     reservation.status,
-                                                ) && (
-                                                    <Button
-                                                        variant="destructive"
-                                                        disabled={busy}
-                                                        onClick={() =>
-                                                            choose(
-                                                                reservation,
-                                                                'cancel',
-                                                            )
-                                                        }
-                                                    >
-                                                        Cancelar
-                                                    </Button>
-                                                )}
-                                            {!admin &&
+                                                ) &&
                                                 !reservation.can_cancel && (
                                                     <p className="text-muted-foreground">
                                                         O prazo para
@@ -272,6 +304,7 @@ export default function ReservationList({
                                 onBefore={() => !busy}
                                 href={index({
                                     query: {
+                                        ...filters,
                                         page: reservations.current_page - 1,
                                     },
                                 })}
@@ -290,6 +323,7 @@ export default function ReservationList({
                                 onBefore={() => !busy}
                                 href={index({
                                     query: {
+                                        ...filters,
                                         page: reservations.current_page + 1,
                                     },
                                 })}

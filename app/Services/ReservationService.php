@@ -7,13 +7,13 @@ use App\Enums\UserRole;
 use App\Models\CommonArea;
 use App\Models\CommonAreaBlock;
 use App\Models\Reservation;
+use App\Models\ReservationStatusHistory;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -131,7 +131,7 @@ class ReservationService
             $this->ensurePeriodHasNoConflict($commonArea, $startsAt, $endsAt);
             $this->ensurePeriodHasNoBlock($commonArea, $startsAt, $endsAt);
 
-            return Reservation::create([
+            $reservation = Reservation::create([
                 'common_area_id' => $commonArea->id,
                 'user_id' => $resident->id,
                 'unit_id' => $resident->unit_id,
@@ -141,6 +141,9 @@ class ReservationService
                     ? ReservationStatus::Pending
                     : ReservationStatus::Approved,
             ]);
+            $this->recordStatusHistory($reservation, $resident, null);
+
+            return $reservation;
         });
     }
 
@@ -231,36 +234,25 @@ class ReservationService
                 ])->validate();
                 $changes['rejection_reason'] = $validated['rejection_reason'];
             }
+            $previousStatus = $current->status;
             $current->update($changes);
+            $this->recordStatusHistory($current, $currentActor, $previousStatus, $changes['rejection_reason'] ?? null);
 
             return $current;
         });
     }
 
-    /** @return LengthAwarePaginator<int, array<string, mixed>> */
-    public function operationalReservations(?User $resident = null): LengthAwarePaginator
+    private function recordStatusHistory(Reservation $reservation, User $actor, ?ReservationStatus $from, ?string $reason = null): void
     {
-        return Reservation::query()
-            ->select(['id', 'common_area_id', 'user_id', 'unit_id', 'starts_at', 'ends_at', 'status'])
-            ->with($resident === null ? ['commonArea:id,name', 'user:id,name', 'unit:id,block,number'] : ['commonArea:id,name'])
-            ->whereIn('status', [ReservationStatus::Pending, ReservationStatus::Approved])
-            ->when($resident !== null, fn (Builder $query) => $query->where('user_id', $resident->id)->where('ends_at', '>', now()))
-            ->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [ReservationStatus::Pending->value])
-            ->orderBy('starts_at')->orderBy('id')->paginate(15)
-            ->through(fn (Reservation $reservation): array => [
-                'id' => $reservation->id,
-                'area' => $reservation->commonArea->name,
-                'date' => $reservation->starts_at->toDateString(),
-                'start' => $reservation->starts_at->format('H:i:s'),
-                'end' => $reservation->ends_at->format('H:i:s'),
-                'status' => $reservation->status->value,
-                'status_label' => $reservation->status->label(),
-                'can_cancel' => $resident === null || $reservation->starts_at->greaterThan(now()),
-                ...($resident === null ? [
-                    'resident' => $reservation->user->name,
-                    'unit' => $reservation->unit->only(['block', 'number']),
-                ] : []),
-            ]);
+        $history = new ReservationStatusHistory([
+            'from_status' => $from,
+            'to_status' => $reservation->status,
+            'actor_role' => $actor->role,
+            'reason' => $reason,
+        ]);
+        $history->reservation()->associate($reservation);
+        $history->changedBy()->associate($actor);
+        $history->save();
     }
 
     /**

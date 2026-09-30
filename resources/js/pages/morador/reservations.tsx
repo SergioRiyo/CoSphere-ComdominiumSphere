@@ -1,14 +1,10 @@
 import ReservationList from '@/components/reservation-list';
 import { dashboard } from '@/routes/morador';
 import { index } from '@/routes/morador/reservations';
-import type { PaginatedReservations } from '@/types/reservation';
+import type { ReservationListProps } from '@/types/reservation';
 
-export default function ReservationsPage({
-    reservations,
-}: {
-    reservations: PaginatedReservations;
-}) {
-    return <ReservationList reservations={reservations} />;
+export default function ReservationsPage(props: ReservationListProps) {
+    return <ReservationList {...props} />;
 }
 
 ReservationsPage.layout = {

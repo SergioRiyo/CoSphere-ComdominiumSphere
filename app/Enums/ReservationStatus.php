@@ -17,7 +17,7 @@ enum ReservationStatus: string
             self::Approved => 'Aprovada',
             self::Cancelled => 'Cancelada',
             self::Rejected => 'Recusada',
-            self::Completed => 'Concluida',
+            self::Completed => 'Concluída',
         };
     }
 }
