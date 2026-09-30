@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Enums\ReservationStatus;
 use App\Enums\UserRole;
 use App\Models\CommonArea;
@@ -21,6 +22,8 @@ use Throwable;
 
 class ReservationService
 {
+    public function __construct(private readonly NotificationService $notifications) {}
+
     /**
      * Null boundaries represent the beginning/end of the day, without adding
      * opening/closing restrictions to areas with no configured schedule.
@@ -142,6 +145,7 @@ class ReservationService
                     : ReservationStatus::Approved,
             ]);
             $this->recordStatusHistory($reservation, $resident, null);
+            $this->notifyReservation($reservation, $commonArea->name, true);
 
             return $reservation;
         });
@@ -237,9 +241,32 @@ class ReservationService
             $previousStatus = $current->status;
             $current->update($changes);
             $this->recordStatusHistory($current, $currentActor, $previousStatus, $changes['rejection_reason'] ?? null);
+            if ($requiredRole === UserRole::Admin) {
+                $this->notifyReservation($current, $area?->name ?? $current->commonArea()->value('name'));
+            }
 
             return $current;
         });
+    }
+
+    private function notifyReservation(Reservation $reservation, string $areaName, bool $created = false): void
+    {
+        [$title, $result] = match ($reservation->status) {
+            ReservationStatus::Pending => ['Solicitação de reserva registrada', 'foi registrada e aguarda análise'],
+            ReservationStatus::Approved => $created
+                ? ['Reserva confirmada', 'foi criada e confirmada automaticamente']
+                : ['Reserva aprovada', 'foi aprovada'],
+            ReservationStatus::Rejected => ['Reserva recusada', 'foi recusada'],
+            ReservationStatus::Cancelled => ['Reserva cancelada', 'foi cancelada pela administração'],
+        };
+        $message = 'Sua reserva de '.$areaName.' para '.$reservation->starts_at->format('d/m/Y')
+            .', das '.$reservation->starts_at->format('H:i:s').' às '.$reservation->ends_at->format('H:i:s')
+            .', '.$result.'.';
+        if ($reservation->status === ReservationStatus::Rejected && $reservation->rejection_reason !== null) {
+            $message .= ' Motivo: '.$reservation->rejection_reason;
+        }
+
+        $this->notifications->create($reservation->user_id, $title, $message, NotificationType::Reservation);
     }
 
     private function recordStatusHistory(Reservation $reservation, User $actor, ?ReservationStatus $from, ?string $reason = null): void

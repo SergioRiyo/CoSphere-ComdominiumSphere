@@ -45,7 +45,7 @@ class ReservationHistoryTest extends TestCase
         $this->assertSame(UserRole::Morador, $history->actor_role);
         $this->assertTrue($history->created_at->equalTo(now()));
         $this->assertNull($history->reason);
-        $this->assertDatabaseCount('notifications', 0);
+        $this->assertDatabaseCount('notifications', 1);
     }
 
     public static function approvalModes(): array
