@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexReservationRequest;
 use App\Http\Requests\RejectReservationRequest;
 use App\Models\Reservation;
+use App\Services\ReservationQueryService;
 use App\Services\ReservationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,9 +14,18 @@ use Inertia\Response;
 
 class AdminReservationController extends Controller
 {
-    public function index(ReservationService $service): Response
+    public function index(IndexReservationRequest $request, ReservationQueryService $service): Response
     {
-        return Inertia::render('admin/reservations', ['reservations' => $service->operationalReservations()]);
+        return Inertia::render('admin/reservations', [
+            'reservations' => $service->paginate($request->user(), $request->validated()),
+            'filters' => $request->safe()->only(['status', 'date_from', 'date_to']),
+            'statuses' => $service->statuses(),
+        ]);
+    }
+
+    public function show(Request $request, int $reservation, ReservationQueryService $service): Response
+    {
+        return Inertia::render('admin/reservation-details', ['reservation' => $service->details($request->user(), $reservation)]);
     }
 
     public function approve(Request $request, Reservation $reservation, ReservationService $service): JsonResponse

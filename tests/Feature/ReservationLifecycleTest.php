@@ -346,7 +346,7 @@ class ReservationLifecycleTest extends TestCase
         }
     }
 
-    public function test_admin_listing_is_paginated_pending_first_and_sanitized(): void
+    public function test_admin_listing_is_paginated_recent_first_and_sanitized(): void
     {
         $approved = $this->reservation(['status' => ReservationStatus::Approved]);
         $pending = $this->reservation();
@@ -355,21 +355,21 @@ class ReservationLifecycleTest extends TestCase
         }
         $this->actingAs(User::factory()->admin()->create())->get(route('admin.reservations.index'))
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('admin/reservations')
-            ->has('reservations.data', 2)->where('reservations.data.0', [
+            ->has('reservations.data', 5)->where('reservations.data.3', [
                 'id' => $pending->id, 'area' => $pending->commonArea->name,
                 'resident' => $pending->user->name, 'unit' => $pending->unit->only(['block', 'number']),
                 'date' => '2026-09-29', 'start' => '14:00:00', 'end' => '16:00:00',
                 'status' => 'pending', 'status_label' => 'Pendente', 'can_cancel' => true,
-            ])->where('reservations.data.1.id', $approved->id));
+            ])->where('reservations.data.4.id', $approved->id));
         for ($i = 0; $i < 14; $i++) {
             $this->reservation();
         }
         $this->get(route('admin.reservations.index'))->assertInertia(fn (Assert $page) => $page
-            ->has('reservations.data', 15)->where('reservations.total', 16)->where('reservations.last_page', 2));
-        $this->get(route('admin.reservations.index', ['page' => 2]))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 1));
+            ->has('reservations.data', 15)->where('reservations.total', 19)->where('reservations.last_page', 2));
+        $this->get(route('admin.reservations.index', ['page' => 2]))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 4));
     }
 
-    public function test_resident_listing_only_contains_own_current_and_upcoming_reservations(): void
+    public function test_resident_listing_contains_own_past_and_current_reservations(): void
     {
         $owner = User::factory()->morador()->create();
         $this->actingAs($owner)->get(route('morador.reservations.index'))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 0));
@@ -379,14 +379,14 @@ class ReservationLifecycleTest extends TestCase
         $this->reservation(['user_id' => $owner->id, 'starts_at' => '2026-09-27 14:00', 'ends_at' => '2026-09-27 16:00']);
         $this->reservation(['user_id' => $owner->id, 'status' => ReservationStatus::Cancelled]);
         $this->get(route('morador.reservations.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->component('morador/reservations')
-            ->has('reservations.data', 2)->where('reservations.data.0.id', $started->id)->where('reservations.data.0.can_cancel', false)
+            ->has('reservations.data', 4)->where('reservations.data.2.id', $started->id)->where('reservations.data.2.can_cancel', false)
             ->where('reservations.data.1', [
                 'id' => $own->id, 'area' => $own->commonArea->name,
                 'date' => '2026-09-29', 'start' => '14:00:00', 'end' => '16:00:00',
                 'status' => 'pending', 'status_label' => 'Pendente', 'can_cancel' => true,
             ]));
         $this->patchJson($this->url('residentCancel', $own))->assertOk();
-        $this->get(route('morador.reservations.index'))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 1));
+        $this->get(route('morador.reservations.index'))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 4));
     }
 
     #[DataProvider('availabilityTransitions')]
