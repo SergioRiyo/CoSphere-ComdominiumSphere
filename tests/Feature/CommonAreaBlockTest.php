@@ -107,7 +107,7 @@ class CommonAreaBlockTest extends TestCase
 
     public static function reservationStatuses(): array
     {
-        return [[ReservationStatus::Pending, true], [ReservationStatus::Approved, true], [ReservationStatus::Cancelled, false], [ReservationStatus::Rejected, false], [ReservationStatus::Completed, false]];
+        return [[ReservationStatus::Pending, true], [ReservationStatus::Approved, true], [ReservationStatus::Cancelled, false], [ReservationStatus::Rejected, false]];
     }
 
     #[DataProvider('overlaps')]

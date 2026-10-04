@@ -220,26 +220,6 @@ class OrderServiceTest extends TestCase
         $this->assertSame(OrderStatus::PickedUp, $pickedUpOrder->status);
     }
 
-    public function test_deve_cancelar_encomenda(): void
-    {
-        $order = Order::factory()->create([
-            'status' => OrderStatus::WaitingDelivery,
-            'received_by_id' => null,
-            'picked_up_by_id' => null,
-            'received_at' => null,
-            'picked_up_at' => null,
-        ]);
-
-        $cancelledOrder = $this->orderService->cancel($order);
-
-        $this->assertSame(OrderStatus::Cancelled, $cancelledOrder->status);
-
-        $this->assertDatabaseHas('orders', [
-            'id' => $order->id,
-            'status' => OrderStatus::Cancelled->value,
-        ]);
-    }
-
     public function test_porteiro_sem_unidade_pode_confirmar_retirada(): void
     {
         $doorman = User::factory()->porteiro()->create();

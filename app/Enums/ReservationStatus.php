@@ -8,7 +8,6 @@ enum ReservationStatus: string
     case Approved = 'confirmed';
     case Cancelled = 'cancelled';
     case Rejected = 'rejected';
-    case Completed = 'completed';
 
     public function label(): string
     {
@@ -17,7 +16,6 @@ enum ReservationStatus: string
             self::Approved => 'Aprovada',
             self::Cancelled => 'Cancelada',
             self::Rejected => 'Recusada',
-            self::Completed => 'Concluída',
         };
     }
 }

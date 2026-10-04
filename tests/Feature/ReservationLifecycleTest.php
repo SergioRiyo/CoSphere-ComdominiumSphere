@@ -191,7 +191,7 @@ class ReservationLifecycleTest extends TestCase
     public static function conflictStates(): array
     {
         return [[ReservationStatus::Pending, true], [ReservationStatus::Approved, true],
-            [ReservationStatus::Rejected, false], [ReservationStatus::Cancelled, false], [ReservationStatus::Completed, false]];
+            [ReservationStatus::Rejected, false], [ReservationStatus::Cancelled, false]];
     }
 
     public function test_approval_allows_consecutive_reservations(): void
@@ -350,23 +350,23 @@ class ReservationLifecycleTest extends TestCase
     {
         $approved = $this->reservation(['status' => ReservationStatus::Approved]);
         $pending = $this->reservation();
-        foreach ([ReservationStatus::Rejected, ReservationStatus::Cancelled, ReservationStatus::Completed] as $status) {
+        foreach ([ReservationStatus::Rejected, ReservationStatus::Cancelled] as $status) {
             $this->reservation(['status' => $status]);
         }
         $this->actingAs(User::factory()->admin()->create())->get(route('admin.reservations.index'))
             ->assertOk()->assertInertia(fn (Assert $page) => $page->component('admin/reservations')
-            ->has('reservations.data', 5)->where('reservations.data.3', [
+            ->has('reservations.data', 4)->where('reservations.data.2', [
                 'id' => $pending->id, 'area' => $pending->commonArea->name,
                 'resident' => $pending->user->name, 'unit' => $pending->unit->only(['block', 'number']),
                 'date' => '2026-09-29', 'start' => '14:00:00', 'end' => '16:00:00',
                 'status' => 'pending', 'status_label' => 'Pendente', 'can_cancel' => true,
-            ])->where('reservations.data.4.id', $approved->id));
+            ])->where('reservations.data.3.id', $approved->id));
         for ($i = 0; $i < 14; $i++) {
             $this->reservation();
         }
         $this->get(route('admin.reservations.index'))->assertInertia(fn (Assert $page) => $page
-            ->has('reservations.data', 15)->where('reservations.total', 19)->where('reservations.last_page', 2));
-        $this->get(route('admin.reservations.index', ['page' => 2]))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 4));
+            ->has('reservations.data', 15)->where('reservations.total', 18)->where('reservations.last_page', 2));
+        $this->get(route('admin.reservations.index', ['page' => 2]))->assertInertia(fn (Assert $page) => $page->has('reservations.data', 3));
     }
 
     public function test_resident_listing_contains_own_past_and_current_reservations(): void

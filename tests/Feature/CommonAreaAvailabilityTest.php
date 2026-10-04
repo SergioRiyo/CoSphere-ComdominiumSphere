@@ -55,6 +55,31 @@ class CommonAreaAvailabilityTest extends TestCase
         $this->assertDatabaseCount('reservations', 2);
     }
 
+    public function test_admin_can_consult_the_same_availability_contract(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $area = CommonArea::factory()->create();
+        $this->occupy($area, '10:00', '12:00');
+
+        $this->actingAs($admin)->getJson(route('admin.common-areas.availability', [
+            'commonArea' => $area,
+            'date' => '2026-09-25',
+        ]))->assertOk()
+            ->assertJsonPath('area.id', $area->id)
+            ->assertJsonPath('occupied_periods', [['start' => '10:00:00', 'end' => '12:00:00']])
+            ->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_admin_availability_route_is_protected(): void
+    {
+        $area = CommonArea::factory()->create();
+        $url = route('admin.common-areas.availability', ['commonArea' => $area, 'date' => '2026-09-25']);
+
+        $this->get($url)->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->morador()->create())->get($url)->assertForbidden();
+        $this->actingAs(User::factory()->porteiro()->create())->get($url)->assertForbidden();
+    }
+
     #[DataProvider('statuses')]
     public function test_calendar_and_creation_agree_on_every_status(ReservationStatus $status, bool $blocks): void
     {
@@ -76,7 +101,7 @@ class CommonAreaAvailabilityTest extends TestCase
     {
         return [
             [ReservationStatus::Pending, true], [ReservationStatus::Approved, true],
-            [ReservationStatus::Rejected, false], [ReservationStatus::Cancelled, false], [ReservationStatus::Completed, false],
+            [ReservationStatus::Rejected, false], [ReservationStatus::Cancelled, false],
         ];
     }
 

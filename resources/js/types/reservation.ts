@@ -2,8 +2,7 @@ export type ReservationStatus =
     | 'pending'
     | 'confirmed'
     | 'cancelled'
-    | 'rejected'
-    | 'completed';
+    | 'rejected';
 
 export type OperationalReservation = {
     id: number;

@@ -147,29 +147,6 @@ class OrderService
         });
     }
 
-    public function cancel(Order $order): Order
-    {
-        return DB::transaction(function () use ($order) {
-            if ($order->status === OrderStatus::PickedUp) {
-                throw ValidationException::withMessages([
-                    'order' => 'Não é possível cancelar uma encomenda que já foi retirada.',
-                ]);
-            }
-
-            if ($order->status === OrderStatus::Cancelled) {
-                throw ValidationException::withMessages([
-                    'order' => 'Esta encomenda já está cancelada.',
-                ]);
-            }
-
-            $order->update([
-                'status' => OrderStatus::Cancelled,
-            ]);
-
-            return $order->fresh();
-        });
-    }
-
     private function ensureCanBeReceived(Order $order): void
     {
         if ($order->status === OrderStatus::ReceivedAtGate) {

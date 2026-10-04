@@ -106,7 +106,7 @@ class ReservationCreationTest extends TestCase
     public static function statuses(): array
     {
         return [[ReservationStatus::Pending, true], [ReservationStatus::Approved, true],
-            [ReservationStatus::Cancelled, false], [ReservationStatus::Rejected, false], [ReservationStatus::Completed, false]];
+            [ReservationStatus::Cancelled, false], [ReservationStatus::Rejected, false]];
     }
 
     public function test_a_free_calendar_does_not_allow_a_stale_submission_or_duplicate(): void

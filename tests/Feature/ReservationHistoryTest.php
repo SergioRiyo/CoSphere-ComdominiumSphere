@@ -60,7 +60,7 @@ class ReservationHistoryTest extends TestCase
         $actor = $action === 'residentCancel' ? $reservation->user : User::factory()->admin()->create();
         $response = $this->actingAs($actor)->patchJson($this->url($action, $reservation), [
             'rejection_reason' => '  Motivo real  ', 'changed_by_user_id' => 99999,
-            'actor_role' => 'porteiro', 'from_status' => 'completed', 'to_status' => 'completed',
+            'actor_role' => 'porteiro', 'from_status' => 'confirmed', 'to_status' => 'confirmed',
             'reason' => 'Injetado', 'created_at' => '2000-01-01',
         ]);
         if (! $valid) {
