@@ -1,0 +1,52 @@
+import type { PaginationLink } from '@/types/admin';
+
+export type CommonAreaStatus = 'active' | 'inactive' | 'maintenance';
+
+export type CommonArea = {
+    id: number;
+    name: string;
+    description: string | null;
+    available_from: string | null;
+    available_until: string | null;
+    max_reservation_minutes: number;
+    rules: string;
+    requires_approval: boolean;
+    status: CommonAreaStatus;
+};
+
+export type PaginatedCommonAreas = {
+    data: CommonArea[];
+    current_page: number;
+    last_page: number;
+    from: number | null;
+    to: number | null;
+    total: number;
+    links: PaginationLink[];
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
+export type AvailabilityPeriod = { start: string | null; end: string | null };
+
+export type CommonAreaAvailability = {
+    area: Omit<CommonArea, 'status'>;
+    date: string;
+    occupied_periods: AvailabilityPeriod[];
+    blocked_periods: AvailabilityPeriod[];
+    free_periods: AvailabilityPeriod[];
+};
+
+export type ReservationRequest = {
+    common_area_id: number;
+    starts_at: string;
+    ends_at: string;
+};
+
+export type ReservationConfirmation = {
+    area: string;
+    date: string;
+    start: string;
+    end: string;
+    status: 'pending' | 'confirmed';
+    status_label: string;
+};

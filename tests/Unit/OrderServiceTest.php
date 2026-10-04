@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class OrderServiceTest extends TestCase
@@ -219,23 +220,21 @@ class OrderServiceTest extends TestCase
         $this->assertSame(OrderStatus::PickedUp, $pickedUpOrder->status);
     }
 
-    public function test_deve_cancelar_encomenda(): void
+    public function test_porteiro_sem_unidade_pode_confirmar_retirada(): void
     {
-        $order = Order::factory()->create([
-            'status' => OrderStatus::WaitingDelivery,
-            'received_by_id' => null,
-            'picked_up_by_id' => null,
-            'received_at' => null,
-            'picked_up_at' => null,
-        ]);
+        $doorman = User::factory()->porteiro()->create();
+        $order = Order::factory()->create(['status' => OrderStatus::ReceivedAtGate, 'picked_up_at' => null, 'picked_up_by_id' => null]);
+        $result = $this->orderService->pickup($order, $doorman);
+        $this->assertSame(OrderStatus::PickedUp, $result->status);
+        $this->assertSame($doorman->id, $result->pickupConfirmedBy->id);
+        $this->assertTrue($doorman->confirmedOrderPickups()->whereKey($order->id)->exists());
+    }
 
-        $cancelledOrder = $this->orderService->cancel($order);
-
-        $this->assertSame(OrderStatus::Cancelled, $cancelledOrder->status);
-
-        $this->assertDatabaseHas('orders', [
-            'id' => $order->id,
-            'status' => OrderStatus::Cancelled->value,
-        ]);
+    public function test_admin_na_mesma_unidade_nao_pode_confirmar_retirada(): void
+    {
+        $order = Order::factory()->create(['status' => OrderStatus::ReceivedAtGate]);
+        $admin = User::factory()->admin()->create(['unit_id' => $order->unit_id]);
+        $this->expectException(HttpException::class);
+        $this->orderService->pickup($order, $admin);
     }
 }

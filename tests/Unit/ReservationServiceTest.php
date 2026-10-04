@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Enums\ReservationStatus;
 use App\Models\CommonArea;
-use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ReservationService;
@@ -36,7 +35,7 @@ class ReservationServiceTest extends TestCase
 
     public function test_deve_aprovar_reserva_quando_area_nao_exige_aprovacao(): void
     {
-        $reservation = $this->reservationService->create(
+        $reservation = $this->reservationService->create($this->user,
             $this->reservationData($this->createCommonArea([
                 'requires_approval' => false,
             ])),
@@ -47,7 +46,7 @@ class ReservationServiceTest extends TestCase
 
     public function test_deve_deixar_reserva_pendente_quando_area_exige_aprovacao(): void
     {
-        $reservation = $this->reservationService->create(
+        $reservation = $this->reservationService->create($this->user,
             $this->reservationData($this->createCommonArea([
                 'requires_approval' => true,
             ])),
@@ -63,7 +62,7 @@ class ReservationServiceTest extends TestCase
         ]);
 
         $this->assertValidationError('common_area_id', function () use ($commonArea): void {
-            $this->reservationService->create($this->reservationData($commonArea));
+            $this->reservationService->create($this->user, $this->reservationData($commonArea));
         });
     }
 
@@ -73,7 +72,7 @@ class ReservationServiceTest extends TestCase
         $startsAt = now()->addDay()->setTime(12, 0);
 
         $this->assertValidationError('starts_at', function () use ($commonArea, $startsAt): void {
-            $this->reservationService->create($this->reservationData($commonArea, [
+            $this->reservationService->create($this->user, $this->reservationData($commonArea, [
                 'starts_at' => $startsAt,
                 'ends_at' => $startsAt->copy()->subHour(),
             ]));
@@ -85,13 +84,13 @@ class ReservationServiceTest extends TestCase
         $commonArea = $this->createCommonArea();
         $startsAt = now()->addDay()->setTime(10, 0);
 
-        $this->reservationService->create($this->reservationData($commonArea, [
+        $this->reservationService->create($this->user, $this->reservationData($commonArea, [
             'starts_at' => $startsAt,
             'ends_at' => $startsAt->copy()->addHours(2),
         ]));
 
         $this->assertValidationError('starts_at', function () use ($commonArea, $startsAt): void {
-            $this->reservationService->create($this->reservationData($commonArea, [
+            $this->reservationService->create($this->user, $this->reservationData($commonArea, [
                 'starts_at' => $startsAt->copy()->addHour(),
                 'ends_at' => $startsAt->copy()->addHours(3),
             ]));
@@ -106,24 +105,23 @@ class ReservationServiceTest extends TestCase
         ]);
 
         $this->assertValidationError('common_area_id', function () use ($commonArea): void {
-            $this->reservationService->create($this->reservationData($commonArea));
+            $this->reservationService->create($this->user, $this->reservationData($commonArea));
         });
     }
 
     public function test_deve_aprovar_recusar_e_cancelar_reservas(): void
     {
-        $reservation = Reservation::factory()->create([
-            'status' => ReservationStatus::Pending,
-        ]);
-
-        $reservation = $this->reservationService->approve($reservation);
+        $admin = User::factory()->admin()->create();
+        $reservation = $this->reservationService->create($this->user, $this->reservationData($this->createCommonArea()));
+        $reservation = $this->reservationService->approve($admin, $reservation);
         $this->assertSame(ReservationStatus::Approved, $reservation->status);
 
-        $reservation = $this->reservationService->reject($reservation, 'Documentacao incompleta.');
-        $this->assertSame(ReservationStatus::Rejected, $reservation->status);
-        $this->assertSame('Documentacao incompleta.', $reservation->rejection_reason);
+        $pending = $this->reservationService->create($this->user, $this->reservationData($this->createCommonArea()));
+        $rejected = $this->reservationService->reject($admin, $pending, 'Documentacao incompleta.');
+        $this->assertSame(ReservationStatus::Rejected, $rejected->status);
+        $this->assertSame('Documentacao incompleta.', $rejected->rejection_reason);
 
-        $reservation = $this->reservationService->cancel($reservation);
+        $reservation = $this->reservationService->cancelByAdmin($admin, $reservation);
         $this->assertSame(ReservationStatus::Cancelled, $reservation->status);
     }
 

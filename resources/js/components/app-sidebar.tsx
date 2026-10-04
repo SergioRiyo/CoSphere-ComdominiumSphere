@@ -1,9 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Bell,
+    Building2,
+    CalendarDays,
     ClipboardCheck,
     ContactRound,
     History,
     LayoutGrid,
+    Package,
     Users,
     UsersRound,
 } from 'lucide-react';
@@ -20,10 +24,19 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
+import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
+import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as notificationsIndex } from '@/routes/morador/notifications';
+import { index as ordersIndex } from '@/routes/morador/orders';
+import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
+import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
+import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
 import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-access-history';
 import { index as visitorAccessesIndex } from '@/routes/portaria/visitor-accesses';
 import { validation } from '@/routes/portaria/visitor-authorizations';
@@ -49,6 +62,21 @@ export function AppSidebar() {
                       href: usersIndex(),
                       icon: Users,
                   },
+                  {
+                      title: 'Áreas comuns',
+                      href: commonAreasIndex(),
+                      icon: Building2,
+                  },
+                  {
+                      title: 'Reservas',
+                      href: adminReservationsIndex(),
+                      icon: CalendarDays,
+                  },
+                  {
+                      title: 'Bloqueios de áreas',
+                      href: commonAreaBlocksIndex(),
+                      icon: CalendarDays,
+                  },
               ]
             : []),
         ...(auth.user.role === 'morador'
@@ -58,10 +86,40 @@ export function AppSidebar() {
                       href: visitorsIndex(),
                       icon: ContactRound,
                   },
+                  {
+                      title: 'Áreas comuns',
+                      href: residentCommonAreasIndex(),
+                      icon: Building2,
+                  },
+                  {
+                      title: 'Minhas reservas',
+                      href: residentReservationsIndex(),
+                      icon: CalendarDays,
+                  },
+                  {
+                      title: 'Notificações',
+                      href: notificationsIndex(),
+                      icon: Bell,
+                  },
+                  {
+                      title: 'Encomendas',
+                      href: ordersIndex(),
+                      icon: Package,
+                  },
               ]
             : []),
         ...(auth.user.role === 'porteiro'
             ? [
+                  {
+                      title: 'Receber encomendas',
+                      href: portariaOrdersIndex(),
+                      icon: Package,
+                  },
+                  {
+                      title: 'Histórico de encomendas',
+                      href: orderHistoryIndex(),
+                      icon: History,
+                  },
                   {
                       title: 'Validar visitante',
                       href: validation(),

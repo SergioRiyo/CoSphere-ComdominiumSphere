@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use App\Enums\UserRole;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -51,8 +53,38 @@ class Order extends Model
         return $this->belongsTo(User::class, 'received_by_id');
     }
 
-    public function pickedUpBy(): BelongsTo
+    /** User who recorded the confirmation, not necessarily the physical collector. */
+    public function pickupConfirmedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'picked_up_by_id');
+    }
+
+    public function canConfirmPickup(): bool
+    {
+        return $this->status === OrderStatus::ReceivedAtGate
+            && $this->resident !== null
+            && $this->resident->is_active
+            && $this->resident->role === UserRole::Morador
+            && $this->resident->unit_id === $this->unit_id;
+    }
+
+    public static function statusDateColumn(OrderStatus $status): string
+    {
+        return match ($status) {
+            OrderStatus::WaitingDelivery => 'created_at',
+            OrderStatus::ReceivedAtGate => 'received_at',
+            OrderStatus::PickedUp => 'picked_up_at',
+            OrderStatus::Cancelled => 'updated_at',
+        };
+    }
+
+    public function statusDate(): ?CarbonInterface
+    {
+        return $this->getAttribute(self::statusDateColumn($this->status));
+    }
+
+    public function isAvailableForPickup(): bool
+    {
+        return $this->status === OrderStatus::ReceivedAtGate;
     }
 }

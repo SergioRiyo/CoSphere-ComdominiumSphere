@@ -34,7 +34,7 @@ class ReservationFeatureTest extends TestCase
         $startsAt = now()->addDays(5)->setTime(10, 0);
         $endsAt = $startsAt->copy()->addHours(2);
 
-        $reservation = $this->reservationService->create($this->reservationData(
+        $reservation = $this->reservationService->create($resident, $this->reservationData(
             commonArea: $commonArea,
             unit: $unit,
             resident: $resident,
@@ -67,7 +67,7 @@ class ReservationFeatureTest extends TestCase
         ]);
         $startsAt = now()->addDays(5)->setTime(10, 0);
 
-        $existingReservation = $this->reservationService->create($this->reservationData(
+        $existingReservation = $this->reservationService->create($resident, $this->reservationData(
             commonArea: $commonArea,
             unit: $unit,
             resident: $resident,
@@ -78,7 +78,7 @@ class ReservationFeatureTest extends TestCase
         ));
 
         $this->assertValidationError('starts_at', function () use ($commonArea, $otherUnit, $otherResident, $startsAt): void {
-            $this->reservationService->create($this->reservationData(
+            $this->reservationService->create($otherResident, $this->reservationData(
                 commonArea: $commonArea,
                 unit: $otherUnit,
                 resident: $otherResident,
@@ -107,7 +107,7 @@ class ReservationFeatureTest extends TestCase
         ]);
         $startsAt = now()->addDays(5)->setTime(10, 0);
 
-        $firstReservation = $this->reservationService->create($this->reservationData(
+        $firstReservation = $this->reservationService->create($resident, $this->reservationData(
             commonArea: $commonArea,
             unit: $unit,
             resident: $resident,
@@ -117,7 +117,7 @@ class ReservationFeatureTest extends TestCase
             ],
         ));
 
-        $secondReservation = $this->reservationService->create($this->reservationData(
+        $secondReservation = $this->reservationService->create($otherResident, $this->reservationData(
             commonArea: $commonArea,
             unit: $otherUnit,
             resident: $otherResident,

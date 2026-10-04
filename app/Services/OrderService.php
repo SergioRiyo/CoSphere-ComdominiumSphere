@@ -22,10 +22,12 @@ class OrderService
             $resident = $resident->fresh() ?? $resident;
 
             $this->ensureResidentCanCreateExpectedOrder($resident);
-            $this->ensureUnitMatchesResident(
-                resident: $resident,
-                unitId: $data['unit_id'] ?? null,
-            );
+            if (array_key_exists('unit_id', $data)) {
+                $this->ensureUnitMatchesResident(
+                    resident: $resident,
+                    unitId: $data['unit_id'],
+                );
+            }
 
             return Order::create([
                 'unit_id' => $resident->unit_id,
@@ -52,11 +54,11 @@ class OrderService
         return DB::transaction(function () use ($data, $doorman) {
             $this->ensureDoorman($doorman);
 
-            $resident = User::query()->find($data['resident_id']);
+            $resident = User::query()->lockForUpdate()->find($data['resident_id']);
 
             if (! $resident instanceof User) {
                 throw ValidationException::withMessages([
-                    'resident_id' => 'Morador nao encontrado.',
+                    'resident_id' => 'Morador não encontrado.',
                 ]);
             }
 
@@ -96,11 +98,12 @@ class OrderService
             $this->ensureDoorman($doorman);
 
             $order = Order::query()
-                ->with('resident')
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
+            $order->setRelation('resident', User::query()->lockForUpdate()->find($order->resident_id));
             $this->ensureOrderResidentMatchesUnit($order);
+            $this->ensureResidentCanReceiveOrders($order->resident);
             $this->ensureCanBeReceived($order);
 
             $order->update([
@@ -121,41 +124,23 @@ class OrderService
     {
         return DB::transaction(function () use ($order, $user) {
             $order = Order::query()
-                ->with('resident')
                 ->lockForUpdate()
                 ->findOrFail($order->id);
 
-            $this->ensureOrderResidentMatchesUnit($order);
+            $users = User::query()->whereIn('id', [$user->id, $order->resident_id])
+                ->orderBy('id')->lockForUpdate()->get()->keyBy('id');
+            $user = $users->get($user->id);
+            abort_unless($user instanceof User, 403);
             $this->ensureUserCanPickUpOrder($order, $user);
+            $order->setRelation('resident', $users->get($order->resident_id));
+            $this->ensureOrderResidentMatchesUnit($order);
+            $this->ensureResidentCanReceiveOrders($order->resident);
             $this->ensureCanBePickedUp($order);
 
             $order->update([
                 'picked_up_by_id' => $user->id,
                 'picked_up_at' => now(),
                 'status' => OrderStatus::PickedUp,
-            ]);
-
-            return $order->fresh();
-        });
-    }
-
-    public function cancel(Order $order): Order
-    {
-        return DB::transaction(function () use ($order) {
-            if ($order->status === OrderStatus::PickedUp) {
-                throw ValidationException::withMessages([
-                    'order' => 'Não é possível cancelar uma encomenda que já foi retirada.',
-                ]);
-            }
-
-            if ($order->status === OrderStatus::Cancelled) {
-                throw ValidationException::withMessages([
-                    'order' => 'Esta encomenda já está cancelada.',
-                ]);
-            }
-
-            $order->update([
-                'status' => OrderStatus::Cancelled,
             ]);
 
             return $order->fresh();
@@ -181,6 +166,11 @@ class OrderService
                 'order' => 'Esta encomenda está cancelada.',
             ]);
         }
+        if ($order->status !== OrderStatus::WaitingDelivery) {
+            throw ValidationException::withMessages([
+                'order' => 'Somente encomendas aguardando entrega podem ser recebidas.',
+            ]);
+        }
     }
 
     private function ensureCanBePickedUp(Order $order): void
@@ -196,7 +186,7 @@ class OrderService
     {
         $this->ensureResidentCanReceiveOrders($resident);
 
-        if ($resident->unit_id === null) {
+        if ($resident->unit_id === null || ! $resident->unit()->exists()) {
             throw ValidationException::withMessages([
                 'resident' => 'O morador precisa estar vinculado a uma unidade.',
             ]);
@@ -205,16 +195,16 @@ class OrderService
 
     private function ensureResidentCanReceiveOrders(User $resident): void
     {
-        if ($resident->role !== UserRole::Morador) {
+        if ($resident->role !== UserRole::Morador || ! $resident->is_active) {
             throw ValidationException::withMessages([
-                'resident' => 'A encomenda deve estar vinculada a um morador.',
+                'resident' => 'A encomenda deve estar vinculada a um morador ativo.',
             ]);
         }
     }
 
     private function ensureDoorman(User $doorman): void
     {
-        if ($doorman->role !== UserRole::Porteiro) {
+        if ($doorman->role !== UserRole::Porteiro || ! $doorman->is_active) {
             throw ValidationException::withMessages([
                 'doorman' => 'Somente porteiros podem registrar encomendas na portaria.',
             ]);
@@ -223,7 +213,7 @@ class OrderService
 
     private function ensureUnitMatchesResident(User $resident, mixed $unitId): void
     {
-        if ($resident->unit_id === null) {
+        if ($resident->unit_id === null || ! $resident->unit()->exists()) {
             throw ValidationException::withMessages([
                 'resident' => 'O morador precisa estar vinculado a uma unidade.',
             ]);
@@ -231,7 +221,7 @@ class OrderService
 
         if ((int) $resident->unit_id !== (int) $unitId) {
             throw ValidationException::withMessages([
-                'unit_id' => 'A unidade informada nao corresponde ao morador selecionado.',
+                'unit_id' => 'A unidade informada não corresponde ao morador selecionado.',
             ]);
         }
     }
@@ -242,24 +232,20 @@ class OrderService
 
         if (! $resident instanceof User || (int) $resident->unit_id !== (int) $order->unit_id) {
             throw ValidationException::withMessages([
-                'order' => 'A encomenda possui uma unidade invalida para o morador informado.',
+                'order' => 'O destinatário não pertence mais à unidade original. Confirme o vínculo com a administração antes de continuar.',
             ]);
         }
     }
 
     private function ensureUserCanPickUpOrder(Order $order, User $user): void
     {
-        if ($user->unit_id === null) {
-            throw ValidationException::withMessages([
-                'user' => 'O usuario precisa estar vinculado a unidade da encomenda.',
-            ]);
+        abort_unless($user->is_active, 403);
+        if ($user->role === UserRole::Porteiro) {
+            return;
         }
 
-        if ((int) $user->unit_id !== (int) $order->unit_id) {
-            throw ValidationException::withMessages([
-                'user' => 'Somente moradores da unidade da encomenda podem retira-la.',
-            ]);
-        }
+        abort_unless($user->role === UserRole::Morador, 403);
+        abort_unless($user->unit_id !== null && (int) $user->unit_id === (int) $order->unit_id, 404);
     }
 
     private function notifyResidentOrderReceived(Order $order): void

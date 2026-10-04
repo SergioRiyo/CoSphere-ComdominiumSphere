@@ -2,65 +2,50 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexReservationRequest;
 use App\Http\Requests\StoreReservationRequest;
-use App\Http\Requests\UpdateReservationRequest;
 use App\Models\Reservation;
+use App\Services\ReservationQueryService;
+use App\Services\ReservationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ReservationController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(IndexReservationRequest $request, ReservationQueryService $service): Response
     {
-        //
+        return Inertia::render('morador/reservations', [
+            'reservations' => $service->paginate($request->user(), $request->validated()),
+            'filters' => $request->safe()->only(['status', 'date_from', 'date_to']),
+            'statuses' => $service->statuses(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show(Request $request, int $reservation, ReservationQueryService $service): Response
     {
-        //
+        return Inertia::render('morador/reservation-details', ['reservation' => $service->details($request->user(), $reservation)]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreReservationRequest $request)
+    public function cancel(Request $request, Reservation $reservation, ReservationService $service): JsonResponse
     {
-        //
+        $service->cancelByResident($request->user(), $reservation);
+
+        return response()->json(['message' => 'Reserva cancelada.']);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Reservation $reservation)
+    public function store(StoreReservationRequest $request, ReservationService $service): JsonResponse
     {
-        //
-    }
+        $reservation = $service->create($request->user(), $request->validated());
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Reservation $reservation)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateReservationRequest $request, Reservation $reservation)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Reservation $reservation)
-    {
-        //
+        return response()->json([
+            'area' => $reservation->commonArea()->value('name'),
+            'date' => $reservation->starts_at->toDateString(),
+            'start' => $reservation->starts_at->format('H:i:s'),
+            'end' => $reservation->ends_at->format('H:i:s'),
+            'status' => $reservation->status->value,
+            'status_label' => $reservation->status->label(),
+        ], 201)->header('Cache-Control', 'private, no-store');
     }
 }
