@@ -1,14 +1,23 @@
-import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, useHttp } from '@inertiajs/react';
+import { CalendarDays, Pencil, Plus } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
 import CommonAreaFormDialog, {
     commonAreaStatusLabels,
 } from '@/components/admin/common-area-form-dialog';
+import CommonAreaAvailabilityDetails from '@/components/common-area-availability-details';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { index } from '@/routes/admin/common-areas';
-import type { CommonArea, PaginatedCommonAreas } from '@/types/common-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { availability, index } from '@/routes/admin/common-areas';
+import type {
+    CommonArea,
+    CommonAreaAvailability,
+    PaginatedCommonAreas,
+} from '@/types/common-area';
 
 function operatingHours(area: CommonArea): string {
     return area.available_from && area.available_until
@@ -18,16 +27,59 @@ function operatingHours(area: CommonArea): string {
 
 export default function CommonAreasPage({
     areas,
+    today,
 }: {
     areas: PaginatedCommonAreas;
+    today: string;
 }) {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editingArea, setEditingArea] = useState<CommonArea | null>(null);
+    const [availabilityArea, setAvailabilityArea] = useState<CommonArea | null>(
+        null,
+    );
+    const [availabilityDate, setAvailabilityDate] = useState(today);
+    const [availabilityResult, setAvailabilityResult] =
+        useState<CommonAreaAvailability | null>(null);
+    const [availabilityLoading, setAvailabilityLoading] = useState(false);
+    const requestNumber = useRef(0);
+    const http = useHttp<Record<string, never>, CommonAreaAvailability>({});
 
     const openForm = (area: CommonArea | null) => {
         setEditingArea(area);
         setDialogOpen(true);
     };
+
+    async function consult(area: CommonArea, date: string) {
+        const currentRequest = ++requestNumber.current;
+        http.cancel();
+        setAvailabilityArea(area);
+        setAvailabilityResult(null);
+        setAvailabilityLoading(Boolean(date));
+
+        if (!date) {
+            return;
+        }
+
+        try {
+            const response = await http.get(
+                availability.url(area.id, { query: { date } }),
+            );
+
+            if (currentRequest === requestNumber.current) {
+                setAvailabilityResult(response);
+            }
+        } catch {
+            if (currentRequest === requestNumber.current) {
+                toast.error(
+                    'Não foi possível consultar a disponibilidade. Tente novamente.',
+                );
+            }
+        } finally {
+            if (currentRequest === requestNumber.current) {
+                setAvailabilityLoading(false);
+            }
+        }
+    }
 
     return (
         <>
@@ -115,14 +167,31 @@ export default function CommonAreasPage({
                                                 </dd>
                                             </div>
                                         </dl>
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => openForm(area)}
-                                            aria-label={`Editar ${area.name}`}
-                                        >
-                                            <Pencil />
-                                            Editar
-                                        </Button>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            <Button
+                                                variant="outline"
+                                                disabled={
+                                                    area.status !== 'active'
+                                                }
+                                                onClick={() =>
+                                                    void consult(
+                                                        area,
+                                                        availabilityDate,
+                                                    )
+                                                }
+                                            >
+                                                <CalendarDays />
+                                                Disponibilidade
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => openForm(area)}
+                                                aria-label={`Editar ${area.name}`}
+                                            >
+                                                <Pencil />
+                                                Editar
+                                            </Button>
+                                        </div>
                                     </article>
                                 ))}
                             </div>
@@ -188,17 +257,37 @@ export default function CommonAreasPage({
                                                     </Badge>
                                                 </td>
                                                 <td className="px-5 py-4 text-right">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            openForm(area)
-                                                        }
-                                                        aria-label={`Editar ${area.name}`}
-                                                    >
-                                                        <Pencil />
-                                                        Editar
-                                                    </Button>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={
+                                                                area.status !==
+                                                                'active'
+                                                            }
+                                                            onClick={() =>
+                                                                void consult(
+                                                                    area,
+                                                                    availabilityDate,
+                                                                )
+                                                            }
+                                                            aria-label={`Consultar disponibilidade de ${area.name}`}
+                                                        >
+                                                            <CalendarDays />
+                                                            Consultar
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                openForm(area)
+                                                            }
+                                                            aria-label={`Editar ${area.name}`}
+                                                        >
+                                                            <Pencil />
+                                                            Editar
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -261,6 +350,37 @@ export default function CommonAreasPage({
                         )}
                     </div>
                 </Card>
+                {availabilityArea && (
+                    <section className="grid gap-4" aria-live="polite">
+                        <div className="grid gap-2 sm:max-w-xs">
+                            <Label htmlFor="admin-availability-date">
+                                Data para {availabilityArea.name}
+                            </Label>
+                            <Input
+                                id="admin-availability-date"
+                                type="date"
+                                value={availabilityDate}
+                                onChange={(event) => {
+                                    setAvailabilityDate(event.target.value);
+                                    void consult(
+                                        availabilityArea,
+                                        event.target.value,
+                                    );
+                                }}
+                            />
+                        </div>
+                        {availabilityLoading ? (
+                            <div className="grid gap-3" role="status">
+                                <span>Consultando disponibilidade…</span>
+                                <Skeleton className="h-40 w-full" />
+                            </div>
+                        ) : availabilityResult ? (
+                            <CommonAreaAvailabilityDetails
+                                result={availabilityResult}
+                            />
+                        ) : null}
+                    </section>
+                )}
             </div>
             <CommonAreaFormDialog
                 key={`${editingArea?.id ?? 'create'}-${dialogOpen ? 'open' : 'closed'}`}

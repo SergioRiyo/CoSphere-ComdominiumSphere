@@ -41,6 +41,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
             ->name('users.status.update');
 
         Route::resource('users', UserController::class)->only(['index', 'store', 'update']);
+        Route::get('common-areas/{commonArea}/availability', [CommonAreaController::class, 'availability'])
+            ->name('common-areas.availability');
         Route::resource('common-areas', CommonAreaController::class)->only(['index', 'store', 'update']);
         Route::resource('common-area-blocks', CommonAreaBlockController::class)
             ->parameters(['common-area-blocks' => 'commonAreaBlock'])

@@ -38,8 +38,8 @@ class ReservationQueryTest extends TestCase
         }
         $foreign = Reservation::factory()->create($this->period() + ['user_id' => $other->id, 'unit_id' => $resident->unit_id]);
         $this->actingAs($actor)->get(route($role.'.reservations.index'))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component($role.'/reservations')->has('reservations.data', $role === 'admin' ? 6 : 5)->has('statuses', 5)
-            ->where('reservations.total', $role === 'admin' ? 6 : 5));
+            ->component($role.'/reservations')->has('reservations.data', $role === 'admin' ? 5 : 4)->has('statuses', 4)
+            ->where('reservations.total', $role === 'admin' ? 5 : 4));
         foreach ($own as $reservation) {
             $this->get(route($role.'.reservations.show', $reservation))->assertOk()->assertInertia(fn (Assert $page) => $page
                 ->component($role.'/reservation-details')->where('reservation.status', $reservation->status->value)
@@ -81,7 +81,6 @@ class ReservationQueryTest extends TestCase
                 [['date_from' => '2026-10-01'], [3]],
                 [['date_to' => '2026-09-01'], [0]],
                 [['status' => 'rejected'], []],
-                [['status' => 'completed'], []],
             ] as [$filters, $expected]) {
                 $cases[] = [$role, $filters, $expected];
             }
@@ -104,7 +103,7 @@ class ReservationQueryTest extends TestCase
         $cases = [];
         foreach (['admin', 'morador'] as $role) {
             foreach ([
-                [['status' => 'approved'], 'status'], [['status' => ['pending']], 'status'],
+                [['status' => 'approved'], 'status'], [['status' => 'completed'], 'status'], [['status' => ['pending']], 'status'],
                 [['date_from' => 'tomorrow'], 'date_from'], [['date_to' => '2026-02-30'], 'date_to'],
                 [['date_from' => '2026-10-01', 'date_to' => '2026-09-01'], 'date_to'],
                 [['page' => 0], 'page'], [['page' => 'invalid'], 'page'],

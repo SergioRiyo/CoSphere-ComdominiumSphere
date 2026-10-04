@@ -14,7 +14,7 @@ class CommonAreaAvailabilityRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->role === UserRole::Morador;
+        return in_array($this->user()?->role, [UserRole::Admin, UserRole::Morador], true);
     }
 
     /**
