@@ -33,6 +33,9 @@ jobs:
           composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
           npm install
 
+      - name: Generate Wayfinder
+        run: php artisan wayfinder:generate --with-form --no-interaction
+
       - name: Run Pint
         run: ./vendor/bin/pint --test
 
