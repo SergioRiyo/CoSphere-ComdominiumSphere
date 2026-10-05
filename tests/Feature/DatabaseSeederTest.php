@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MaintenanceRequestStatus;
 use App\Enums\UserRole;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
@@ -104,10 +105,21 @@ class DatabaseSeederTest extends TestCase
             $this->assertSame($incident->unit_id, $incident->resident->unit_id);
         }
 
-        foreach (MaintenanceRequest::query()->with(['incident.resident', 'admin'])->cursor() as $request) {
-            $this->assertSame($request->incident->unit_id, $request->incident->resident->unit_id);
-            $this->assertSame(UserRole::Admin, $request->admin->role);
-            $this->assertNull($request->admin->unit_id);
+        foreach (MaintenanceRequest::query()->with(['incident', 'resident', 'admin'])->cursor() as $request) {
+            $this->assertSame($request->unit_id, $request->resident->unit_id);
+            if ($request->incident !== null) {
+                $this->assertSame($request->incident->resident_id, $request->resident_id);
+                $this->assertSame($request->incident->unit_id, $request->unit_id);
+            }
+            if ($request->admin !== null) {
+                $this->assertSame(UserRole::Admin, $request->admin->role);
+                $this->assertNull($request->admin->unit_id);
+            }
+            if ($request->status === MaintenanceRequestStatus::Scheduled) {
+                $this->assertNotNull($request->scheduled_at);
+                $this->assertNotNull($request->service_provider_id);
+                $this->assertNull($request->executed_at);
+            }
         }
     }
 

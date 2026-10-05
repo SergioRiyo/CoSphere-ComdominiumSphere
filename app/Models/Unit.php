@@ -56,4 +56,9 @@ class Unit extends Model
     {
         return $this->hasMany(Incident::class);
     }
+
+    public function maintenanceRequests(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequest::class);
+    }
 }
