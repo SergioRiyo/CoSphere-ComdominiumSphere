@@ -27,7 +27,7 @@ const highlights = [
 
 export default function AuthLoginShowcase() {
     return (
-        <aside className="flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-cosphere-navy p-6 text-white xl:p-8">
+        <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-cosphere-deep p-5 text-white xl:p-6">
             <div>
                 <p className="text-xs font-semibold tracking-[0.28em] text-cosphere-blue uppercase">
                     Gestão inteligente
@@ -37,8 +37,8 @@ export default function AuthLoginShowcase() {
                 </p>
             </div>
 
-            <div className="mt-8 max-w-md xl:mt-10">
-                <h2 className="text-3xl leading-tight font-semibold tracking-tight xl:text-4xl">
+            <div className="mt-5 max-w-md">
+                <h2 className="text-2xl leading-tight font-semibold tracking-tight xl:text-3xl">
                     Tudo o que seu condomínio precisa,
                     <span className="block text-cosphere-orange">
                         em um só lugar.
@@ -54,21 +54,21 @@ export default function AuthLoginShowcase() {
                 </p>
             </div>
 
-            <div className="relative mt-7 h-56 overflow-hidden rounded-2xl border border-white/10 xl:mt-8 xl:h-72">
+            <div className="relative mx-auto mt-5 h-80 w-full max-w-4xl shrink-0 overflow-hidden rounded-2xl border border-white/10 lg:h-96 xl:h-[26rem]">
                 <img
                     src={condominioNoite}
                     alt="Condomínio residencial iluminado ao anoitecer"
                     className="size-full object-cover"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-cosphere-navy/35" />
-                <span className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-cosphere-navy/75 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-0 bg-cosphere-deep/35" />
+                <span className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-cosphere-deep/75 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
                     <ShieldCheck
                         className="size-3.5 text-emerald-400"
                         aria-hidden="true"
                     />
                     Ambiente seguro
                 </span>
-                <span className="absolute right-4 bottom-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-cosphere-navy/75 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
+                <span className="absolute right-4 bottom-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-cosphere-deep/75 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">
                     <FileText
                         className="size-3.5 text-cosphere-blue"
                         aria-hidden="true"
@@ -77,7 +77,7 @@ export default function AuthLoginShowcase() {
                 </span>
             </div>
 
-            <ul className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 xl:grid-cols-3">
+            <ul className="mx-auto mt-3 grid w-full max-w-4xl gap-2 rounded-2xl border border-white/10 bg-white/5 p-2.5 xl:grid-cols-3">
                 {highlights.map(({ icon: Icon, title, description }) => (
                     <li key={title} className="flex gap-2.5 xl:block">
                         <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-white/15 text-cosphere-blue xl:mb-3">
