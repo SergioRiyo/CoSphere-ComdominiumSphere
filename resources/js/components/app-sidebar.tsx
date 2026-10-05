@@ -141,10 +141,14 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader className="p-0 group-data-[collapsible=icon]:p-2">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="h-48 justify-center p-0 group-data-[collapsible=icon]:h-8!"
+                        >
                             <Link href={dashboardHref} prefetch>
                                 <AppLogo />
                             </Link>
