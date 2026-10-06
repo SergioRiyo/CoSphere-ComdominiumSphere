@@ -5,6 +5,7 @@ use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
 use App\Http\Controllers\PortariaOrderHistoryController;
@@ -27,6 +28,8 @@ Route::prefix('convites/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->middle
 });
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
+    Route::get('incident-attachments/{incidentAttachment}', IncidentAttachmentController::class)
+        ->whereNumber('incidentAttachment')->name('incident-attachments.download');
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {

@@ -2,9 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Enums\IncidentCategory;
 use App\Enums\IncidentPriority;
 use App\Enums\IncidentStatus;
-use App\Enums\MaintenanceRequestStatus;
+use App\Enums\IncidentType;
 use App\Enums\UserRole;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
@@ -67,7 +68,8 @@ class OccurrenceAndMaintenanceSeeder extends Seeder
                 ->create([
                     'unit_id' => $unit->id,
                     'resident_id' => $resident->id,
-                    'category' => 'maintenance',
+                    'category' => IncidentCategory::Maintenance,
+                    'type' => IncidentType::MaintenanceRequest,
                     'status' => IncidentStatus::InProgress->value,
                     'priority' => IncidentPriority::High->value,
                     'title' => 'Solicitação de manutenção',
@@ -83,13 +85,13 @@ class OccurrenceAndMaintenanceSeeder extends Seeder
 
         foreach ($maintenanceIncidents as $incident) {
             MaintenanceRequest::factory()
+                ->linkedToIncident($incident)
+                ->scheduled()
                 ->create([
-                    'incident_id' => $incident->id,
                     'service_provider_id' => ServiceProvider::query()
                         ->inRandomOrder()
                         ->value('id'),
                     'admin_id' => $admins->random()->id,
-                    'status' => MaintenanceRequestStatus::Scheduled->value,
                 ]);
         }
     }

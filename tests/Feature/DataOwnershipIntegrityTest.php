@@ -51,6 +51,8 @@ class DataOwnershipIntegrityTest extends TestCase
             ->create()
             ->load(['visitorAuthorization.resident', 'doorman']);
         $maintenanceRequest = MaintenanceRequest::factory()
+            ->linkedToIncident()
+            ->scheduled()
             ->create()
             ->load(['incident.resident', 'admin']);
 
@@ -63,6 +65,8 @@ class DataOwnershipIntegrityTest extends TestCase
         $incident = $maintenanceRequest->incident;
         $this->assertSame(UserRole::Morador, $incident->resident->role);
         $this->assertSame($incident->unit_id, $incident->resident->unit_id);
+        $this->assertSame($incident->resident_id, $maintenanceRequest->resident_id);
+        $this->assertSame($incident->unit_id, $maintenanceRequest->unit_id);
         $this->assertSame(UserRole::Admin, $maintenanceRequest->admin->role);
         $this->assertNull($maintenanceRequest->admin->unit_id);
     }

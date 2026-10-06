@@ -2,53 +2,58 @@
 
 namespace Database\Factories;
 
+use App\Enums\IncidentCategory;
 use App\Enums\IncidentPriority;
 use App\Enums\IncidentStatus;
+use App\Enums\IncidentType;
 use App\Models\Incident;
-use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/** @extends Factory<Incident> */
 class IncidentFactory extends Factory
 {
     protected $model = Incident::class;
 
-    /**
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'unit_id' => fn (): int => Unit::factory()->create()->id,
-            'resident_id' => fn (array $attributes): int => User::factory()->create([
-                'role' => 'morador',
-                'unit_id' => $attributes['unit_id'],
-            ])->id,
-
-            'title' => fake()->randomElement([
-                'Vazamento na área comum',
-                'Lâmpada queimada no corredor',
-                'Barulho excessivo',
-                'Portão com problema',
-                'Problema na iluminação',
-                'Solicitação de manutenção',
-            ]),
-
-            'category' => fake()->randomElement([
-                'maintenance',
-                'security',
-                'cleaning',
-                'noise',
-                'other',
-            ]),
-
+            'resident_id' => fn (array $attributes): int => User::factory()->morador()->create(
+                is_numeric($attributes['unit_id'] ?? null) ? ['unit_id' => $attributes['unit_id']] : [],
+            )->id,
+            'unit_id' => fn (array $attributes): int => User::query()->findOrFail($attributes['resident_id'])->unit_id,
+            'title' => fake()->sentence(),
+            'type' => IncidentType::Incident,
+            'category' => fake()->randomElement(IncidentCategory::cases())->value,
             'description' => fake()->paragraph(),
-
-            'opened_at' => fake()->dateTimeBetween('-30 days', 'now'),
-
-            'status' => fake()->randomElement(IncidentStatus::cases())->value,
-
-            'priority' => fake()->randomElement(IncidentPriority::cases())->value,
+            'opened_at' => now(),
+            'status' => IncidentStatus::Open,
+            'priority' => IncidentPriority::Medium,
         ];
+    }
+
+    public function open(): static
+    {
+        return $this->state(['status' => IncidentStatus::Open]);
+    }
+
+    public function inProgress(): static
+    {
+        return $this->state(['status' => IncidentStatus::InProgress]);
+    }
+
+    public function completed(): static
+    {
+        return $this->state(['status' => IncidentStatus::Completed]);
+    }
+
+    public function canceled(): static
+    {
+        return $this->state(['status' => IncidentStatus::Canceled]);
+    }
+
+    public function maintenanceRequest(): static
+    {
+        return $this->state(['type' => IncidentType::MaintenanceRequest]);
     }
 }
