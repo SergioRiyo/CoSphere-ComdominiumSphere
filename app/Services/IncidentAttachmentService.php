@@ -55,6 +55,11 @@ class IncidentAttachmentService
                             }
                         },
                     ],
+                ], [
+                    'file.max' => 'Cada arquivo deve ter no máximo 10 MiB.',
+                    'file.mimetypes' => 'Envie uma imagem JPG, PNG, GIF, BMP, WebP ou um PDF válido.',
+                    'file.extensions' => 'A extensão do arquivo não é permitida.',
+                    'file.uploaded' => 'Não foi possível enviar o arquivo. Tente novamente.',
                 ])->validate();
                 $mime = $file->getMimeType();
                 $name = Str::uuid().'.'.self::FORMATS[$mime][0];

@@ -17,6 +17,31 @@ use RuntimeException;
 
 class MaintenanceRequestService
 {
+    public function createFromIncident(User $actor, Incident $incident): MaintenanceRequest
+    {
+        return DB::transaction(function () use ($actor, $incident): MaintenanceRequest {
+            $current = Incident::query()->lockForUpdate()->findOrFail($incident->getKey());
+            $actor = $this->resolveActor($actor);
+            Gate::forUser($actor)->authorize('createMaintenance', $current);
+            if ($current->maintenanceRequests()->withTrashed()->exists()) {
+                throw ValidationException::withMessages(['maintenance' => 'Esta solicitação já possui manutenção vinculada.']);
+            }
+            $request = new MaintenanceRequest([
+                'incident_id' => $current->id, 'resident_id' => $current->resident_id,
+                'unit_id' => $current->unit_id, 'description' => $current->description,
+                'status' => MaintenanceRequestStatus::Pending,
+                'service_provider_id' => null, 'admin_id' => null,
+                'scheduled_at' => null, 'executed_at' => null, 'cost' => null,
+            ]);
+            if (! $request->save()) {
+                throw new RuntimeException('Não foi possível persistir a manutenção vinculada.');
+            }
+            $this->recordHistory($request, $actor, null);
+
+            return $request;
+        });
+    }
+
     /** @param array<string, mixed> $data */
     public function create(User $actor, array $data): MaintenanceRequest
     {

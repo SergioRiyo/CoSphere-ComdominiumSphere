@@ -2,10 +2,12 @@
 
 namespace Tests\Integration\Postgres;
 
+use App\Enums\IncidentPriority;
 use App\Enums\IncidentStatus;
 use App\Enums\MaintenanceRequestStatus;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
+use App\Models\Notification;
 use App\Models\ServiceProvider;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -54,7 +56,33 @@ class OccurrenceMaintenanceConcurrencyTest extends TestCase
         $this->assertSame($from, $history->from_status);
         $this->assertSame($target->refresh()->status, $history->to_status);
         $this->assertSame($admin->id, $history->changed_by_user_id);
+        $this->assertSame($entity === 'incident' ? 1 : 0, Notification::where('recipient_id', $target->resident_id)->count());
         $this->assertSame(0, DB::transactionLevel());
+    }
+
+    public function test_competing_identical_priorities_generate_one_history_and_notification(): void
+    {
+        $incident = Incident::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $operation = ['entity' => 'incident', 'action' => 'priority', 'id' => $incident->id, 'actor' => $admin->id];
+        $this->assertSame(['changed', 'changed'], $this->race($incident, [$operation, $operation]));
+        $this->assertSame(IncidentPriority::High, $incident->fresh()->priority);
+        $this->assertSame(1, $incident->priorityHistory()->count());
+        $this->assertSame(1, Notification::where('recipient_id', $incident->resident_id)->count());
+    }
+
+    public function test_competing_link_creation_generates_one_maintenance_and_initial_history(): void
+    {
+        $incident = Incident::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $operation = ['entity' => 'incident', 'action' => 'maintenance', 'id' => $incident->id, 'actor' => $admin->id];
+        $results = $this->race($incident, [$operation, $operation]);
+        sort($results);
+        $this->assertSame(['changed', 'invalid'], $results);
+        $maintenance = $incident->maintenanceRequests()->sole();
+        $this->assertSame(MaintenanceRequestStatus::Pending, $maintenance->status);
+        $this->assertSame(1, $maintenance->statusHistory()->count());
+        $this->assertSame($incident->resident_id, $maintenance->resident_id);
     }
 
     public static function competingTransitions(): array
@@ -93,7 +121,11 @@ $entity = $operation['entity'] === 'incident'
 echo 'READY '.\Illuminate\Support\Facades\DB::scalar('SELECT pg_backend_pid()').PHP_EOL;
 flush();
 try {
-    if ($operation['entity'] === 'incident') {
+    if (($operation['action'] ?? null) === 'priority') {
+        app(\App\Services\IncidentService::class)->updatePriority($actor, $entity, \App\Enums\IncidentPriority::High);
+    } elseif (($operation['action'] ?? null) === 'maintenance') {
+        app(\App\Services\MaintenanceRequestService::class)->createFromIncident($actor, $entity);
+    } elseif ($operation['entity'] === 'incident') {
         app(\App\Services\IncidentService::class)->transition($actor, $entity, \App\Enums\IncidentStatus::from($operation['status']));
     } else {
         app(\App\Services\MaintenanceRequestService::class)->transition($actor, $entity, \App\Enums\MaintenanceRequestStatus::from($operation['status']), $operation['data']);
