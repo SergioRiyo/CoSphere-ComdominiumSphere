@@ -5,6 +5,7 @@ import {
     CalendarDays,
     ClipboardCheck,
     ContactRound,
+    FileText,
     History,
     LayoutGrid,
     Package,
@@ -26,10 +27,12 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
@@ -63,6 +66,11 @@ export function AppSidebar() {
                       icon: Users,
                   },
                   {
+                      title: 'Ocorrências',
+                      href: adminIncidentsIndex(),
+                      icon: FileText,
+                  },
+                  {
                       title: 'Áreas comuns',
                       href: commonAreasIndex(),
                       icon: Building2,
@@ -85,6 +93,11 @@ export function AppSidebar() {
                       title: 'Visitantes',
                       href: visitorsIndex(),
                       icon: ContactRound,
+                  },
+                  {
+                      title: 'Solicitações',
+                      href: residentIncidentsIndex(),
+                      icon: FileText,
                   },
                   {
                       title: 'Áreas comuns',

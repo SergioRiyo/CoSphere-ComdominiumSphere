@@ -2,12 +2,24 @@
 
 namespace App\Policies;
 
+use App\Enums\IncidentStatus;
 use App\Enums\UserRole;
 use App\Models\Incident;
 use App\Models\User;
 
 class IncidentPolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return $this->eligible($user) && in_array($user->role, [UserRole::Admin, UserRole::Morador], true);
+    }
+
+    public function createMaintenance(User $user, Incident $incident): bool
+    {
+        return $this->transition($user, $incident)
+            && in_array($incident->status, [IncidentStatus::Open, IncidentStatus::InProgress], true);
+    }
+
     public function create(User $user): bool
     {
         return $this->eligible($user) && $user->role === UserRole::Morador

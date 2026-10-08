@@ -6,6 +6,7 @@ use App\Enums\IncidentType;
 use App\Enums\MaintenanceRequestStatus;
 use App\Models\Incident;
 use App\Models\IncidentAttachment;
+use App\Models\IncidentPriorityHistory;
 use App\Models\MaintenanceRequest;
 use App\Models\User;
 use Illuminate\Database\Migrations\Migration;
@@ -20,6 +21,21 @@ use Tests\TestCase;
 class OccurrenceMaintenanceMigrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_priority_history_migration_can_rollback_and_reapply_without_changing_incidents(): void
+    {
+        $incident = Incident::factory()->create()->refresh();
+        $before = $incident->getRawOriginal();
+        $migration = require database_path('migrations/2026_10_06_162938_create_incident_priority_histories_table.php');
+        $migration->down();
+        $this->assertFalse(Schema::hasTable('incident_priority_histories'));
+        $this->assertSame($before, $incident->fresh()->getRawOriginal());
+        $migration->up();
+        $this->assertTrue(Schema::hasTable('incident_priority_histories'));
+        $history = IncidentPriorityHistory::factory()->create(['incident_id' => $incident->id]);
+        $this->assertSame($incident->id, $history->incident->id);
+        $this->assertSame($before, $incident->fresh()->getRawOriginal());
+    }
 
     public function test_incremental_upgrade_preserves_all_legacy_values_links_and_soft_deletes(): void
     {

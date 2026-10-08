@@ -72,4 +72,9 @@ class Incident extends Model
     {
         return $this->hasMany(IncidentAttachment::class)->orderBy('uploaded_at')->orderBy('id');
     }
+
+    public function priorityHistory(): HasMany
+    {
+        return $this->hasMany(IncidentPriorityHistory::class)->orderBy('created_at')->orderBy('id');
+    }
 }
