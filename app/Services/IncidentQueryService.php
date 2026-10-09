@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Gate;
 
 class IncidentQueryService
 {
+    public function __construct(private readonly MaintenanceRequestQueryService $maintenanceQuery) {}
+
     /** @return Builder<Incident> */
     private function accessible(User $user): Builder
     {
@@ -66,7 +68,7 @@ class IncidentQueryService
     {
         $incident = $this->accessible($user)->findOrFail($id);
         Gate::forUser($user)->authorize('view', $incident);
-        $incident->load(['attachments', 'statusHistory', 'priorityHistory', 'maintenanceRequests.serviceProvider:id,name']);
+        $incident->load(['attachments', 'statusHistory', 'priorityHistory', 'maintenanceRequests.serviceProvider:id,name', 'maintenanceRequests.statusHistory', 'maintenanceRequests.changes']);
         if ($user->role === UserRole::Admin) {
             $incident->load(['resident:id,name', 'unit:id,block,number,complement', 'statusHistory.changedBy:id,name', 'priorityHistory.changedBy:id,name']);
         }
@@ -92,14 +94,7 @@ class IncidentQueryService
             'attachments' => $incident->attachments->map(fn (IncidentAttachment $attachment): array => [
                 'id' => $attachment->id, 'name' => $attachment->original_name, 'size' => $attachment->size,
             ])->all(),
-            'maintenance_requests' => $incident->maintenanceRequests->map(fn (MaintenanceRequest $maintenance): array => [
-                'id' => $maintenance->id, 'status' => $maintenance->status->value,
-                'status_label' => $maintenance->status->label(),
-                'provider' => $maintenance->serviceProvider?->name,
-                'created_at' => $maintenance->created_at->format('Y-m-d H:i:s'),
-                'scheduled_at' => $maintenance->scheduled_at?->format('Y-m-d H:i:s'),
-                'executed_at' => $maintenance->executed_at?->format('Y-m-d H:i:s'),
-            ])->all(),
+            'maintenance_requests' => $incident->maintenanceRequests->map(fn (MaintenanceRequest $maintenance): array => $this->maintenanceQuery->residentSummary($maintenance))->all(),
             'allowed_statuses' => $user->role === UserRole::Admin
                 ? array_values(array_filter($this->enumOptions(IncidentStatus::cases()),
                     fn (array $option): bool => $incident->status->canTransitionTo(IncidentStatus::from($option['value'])))) : [],

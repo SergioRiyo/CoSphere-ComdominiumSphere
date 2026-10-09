@@ -28,7 +28,9 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
+import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
+import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
@@ -69,6 +71,16 @@ export function AppSidebar() {
                       title: 'Ocorrências',
                       href: adminIncidentsIndex(),
                       icon: FileText,
+                  },
+                  {
+                      title: 'Manutenções',
+                      href: maintenancesIndex(),
+                      icon: ClipboardCheck,
+                  },
+                  {
+                      title: 'Prestadores',
+                      href: providersIndex(),
+                      icon: ContactRound,
                   },
                   {
                       title: 'Áreas comuns',

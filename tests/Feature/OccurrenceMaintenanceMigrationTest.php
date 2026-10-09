@@ -171,7 +171,7 @@ class OccurrenceMaintenanceMigrationTest extends TestCase
         $this->assertContains(['incident_id', 'status'], $indexes);
         $this->assertContains(['resident_id', 'status'], $indexes);
         $this->assertContains(['unit_id', 'status'], $indexes);
-        foreach (['incident_id' => 999999, 'resident_id' => null, 'unit_id' => null] as $field => $value) {
+        foreach (['incident_id' => 999999, 'resident_id' => 999999, 'unit_id' => null] as $field => $value) {
             try {
                 DB::transaction(fn () => DB::table('maintenance_requests')->where('id', $request->id)->update([$field => $value]));
                 $this->fail('Required ownership and valid foreign keys must be enforced.');

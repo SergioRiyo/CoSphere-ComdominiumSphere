@@ -47,7 +47,7 @@ class OccurrenceMaintenanceConcurrencyTest extends TestCase
         $provider = ServiceProvider::factory()->create();
         $operations = array_map(fn (string $status): array => [
             'entity' => $entity, 'id' => $target->id, 'actor' => $admin->id, 'status' => $status,
-            'data' => ['scheduled_at' => now()->addHour()->toDateTimeString(), 'service_provider_id' => $provider->id, 'cost' => 100],
+            'data' => ['scheduled_at' => ($state === 'pendingWithoutProvider' ? now()->addHour() : now())->toDateTimeString(), 'service_provider_id' => $provider->id, 'cost' => 100],
         ], $targets);
         $results = $this->race($target, $operations);
         sort($results);
@@ -95,10 +95,49 @@ class OccurrenceMaintenanceConcurrencyTest extends TestCase
         ];
     }
 
+    #[DataProvider('newMaintenanceRaces')]
+    public function test_new_maintenance_transitions_notify_only_the_committed_action(string $state, array $statuses): void
+    {
+        $incident = Incident::factory()->create();
+        $maintenance = MaintenanceRequest::factory()->linkedToIncident($incident)->create([
+            'status' => $state, 'scheduled_at' => $state === 'scheduled' ? now() : null,
+            'service_provider_id' => ServiceProvider::factory()->create()->id,
+        ]);
+        $operations = array_map(fn (string $status): array => [
+            'entity' => 'maintenance', 'id' => $maintenance->id, 'actor' => User::factory()->admin()->create()->id,
+            'status' => $status, 'data' => [],
+        ], $statuses);
+        $results = $this->race($maintenance, $operations);
+        sort($results);
+        $this->assertSame(['changed', 'invalid'], $results);
+        $this->assertSame(1, $maintenance->statusHistory()->count());
+        $this->assertSame($maintenance->fresh()->status, $maintenance->statusHistory()->sole()->to_status);
+        $this->assertSame($incident->resident_id, Notification::sole()->recipient_id);
+        $this->assertSame('open', $incident->fresh()->status->value);
+    }
+
+    public static function newMaintenanceRaces(): array
+    {
+        return [['pending', ['in_progress', 'in_progress']], ['scheduled', ['completed', 'canceled']]];
+    }
+
+    public function test_concurrent_masked_documents_are_protected_by_unique_constraint(): void
+    {
+        $anchor = ServiceProvider::factory()->create();
+        $operations = array_map(fn (string $document): array => [
+            'entity' => 'provider', 'actor' => User::factory()->admin()->create()->id,
+            'data' => ['name' => 'Prestador concorrente', 'cpf_cnpj' => $document],
+        ], ['12.345.678/0001-90', '12345678000190']);
+        $results = $this->race($anchor, $operations, true);
+        sort($results);
+        $this->assertSame(['changed', 'invalid'], $results);
+        $this->assertSame(1, ServiceProvider::where('cpf_cnpj', '12345678000190')->count());
+    }
+
     /** @param list<array<string, mixed>> $operations
      * @return list<string>
      */
-    private function race(Model $target, array $operations): array
+    private function race(Model $target, array $operations, bool $reserveDocument = false): array
     {
         $connection = config('database.connections.pgsql');
         $environment = [
@@ -114,14 +153,16 @@ $app = require dirname($argv[1], 4).'/bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 $operation = json_decode(base64_decode($argv[2]), true, flags: JSON_THROW_ON_ERROR);
 $actor = \App\Models\User::findOrFail($operation['actor']);
-$entity = $operation['entity'] === 'incident'
+$entity = $operation['entity'] === 'provider' ? null : ($operation['entity'] === 'incident'
     ? \App\Models\Incident::findOrFail($operation['id'])
-    : \App\Models\MaintenanceRequest::findOrFail($operation['id']);
+    : \App\Models\MaintenanceRequest::findOrFail($operation['id']));
 \Illuminate\Support\Facades\DB::statement("SET lock_timeout = '15s'");
 echo 'READY '.\Illuminate\Support\Facades\DB::scalar('SELECT pg_backend_pid()').PHP_EOL;
 flush();
 try {
-    if (($operation['action'] ?? null) === 'priority') {
+    if ($operation['entity'] === 'provider') {
+        app(\App\Services\ServiceProviderService::class)->save($actor, $operation['data']);
+    } elseif (($operation['action'] ?? null) === 'priority') {
         app(\App\Services\IncidentService::class)->updatePriority($actor, $entity, \App\Enums\IncidentPriority::High);
     } elseif (($operation['action'] ?? null) === 'maintenance') {
         app(\App\Services\MaintenanceRequestService::class)->createFromIncident($actor, $entity);
@@ -140,6 +181,9 @@ PHP;
         DB::beginTransaction();
         try {
             $target->newQuery()->whereKey($target->getKey())->lockForUpdate()->firstOrFail();
+            if ($reserveDocument) {
+                ServiceProvider::factory()->create(['cpf_cnpj' => '12345678000190']);
+            }
             foreach ($operations as $operation) {
                 $process = new Process([
                     PHP_BINARY, '-r', $worker, __DIR__.'/m4-bootstrap.php',
@@ -169,7 +213,11 @@ PHP;
                 usleep(20000);
             }
             $this->assertSame(2, $waiting, 'Both workers must overlap while waiting for a PostgreSQL lock.');
-            DB::commit();
+            if ($reserveDocument) {
+                DB::rollBack();
+            } else {
+                DB::commit();
+            }
             $released = true;
             $results = [];
             foreach ($processes as $process) {

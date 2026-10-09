@@ -6,6 +6,7 @@ use App\Enums\MaintenanceRequestStatus;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
 use App\Models\ServiceProvider;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -51,6 +52,11 @@ class MaintenanceRequestFactory extends Factory
     public function withoutIncident(): static
     {
         return $this->state(['incident_id' => null]);
+    }
+
+    public function administrativeDirect(): static
+    {
+        return $this->state(['incident_id' => null, 'resident_id' => null, 'unit_id' => Unit::factory(), 'admin_id' => User::factory()->admin()]);
     }
 
     public function linkedToIncident(?Incident $incident = null): static

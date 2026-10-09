@@ -5,6 +5,11 @@
          colors="true">
     <testsuites>
         <testsuite name="Module4Postgres">
+            <file>tests/Feature/ServiceProviderManagementTest.php</file>
+            <file>tests/Feature/MaintenanceManagementTest.php</file>
+            <file>tests/Feature/MaintenanceNotificationTest.php</file>
+            <file>tests/Feature/MaintenanceQueryTest.php</file>
+            <file>tests/Feature/MaintenanceManagementMigrationTest.php</file>
             <file>tests/Feature/IncidentFlowTest.php</file>
             <file>tests/Feature/IncidentQueryTest.php</file>
             <file>tests/Feature/IncidentNotificationTest.php</file>

@@ -203,7 +203,7 @@ class IncidentFlowTest extends TestCase
         $this->assertNull($maintenance->service_provider_id);
         $this->assertNull($maintenance->scheduled_at);
         $this->assertNull($maintenance->cost);
-        $this->assertNull($maintenance->admin_id);
+        $this->assertSame($admin->id, $maintenance->admin_id);
         $this->assertSame($admin->id, $maintenance->statusHistory()->sole()->changed_by_user_id);
         $this->assertSame(UserRole::Admin, $maintenance->statusHistory()->sole()->actor_role);
         $this->postJson(route('admin.incidents.maintenance', $incident))->assertUnprocessable();

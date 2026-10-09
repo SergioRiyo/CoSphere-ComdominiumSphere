@@ -1,3 +1,5 @@
+import type { MaintenanceHistoryEvent } from '@/types/maintenance';
+
 export type IncidentOption = { value: string; label: string };
 export type IncidentStatus = 'open' | 'in_progress' | 'completed' | 'canceled';
 export type IncidentPriority = 'low' | 'medium' | 'high';
@@ -62,6 +64,8 @@ export type IncidentDetailsData = IncidentSummary & {
     }[];
     maintenance_requests: {
         id: number;
+        description: string;
+        history: MaintenanceHistoryEvent[];
         status: string;
         status_label: string;
         provider: string | null;

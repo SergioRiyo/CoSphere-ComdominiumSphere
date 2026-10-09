@@ -105,7 +105,7 @@ class MaintenanceRequestDomainTest extends TestCase
         try {
             $updated = app(MaintenanceRequestService::class)->transition($admin, $request, $to, [
                 'service_provider_id' => $provider->id, 'scheduled_at' => now()->toDateTimeString(),
-                'cost' => '125.6', 'executed_at' => '2000-01-01', 'admin_id' => $request->resident_id,
+                'cost' => '125.6', 'executed_at' => '2000-01-01', 'admin_id' => $admin->id,
             ], 'Manutenção verificada');
             $this->assertTrue($allowed, 'A forbidden transition succeeded.');
             $this->assertSame($to, $updated->status);
@@ -124,7 +124,7 @@ class MaintenanceRequestDomainTest extends TestCase
                 $this->assertTrue($updated->executed_at->greaterThanOrEqualTo($updated->scheduled_at));
             } else {
                 $this->assertNull($updated->executed_at);
-                $this->assertNull($updated->cost);
+                $this->assertSame('125.60', $updated->cost);
             }
         } catch (ValidationException) {
             $this->assertFalse($allowed, 'A permitted transition failed.');
@@ -136,7 +136,7 @@ class MaintenanceRequestDomainTest extends TestCase
     public static function transitions(): array
     {
         $cases = [];
-        $allowed = ['pending:scheduled', 'pending:canceled', 'scheduled:in_progress', 'scheduled:canceled', 'in_progress:completed', 'in_progress:canceled'];
+        $allowed = ['pending:scheduled', 'pending:in_progress', 'pending:canceled', 'scheduled:in_progress', 'scheduled:completed', 'scheduled:canceled', 'in_progress:completed', 'in_progress:canceled'];
         foreach (MaintenanceRequestStatus::cases() as $from) {
             foreach (MaintenanceRequestStatus::cases() as $to) {
                 $cases[$from->value.':'.$to->value] = [$from, $to, in_array($from->value.':'.$to->value, $allowed, true)];
