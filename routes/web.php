@@ -8,6 +8,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\MaintenanceRequestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
 use App\Http\Controllers\PortariaOrderHistoryController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
+use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
 use App\Http\Controllers\VisitorInvitationController;
@@ -35,6 +37,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');
+        Route::patch('service-providers/{service_provider}/archive', [ServiceProviderController::class, 'archive'])->whereNumber('service_provider')->name('service-providers.archive');
+        Route::resource('maintenances', MaintenanceRequestController::class)->parameters(['maintenances' => 'maintenance'])->only(['index', 'create', 'store', 'show', 'update'])->whereNumber('maintenance');
         Route::get('incidents', [AdminIncidentController::class, 'index'])->name('incidents.index');
         Route::get('incidents/{incident}', [AdminIncidentController::class, 'show'])->whereNumber('incident')->name('incidents.show');
         Route::patch('incidents/{incident}/status', [AdminIncidentController::class, 'status'])->whereNumber('incident')->name('incidents.status');

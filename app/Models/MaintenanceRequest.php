@@ -59,4 +59,9 @@ class MaintenanceRequest extends Model
     {
         return $this->hasMany(MaintenanceRequestStatusHistory::class)->orderBy('created_at')->orderBy('id');
     }
+
+    public function changes(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequestChange::class)->orderBy('created_at')->orderBy('id');
+    }
 }

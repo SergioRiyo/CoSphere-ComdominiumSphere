@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { IncidentSelect, incidentDate } from '@/components/incident-fields';
 import InputError from '@/components/input-error';
+import MaintenanceHistory from '@/components/maintenance-history';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +15,7 @@ import {
     priority,
     status,
 } from '@/routes/admin/incidents';
+import { show as maintenanceShow } from '@/routes/admin/maintenances';
 import { download } from '@/routes/incident-attachments';
 import { index as residentIndex } from '@/routes/morador/incidents';
 import type { IncidentDetailsData, IncidentOption } from '@/types/incident';
@@ -354,12 +356,37 @@ export default function IncidentDetails({
                                                 <p className="font-medium">
                                                     Manutenção #{request.id}
                                                 </p>
+                                                <p className="break-words whitespace-pre-wrap">
+                                                    {request.description}
+                                                </p>
+                                                {admin && (
+                                                    <Link
+                                                        className="underline"
+                                                        href={maintenanceShow(
+                                                            request.id,
+                                                        )}
+                                                    >
+                                                        Gerenciar manutenção
+                                                    </Link>
+                                                )}
                                                 <Badge
                                                     variant="secondary"
                                                     className="w-fit"
                                                 >
                                                     {request.status_label}
                                                 </Badge>
+                                                <details>
+                                                    <summary className="cursor-pointer font-medium">
+                                                        Histórico da manutenção
+                                                    </summary>
+                                                    <div className="mt-3">
+                                                        <MaintenanceHistory
+                                                            events={
+                                                                request.history
+                                                            }
+                                                        />
+                                                    </div>
+                                                </details>
                                                 <p className="break-words">
                                                     Prestador:{' '}
                                                     {request.provider ||
