@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Enums\VisitorAccessStatus;
 use App\Enums\VisitorAuthorizationStatus;
 use App\Models\User;
+use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class VisitorAuthorizationQueryService
 {
@@ -59,8 +62,26 @@ class VisitorAuthorizationQueryService
             'visitor:id,name,cpf,phone',
             'resident:id,unit_id,role,is_active',
             'unit:id,block,number,status',
+            'visitorAccesses' => static fn (HasMany $accesses): HasMany => $accesses
+                ->select([
+                    'id',
+                    'visitor_authorization_id',
+                    'doorman_id',
+                    'exit_doorman_id',
+                    'entry_time',
+                    'exit_time',
+                    'validation_status',
+                    'created_at',
+                ])
+                ->orderByDesc('entry_time')
+                ->orderByDesc('created_at')
+                ->orderByDesc('id'),
+            'visitorAccesses.doorman:id,name',
+            'visitorAccesses.exitDoorman:id,name',
         ]);
         $status = $this->effectiveStatus($authorization);
+        $accesses = $authorization->visitorAccesses
+            ->map(fn (VisitorAccess $access): array => $this->accessHistory($access));
 
         return [
             'id' => $authorization->id,
@@ -79,6 +100,36 @@ class VisitorAuthorizationQueryService
             'status' => $status->value,
             'status_label' => $status->label(),
             'qr_available' => $this->visitorQrCodeService->isAvailable($authorization),
+            'is_present' => $accesses->contains(
+                static fn (array $access): bool => $access['situation'] === 'present',
+            ),
+            'accesses' => $accesses->values()->all(),
+        ];
+    }
+
+    /**
+     * @return array{id: int, entry_time: string|null, exit_time: string|null, entry_doorman_name: string|null, exit_doorman_name: string|null, situation: string, situation_label: string}
+     */
+    private function accessHistory(VisitorAccess $access): array
+    {
+        [$situation, $situationLabel] = match ($access->validation_status) {
+            VisitorAccessStatus::Rejected => ['denied', 'Entrada negada'],
+            VisitorAccessStatus::Validated => match (true) {
+                $access->entry_time === null => ['validated', 'Validado sem entrada'],
+                $access->exit_time === null => ['present', 'Presente no condomínio'],
+                default => ['finished', 'Acesso finalizado'],
+            },
+            VisitorAccessStatus::Pending => ['pending', 'Aguardando validação'],
+        };
+
+        return [
+            'id' => $access->id,
+            'entry_time' => $access->entry_time?->toIso8601String(),
+            'exit_time' => $access->exit_time?->toIso8601String(),
+            'entry_doorman_name' => $access->doorman?->name,
+            'exit_doorman_name' => $access->exitDoorman?->name,
+            'situation' => $situation,
+            'situation_label' => $situationLabel,
         ];
     }
 

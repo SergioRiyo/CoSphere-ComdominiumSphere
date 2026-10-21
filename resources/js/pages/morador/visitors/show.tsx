@@ -4,8 +4,11 @@ import {
     CalendarClock,
     Car,
     IdCard,
+    LogIn,
+    LogOut,
     MapPin,
     Phone,
+    ShieldCheck,
     UserRound,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -28,6 +31,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { VisitorAccessStatusBadge } from '@/components/visitor-access-status-badge';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
 import { dashboard } from '@/routes/morador';
 import { destroy, index } from '@/routes/morador/visitors';
@@ -35,12 +39,10 @@ import type { VisitorAuthorizationDetails } from '@/types';
 
 type VisitorDetailsPageProps = {
     authorization: VisitorAuthorizationDetails;
-    timezone: string;
 };
 
 export default function VisitorDetailsPage({
     authorization,
-    timezone,
 }: VisitorDetailsPageProps) {
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [isCanceling, setIsCanceling] = useState(false);
@@ -69,10 +71,18 @@ export default function VisitorDetailsPage({
                             Informações da visita vinculada à sua unidade.
                         </p>
                     </div>
-                    <VisitorStatusBadge
-                        status={authorization.status}
-                        label={authorization.status_label}
-                    />
+                    <div className="flex flex-wrap gap-2">
+                        {authorization.is_present && (
+                            <VisitorAccessStatusBadge
+                                situation="present"
+                                label="Presente no condomínio"
+                            />
+                        )}
+                        <VisitorStatusBadge
+                            status={authorization.status}
+                            label={authorization.status_label}
+                        />
+                    </div>
                 </header>
 
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
@@ -140,7 +150,6 @@ export default function VisitorDetailsPage({
                                     label="Início"
                                     value={formatDateTime(
                                         authorization.start_date,
-                                        timezone,
                                     )}
                                 />
                                 <Detail
@@ -148,7 +157,6 @@ export default function VisitorDetailsPage({
                                     label="Término"
                                     value={formatDateTime(
                                         authorization.end_date,
-                                        timezone,
                                     )}
                                 />
                                 <Detail
@@ -160,6 +168,83 @@ export default function VisitorDetailsPage({
                         </CardContent>
                     </Card>
                 </div>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <ShieldCheck className="size-5 text-primary" />
+                            Histórico de acessos
+                        </CardTitle>
+                        <CardDescription>
+                            Entradas e saídas registradas pela portaria para
+                            esta autorização.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {authorization.accesses.length === 0 ? (
+                            <div className="rounded-xl border border-dashed p-6 text-center">
+                                <p className="font-medium">
+                                    Nenhum acesso registrado
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Os registros da portaria aparecerão aqui
+                                    depois da validação do visitante.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid gap-4">
+                                {authorization.accesses.map((access) => (
+                                    <article
+                                        key={access.id}
+                                        className="grid gap-4 rounded-xl border p-4"
+                                    >
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <p className="text-sm font-medium">
+                                                Registro #{access.id}
+                                            </p>
+                                            <VisitorAccessStatusBadge
+                                                situation={access.situation}
+                                                label={access.situation_label}
+                                            />
+                                        </div>
+                                        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                            <Detail
+                                                icon={LogIn}
+                                                label="Entrada"
+                                                value={formatOptionalDateTime(
+                                                    access.entry_time,
+                                                )}
+                                            />
+                                            <Detail
+                                                icon={LogOut}
+                                                label="Saída"
+                                                value={formatOptionalDateTime(
+                                                    access.exit_time,
+                                                )}
+                                            />
+                                            <Detail
+                                                icon={UserRound}
+                                                label="Porteiro da entrada"
+                                                value={
+                                                    access.entry_doorman_name ??
+                                                    'Não informado'
+                                                }
+                                            />
+                                            <Detail
+                                                icon={UserRound}
+                                                label="Porteiro da saída"
+                                                value={
+                                                    access.exit_doorman_name ??
+                                                    'Não informado'
+                                                }
+                                            />
+                                        </dl>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
 
                 {authorization.qr_available && (
                     <VisitorQrCodeCard authorizationId={authorization.id} />
@@ -261,12 +346,15 @@ function Detail({
     );
 }
 
-function formatDateTime(value: string, timezone: string) {
+function formatDateTime(value: string) {
     return new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'long',
         timeStyle: 'short',
-        timeZone: timezone,
     }).format(new Date(value));
+}
+
+function formatOptionalDateTime(value: string | null) {
+    return value === null ? 'Não registrada' : formatDateTime(value);
 }
 
 VisitorDetailsPage.layout = {

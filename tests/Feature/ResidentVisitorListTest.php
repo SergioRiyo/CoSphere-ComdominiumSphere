@@ -6,6 +6,7 @@ use App\Enums\VisitorAuthorizationStatus;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
+use App\Models\VisitorAccess;
 use App\Models\VisitorAuthorization;
 use App\Services\VisitorAuthorizationQueryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -266,6 +267,48 @@ class ResidentVisitorListTest extends TestCase
         $this->actingAs($resident)
             ->get(route('morador.visitors.show', $otherAuthorization))
             ->assertForbidden();
+    }
+
+    public function test_resident_can_view_entry_exit_presence_and_doormen_in_access_history(): void
+    {
+        $unit = Unit::factory()->create();
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $authorization = $this->createAuthorization($unit, $resident);
+        $entryDoorman = User::factory()->porteiro()->create(['name' => 'Porteiro Entrada']);
+        $exitDoorman = User::factory()->porteiro()->create(['name' => 'Porteiro Saída']);
+        $currentDoorman = User::factory()->porteiro()->create(['name' => 'Porteiro Atual']);
+
+        $finishedAccess = VisitorAccess::factory()->closed($exitDoorman)->create([
+            'visitor_authorization_id' => $authorization->id,
+            'doorman_id' => $entryDoorman->id,
+            'entry_time' => '2026-10-19 08:00:00',
+            'exit_time' => '2026-10-19 09:00:00',
+        ]);
+        $openAccess = VisitorAccess::factory()->open()->create([
+            'visitor_authorization_id' => $authorization->id,
+            'doorman_id' => $currentDoorman->id,
+            'entry_time' => '2026-10-19 10:00:00',
+        ]);
+
+        $this->actingAs($resident)
+            ->get(route('morador.visitors.show', $authorization))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('authorization.is_present', true)
+                ->has('authorization.accesses', 2)
+                ->where('authorization.accesses.0.id', $openAccess->id)
+                ->where('authorization.accesses.0.situation', 'present')
+                ->where('authorization.accesses.0.situation_label', 'Presente no condomínio')
+                ->where('authorization.accesses.0.entry_time', '2026-10-19T10:00:00+00:00')
+                ->where('authorization.accesses.0.exit_time', null)
+                ->where('authorization.accesses.0.entry_doorman_name', 'Porteiro Atual')
+                ->where('authorization.accesses.0.exit_doorman_name', null)
+                ->where('authorization.accesses.1.id', $finishedAccess->id)
+                ->where('authorization.accesses.1.situation', 'finished')
+                ->where('authorization.accesses.1.entry_time', '2026-10-19T08:00:00+00:00')
+                ->where('authorization.accesses.1.exit_time', '2026-10-19T09:00:00+00:00')
+                ->where('authorization.accesses.1.entry_doorman_name', 'Porteiro Entrada')
+                ->where('authorization.accesses.1.exit_doorman_name', 'Porteiro Saída')
+                ->missing('authorization.accesses.0.observations'));
     }
 
     public function test_visitor_listing_does_not_introduce_n_plus_one_queries(): void
