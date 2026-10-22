@@ -26,6 +26,8 @@ export default function Maintenances({
     const form = useForm({
         status: filters.status || '',
         unit_id: filters.unit_id || '',
+        common_area_id: filters.common_area_id || '',
+        target: filters.target || '',
         admin_id: filters.admin_id || '',
         service_provider_id: filters.service_provider_id || '',
         link: filters.link || '',
@@ -36,6 +38,19 @@ export default function Maintenances({
     const fields = [
         { key: 'status', label: 'Status', options: options.statuses },
         { key: 'unit_id', label: 'Unidade', options: options.units },
+        {
+            key: 'common_area_id',
+            label: 'Área comum',
+            options: options.common_areas,
+        },
+        {
+            key: 'target',
+            label: 'Modalidade',
+            options: [
+                { value: 'unit', label: 'Unidade' },
+                { value: 'common_area', label: 'Área comum' },
+            ],
+        },
         { key: 'admin_id', label: 'Responsável', options: options.admins },
         {
             key: 'service_provider_id',
@@ -140,7 +155,8 @@ export default function Maintenances({
                         >
                             <div className="flex flex-wrap justify-between gap-2">
                                 <h2 className="font-semibold">
-                                    Manutenção #{item.id} · {item.unit}
+                                    Manutenção #{item.id} ·{' '}
+                                    {item.common_area || item.unit}
                                 </h2>
                                 <Badge variant="secondary">
                                     {item.status_label}

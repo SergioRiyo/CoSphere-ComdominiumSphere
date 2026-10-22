@@ -18,8 +18,13 @@ export type MaintenanceHistoryEvent = {
 };
 export type Maintenance = {
     id: number;
-    unit_id: number;
-    unit: string;
+    unit_id: number | null;
+    unit: string | null;
+    common_area_id: number | null;
+    common_area: string | null;
+    common_area_block_id: number | null;
+    block_starts_at: string | null;
+    block_ends_at: string | null;
     incident_id: number | null;
     incident_title: string | null;
     admin_id: number | null;
@@ -40,6 +45,7 @@ export type Maintenance = {
 };
 export type MaintenanceOptions = {
     units: IncidentOption[];
+    common_areas: IncidentOption[];
     admins: IncidentOption[];
     providers: IncidentOption[];
     statuses: IncidentOption[];

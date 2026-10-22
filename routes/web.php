@@ -16,6 +16,7 @@ use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::patch('incidents/{incident}/priority', [AdminIncidentController::class, 'priority'])->whereNumber('incident')->name('incidents.priority');
         Route::post('incidents/{incident}/maintenance', [AdminIncidentController::class, 'maintenance'])->whereNumber('incident')->name('incidents.maintenance');
         Route::get('dashboard', [DashboardController::class, 'admin'])->name('dashboard');
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
         Route::get('reservations/{reservation}', [AdminReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/approve', [AdminReservationController::class, 'approve'])->whereNumber('reservation')->name('reservations.approve');

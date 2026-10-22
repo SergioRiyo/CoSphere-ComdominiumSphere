@@ -14,7 +14,7 @@ class MaintenanceRequest extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'incident_id', 'unit_id', 'resident_id', 'service_provider_id', 'admin_id',
+        'incident_id', 'unit_id', 'common_area_id', 'common_area_block_id', 'resident_id', 'service_provider_id', 'admin_id',
         'description', 'scheduled_at', 'executed_at', 'cost', 'status',
     ];
 
@@ -38,6 +38,16 @@ class MaintenanceRequest extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    public function commonArea(): BelongsTo
+    {
+        return $this->belongsTo(CommonArea::class);
+    }
+
+    public function commonAreaBlock(): BelongsTo
+    {
+        return $this->belongsTo(CommonAreaBlock::class);
     }
 
     public function resident(): BelongsTo

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class CommonAreaBlock extends Model
 {
@@ -28,6 +29,11 @@ class CommonAreaBlock extends Model
     public function admin(): BelongsTo
     {
         return $this->belongsTo(User::class, 'admin_id');
+    }
+
+    public function maintenanceRequest(): HasOne
+    {
+        return $this->hasOne(MaintenanceRequest::class);
     }
 
     /** @param Builder<CommonAreaBlock> $query */

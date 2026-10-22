@@ -17,9 +17,11 @@ class IndexMaintenanceRequestRequest extends FormRequest
     public function rules(): array
     {
         return ['status' => ['nullable', Rule::enum(MaintenanceRequestStatus::class)],
-            'unit_id' => ['nullable', 'integer', 'exists:units,id'], 'admin_id' => ['nullable', 'integer', 'exists:users,id'],
+            'unit_id' => ['nullable', 'integer', 'exists:units,id'], 'common_area_id' => ['nullable', 'integer', 'exists:common_areas,id'],
+            'admin_id' => ['nullable', 'integer', 'exists:users,id'],
             'service_provider_id' => ['nullable', 'integer', 'exists:service_providers,id'],
             'link' => ['nullable', Rule::in(['linked', 'direct'])],
+            'target' => ['nullable', Rule::in(['unit', 'common_area'])],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', Rule::when($this->filled('date_from'), 'after_or_equal:date_from')],
             'page' => ['nullable', 'integer', 'min:1']];
