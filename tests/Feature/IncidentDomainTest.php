@@ -143,6 +143,23 @@ class IncidentDomainTest extends TestCase
         return $cases;
     }
 
+    public function test_service_requires_resident_feedback_for_a_terminal_transition(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $incident = Incident::factory()->inProgress()->create();
+
+        try {
+            app(IncidentService::class)->transition($admin, $incident, IncidentStatus::Completed);
+            $this->fail('A finalização sem retorno ao morador deveria ser rejeitada.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('reason', $exception->errors());
+        }
+
+        $this->assertSame(IncidentStatus::InProgress, $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_histories', 0);
+        $this->assertDatabaseCount('notifications', 0);
+    }
+
     public function test_history_is_append_only_ordered_by_date_and_id_with_actor_role_snapshot(): void
     {
         $this->freezeTime();
@@ -152,7 +169,7 @@ class IncidentDomainTest extends TestCase
         $incident = $service->create($resident, $this->data());
         $original = $incident->statusHistory()->sole()->getRawOriginal();
         $service->transition($admin, $incident, IncidentStatus::InProgress);
-        $service->transition($admin, $incident, IncidentStatus::Completed);
+        $service->transition($admin, $incident, IncidentStatus::Completed, 'Atendimento concluído.');
         User::whereKey($admin->id)->update(['role' => UserRole::Morador]);
         $history = $incident->statusHistory()->get();
         $this->assertSame($original, $history[0]->getRawOriginal());
@@ -244,7 +261,7 @@ class IncidentDomainTest extends TestCase
         $admin = User::factory()->admin()->create();
         $incident = Incident::factory()->create();
         $service = app(IncidentService::class);
-        $service->transition($admin, $incident, IncidentStatus::Canceled);
+        $service->transition($admin, $incident, IncidentStatus::Canceled, 'Solicitação cancelada.');
         try {
             $service->transition($admin, $incident, IncidentStatus::InProgress);
             $this->fail('A stale model must not revive a canceled incident.');

@@ -17,7 +17,13 @@ class UpdateIncidentStatusRequest extends FormRequest
     {
         return [
             'status' => ['required', Rule::enum(IncidentStatus::class)],
-            'reason' => ['nullable', 'string', 'max:255'],
+            'reason' => [
+                Rule::requiredIf(fn (): bool => IncidentStatus::tryFrom((string) $this->input('status'))
+                    ?->requiresResidentFeedback() ?? false),
+                'nullable',
+                'string',
+                'max:255',
+            ],
         ];
     }
 
@@ -26,7 +32,8 @@ class UpdateIncidentStatusRequest extends FormRequest
         return [
             'status.required' => 'Selecione o novo status.',
             'status.enum' => 'Selecione um status válido.',
-            'reason.max' => 'O motivo deve ter no máximo 255 caracteres.',
+            'reason.required' => 'Informe o retorno ao morador para finalizar ou cancelar a ocorrência.',
+            'reason.max' => 'O retorno ao morador deve ter no máximo 255 caracteres.',
         ];
     }
 }
