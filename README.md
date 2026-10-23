@@ -2,6 +2,21 @@
 
 Aplicação para gestão condominial desenvolvida como Trabalho de Conclusão de Curso (TCC) de Engenharia de Software.
 
+## Estado do MVP
+
+Os Módulos 1 a 4 estão concluídos no escopo de MVP do TCC:
+
+- **Módulo 1:** autenticação, perfis e gestão administrativa de usuários;
+- **Módulo 2:** visitantes, convites e histórico de entrada e saída;
+- **Módulo 3:** áreas comuns, reservas, bloqueios, encomendas e notificações;
+- **Módulo 4:** ocorrências, prestadores, manutenção de unidades e áreas comuns e relatórios administrativos de reservas, acessos e ocorrências.
+
+A autorização operacional é aplicada no Laravel por middleware, Form Requests,
+Policies, Services e filtros de ownership. A RLS PostgreSQL existente é uma
+prova de conceito isolada para `units`; ela não integra a conexão principal da
+aplicação e não substitui a autorização Laravel. Consulte
+[`docs/SECURITY_AND_RLS.md`](docs/SECURITY_AND_RLS.md).
+
 ## Requisitos
 
 - Docker Desktop e Docker Compose (opção recomendada)
@@ -63,8 +78,19 @@ docker compose down
 Executar testes:
 
 ```bash
-php artisan test
+php artisan test --compact
 ```
+
+As suítes de integração PostgreSQL exigem bancos locais, exclusivos e
+descartáveis nas portas indicadas pelos respectivos arquivos de configuração:
+
+```bash
+php artisan test -c phpunit.module3-pgsql.xml
+php artisan test -c phpunit.m4-pgsql.xml
+```
+
+Essas suítes executam `migrate:fresh` e não devem apontar para bancos de
+desenvolvimento, compartilhados ou de produção.
 
 Validações de frontend:
 
@@ -101,5 +127,28 @@ npm run dev
 `phpunit.xml` e `.env.testing` configuram SQLite em memória, com chaves estrangeiras ativas. A execução dos testes não utiliza a conexão PostgreSQL/Supabase de desenvolvimento.
 
 ```bash
-php artisan test
+php artisan test --compact
 ```
+
+## Limitações intencionais
+
+Para manter a entrega proporcional ao TCC, o MVP não inclui RLS operacional,
+multitenancy, exportação PDF/Excel, gráficos avançados, validação matemática de
+CPF, saída do visitante pelo mesmo QR, rastreamento de transportadora, testes
+end-to-end de navegador, chat em ocorrências, exclusão completa de usuários ou
+mudanças estruturais amplas na central de notificações.
+
+## Roteiro de validação manual
+
+Antes da apresentação, validar em navegador os fluxos demonstráveis:
+
+- [ ] Administrador gerencia usuários sem conseguir remover o último administrador ativo.
+- [ ] Morador visualiza a entrada e a saída de seu visitante.
+- [ ] Administrador responde e finaliza uma ocorrência.
+- [ ] Administrador cadastra uma manutenção de área comum.
+- [ ] A área em manutenção fica indisponível para reserva.
+- [ ] Administrador acessa os relatórios de reservas, acessos e ocorrências.
+- [ ] Reservas, visitantes, encomendas e ocorrências continuam funcionando em suas jornadas principais.
+
+Esse roteiro é uma verificação humana complementar e não substitui as suítes
+automatizadas. Testes end-to-end de navegador permanecem fora do escopo do MVP.

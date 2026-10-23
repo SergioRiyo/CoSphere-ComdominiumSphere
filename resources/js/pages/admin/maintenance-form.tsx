@@ -71,7 +71,8 @@ export default function MaintenanceForm({
     ) {
         commonAreas.push({
             value: String(maintenance.common_area_id),
-            label: (maintenance.common_area || 'Área comum') + ' (indisponível)',
+            label:
+                (maintenance.common_area || 'Área comum') + ' (indisponível)',
         });
     }
 
@@ -117,8 +118,10 @@ export default function MaintenanceForm({
                             {maintenance.common_area_block_id && (
                                 <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                                     Bloqueio #{maintenance.common_area_block_id}{' '}
-                                    vinculado: {incidentDate(maintenance.block_starts_at)}{' '}
-                                    até {incidentDate(maintenance.block_ends_at)}.
+                                    vinculado:{' '}
+                                    {incidentDate(maintenance.block_starts_at)}{' '}
+                                    até{' '}
+                                    {incidentDate(maintenance.block_ends_at)}.
                                 </p>
                             )}
                             <p>
@@ -174,10 +177,9 @@ export default function MaintenanceForm({
                                           }
                                     : maintenance.common_area_id
                                       ? {
-                                            common_area_id:
-                                                data.common_area_id,
+                                            common_area_id: data.common_area_id,
                                         }
-                                    : {}),
+                                      : {}),
                                 ...(data.status
                                     ? {
                                           status: data.status,
@@ -229,18 +231,19 @@ export default function MaintenanceForm({
                                     }
                                 />
                             )}
-                            {!maintenance && form.data.target_type === 'unit' && (
-                                <IncidentSelect
-                                    id="unit"
-                                    label="Unidade"
-                                    value={form.data.unit_id}
-                                    options={options.units}
-                                    onChange={(value) =>
-                                        form.setData('unit_id', value)
-                                    }
-                                    error={form.errors.unit_id}
-                                />
-                            )}
+                            {!maintenance &&
+                                form.data.target_type === 'unit' && (
+                                    <IncidentSelect
+                                        id="unit"
+                                        label="Unidade"
+                                        value={form.data.unit_id}
+                                        options={options.units}
+                                        onChange={(value) =>
+                                            form.setData('unit_id', value)
+                                        }
+                                        error={form.errors.unit_id}
+                                    />
+                                )}
                             {form.data.target_type === 'common_area' && (
                                 <IncidentSelect
                                     id="common_area"
