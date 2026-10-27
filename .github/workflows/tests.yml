@@ -17,6 +17,20 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: cosphere_m3_test
+          POSTGRES_USER: cosphere_m3_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:55433:5432
+        options: >-
+          --health-cmd "pg_isready -U cosphere_m3_test -d cosphere_m3_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     strategy:
       matrix:
         php-version: ['8.4', '8.5']
@@ -31,6 +45,7 @@ jobs:
           php-version: ${{ matrix.php-version }}
           tools: composer:v2
           coverage: xdebug
+          ini-values: memory_limit=512M
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -52,5 +67,11 @@ jobs:
       - name: Build Assets
         run: npm run build
 
+      - name: TypeScript
+        run: npm run types:check
+
       - name: Tests
-        run: ./vendor/bin/phpunit
+        run: php artisan test -d memory_limit=512M
+
+      - name: Module 3 PostgreSQL integration and concurrency
+        run: php artisan test -c phpunit.module3-pgsql.xml -d memory_limit=512M

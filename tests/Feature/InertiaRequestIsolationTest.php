@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Ssr\Gateway;
@@ -11,6 +12,13 @@ use Tests\TestCase;
 
 class InertiaRequestIsolationTest extends TestCase
 {
+    public function test_feature_pages_do_not_contact_a_live_development_ssr_server(): void
+    {
+        Http::preventStrayRequests();
+        $this->get(route('home'))->assertOk();
+        Http::assertNothingSent();
+    }
+
     public function test_each_request_renders_its_own_ssr_html_in_the_same_test_application(): void
     {
         $this->withoutVite();

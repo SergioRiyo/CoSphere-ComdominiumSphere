@@ -5,9 +5,11 @@ import {
     CalendarDays,
     ClipboardCheck,
     ContactRound,
+    FileText,
     History,
     LayoutGrid,
     Package,
+    ChartNoAxesCombined,
     Users,
     UsersRound,
 } from 'lucide-react';
@@ -26,10 +28,15 @@ import {
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
+import { index as maintenancesIndex } from '@/routes/admin/maintenances';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
+import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
@@ -63,6 +70,21 @@ export function AppSidebar() {
                       icon: Users,
                   },
                   {
+                      title: 'Ocorrências',
+                      href: adminIncidentsIndex(),
+                      icon: FileText,
+                  },
+                  {
+                      title: 'Manutenções',
+                      href: maintenancesIndex(),
+                      icon: ClipboardCheck,
+                  },
+                  {
+                      title: 'Prestadores',
+                      href: providersIndex(),
+                      icon: ContactRound,
+                  },
+                  {
                       title: 'Áreas comuns',
                       href: commonAreasIndex(),
                       icon: Building2,
@@ -77,6 +99,11 @@ export function AppSidebar() {
                       href: commonAreaBlocksIndex(),
                       icon: CalendarDays,
                   },
+                  {
+                      title: 'Relatórios',
+                      href: reportsIndex(),
+                      icon: ChartNoAxesCombined,
+                  },
               ]
             : []),
         ...(auth.user.role === 'morador'
@@ -85,6 +112,11 @@ export function AppSidebar() {
                       title: 'Visitantes',
                       href: visitorsIndex(),
                       icon: ContactRound,
+                  },
+                  {
+                      title: 'Solicitações',
+                      href: residentIncidentsIndex(),
+                      icon: FileText,
                   },
                   {
                       title: 'Áreas comuns',
@@ -141,10 +173,14 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader className="p-0 group-data-[collapsible=icon]:p-2">
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="h-48 justify-center p-0 group-data-[collapsible=icon]:h-8!"
+                        >
                             <Link href={dashboardHref} prefetch>
                                 <AppLogo />
                             </Link>

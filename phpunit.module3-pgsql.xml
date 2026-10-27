@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/Integration/Module3/bootstrap.php"
+         colors="true">
+    <testsuites>
+        <testsuite name="Module3Postgres">
+            <file>tests/Feature/Module3IntegrationTest.php</file>
+            <file>tests/Feature/CommonAreaManagementTest.php</file>
+            <file>tests/Feature/CommonAreaAvailabilityTest.php</file>
+            <file>tests/Feature/CommonAreaBlockTest.php</file>
+            <file>tests/Feature/ReservationCreationTest.php</file>
+            <file>tests/Feature/ReservationLifecycleTest.php</file>
+            <file>tests/Feature/ReservationHistoryTest.php</file>
+            <file>tests/Feature/ReservationNotificationTest.php</file>
+            <file>tests/Feature/ReservationQueryTest.php</file>
+            <file>tests/Feature/ResidentExpectedOrderTest.php</file>
+            <file>tests/Feature/PortariaOrderTest.php</file>
+            <file>tests/Feature/OrderPickupTest.php</file>
+            <file>tests/Feature/OrderHistoryTest.php</file>
+            <file>tests/Feature/NotificationFeatureTest.php</file>
+            <file>tests/Feature/NotificationServiceTest.php</file>
+        </testsuite>
+        <testsuite name="Module3Concurrency">
+            <file>tests/Integration/Module3/Module3ConcurrencyTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_HOST" value="127.0.0.1" force="true"/>
+        <env name="DB_PORT" value="55433"/>
+        <env name="DB_DATABASE" value="cosphere_m3_test" force="true"/>
+        <env name="DB_USERNAME" value="cosphere_m3_test"/>
+        <env name="DB_PASSWORD" value="" force="true"/>
+        <env name="DB_URL" value="" force="true"/>
+        <env name="DB_SSLMODE" value="disable" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+    </php>
+</phpunit>

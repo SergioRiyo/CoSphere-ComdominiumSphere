@@ -24,36 +24,40 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title="Entrar" />
 
-            <main className="min-h-svh bg-cosphere-navy lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:p-3 xl:p-4">
-                <div className="hidden lg:block">
+            <main className="dark h-svh overflow-hidden bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:p-3 xl:p-4">
+                <div className="hidden min-h-0 overflow-hidden lg:block">
                     <AuthLoginShowcase />
                 </div>
 
-                <section className="flex min-h-svh items-center bg-cosphere-surface px-5 py-6 sm:px-6 lg:min-h-0 lg:rounded-[1.75rem] lg:px-8 xl:px-12">
+                <section className="relative flex h-svh min-h-0 items-center bg-cosphere-surface px-5 py-3 sm:px-6 lg:h-auto lg:rounded-[1.75rem] lg:px-8 xl:px-12">
                     <div className="mx-auto w-full max-w-sm">
                         <Link
                             href={home()}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-cosphere-muted transition-colors hover:text-cosphere-navy focus-visible:ring-2 focus-visible:ring-cosphere-blue focus-visible:ring-offset-2 focus-visible:outline-none"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-cosphere-muted transition-colors hover:text-cosphere-navy focus-visible:ring-2 focus-visible:ring-cosphere-blue focus-visible:ring-offset-2 focus-visible:outline-none lg:absolute lg:top-16 lg:left-1/2 lg:w-full lg:max-w-sm lg:-translate-x-1/2 dark:hover:text-foreground"
                         >
                             <ArrowLeft className="size-4" aria-hidden="true" />
                             Início
                         </Link>
 
-                        <div className="mt-8 text-center sm:mt-10">
+                        <div className="mt-3 text-center">
                             <Link
                                 href={home()}
                                 className="inline-flex"
                                 aria-label="CoSphere — página inicial"
                             >
-                                <CoSphereLogo size="md" withTagline />
+                                <CoSphereLogo
+                                    size="lg"
+                                    withTagline
+                                    className="size-72"
+                                />
                             </Link>
-                            <h1 className="mt-6 text-2xl font-semibold tracking-tight text-cosphere-navy">
+                            <h1 className="mt-2 text-xl font-semibold tracking-tight text-cosphere-navy dark:text-foreground">
                                 Bem-vindo ao CoSphere
                             </h1>
-                            <p className="mt-2 text-sm text-cosphere-muted">
+                            <p className="mt-1 text-xs text-cosphere-muted sm:text-sm">
                                 Acesse o sistema de gestão condominial.
                             </p>
-                            <p className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-cosphere-blue">
+                            <p className="mt-2 inline-flex items-center gap-2 text-xs font-medium text-cosphere-blue sm:text-sm">
                                 <ShieldCheck
                                     className="size-4"
                                     aria-hidden="true"
@@ -71,14 +75,14 @@ export default function Login({ status, canResetPassword }: Props) {
                         <Form
                             {...store.form()}
                             resetOnSuccess={['password']}
-                            className="mt-6"
+                            className="mt-3"
                         >
                             {({ processing, errors }) => (
-                                <div className="grid gap-4">
+                                <div className="grid gap-3">
                                     <div className="grid gap-2">
                                         <Label
                                             htmlFor="email"
-                                            className="text-cosphere-navy"
+                                            className="text-cosphere-navy dark:text-foreground"
                                         >
                                             E-mail
                                         </Label>
@@ -96,7 +100,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                                 tabIndex={1}
                                                 autoComplete="email"
                                                 placeholder="seu.email@condominio.com.br"
-                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
+                                                className="h-10 rounded-xl border-cosphere-line bg-card pl-11 text-foreground shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
                                             />
                                         </div>
                                         <InputError message={errors.email} />
@@ -105,7 +109,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                     <div className="grid gap-2">
                                         <Label
                                             htmlFor="password"
-                                            className="text-cosphere-navy"
+                                            className="text-cosphere-navy dark:text-foreground"
                                         >
                                             Senha
                                         </Label>
@@ -121,7 +125,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                                 tabIndex={2}
                                                 autoComplete="current-password"
                                                 placeholder="••••••••"
-                                                className="h-11 rounded-xl border-cosphere-line bg-white pl-11 text-cosphere-navy shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
+                                                className="h-10 rounded-xl border-cosphere-line bg-card pl-11 text-foreground shadow-sm placeholder:text-cosphere-muted focus-visible:border-cosphere-blue focus-visible:ring-cosphere-blue/25"
                                             />
                                         </div>
                                         <InputError message={errors.password} />
@@ -147,7 +151,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                         tabIndex={4}
                                         disabled={processing}
                                         data-test="login-button"
-                                        className="mt-1 h-11 w-full rounded-xl bg-cosphere-orange text-sm text-white shadow-cosphere-soft hover:bg-cosphere-orange/90"
+                                        className="mt-1 h-10 w-full rounded-xl bg-cosphere-orange text-sm text-white shadow-cosphere-soft hover:bg-cosphere-orange/90"
                                     >
                                         {processing ? (
                                             <Spinner
@@ -162,7 +166,7 @@ export default function Login({ status, canResetPassword }: Props) {
                         </Form>
 
                         {canResetPassword ? (
-                            <div className="mt-5">
+                            <div className="mt-3">
                                 <div
                                     className="flex items-center gap-4"
                                     aria-hidden="true"
@@ -173,11 +177,11 @@ export default function Login({ status, canResetPassword }: Props) {
                                     </span>
                                     <span className="h-px flex-1 bg-cosphere-line" />
                                 </div>
-                                <div className="mt-4 text-center">
+                                <div className="mt-2 text-center">
                                     <TextLink
                                         href={request()}
                                         tabIndex={5}
-                                        className="inline-flex items-center gap-2 text-sm font-medium text-cosphere-blue no-underline hover:text-cosphere-navy"
+                                        className="inline-flex items-center gap-2 text-sm font-medium text-cosphere-blue no-underline hover:text-cosphere-navy dark:hover:text-foreground"
                                     >
                                         <LockKeyhole
                                             className="size-4"

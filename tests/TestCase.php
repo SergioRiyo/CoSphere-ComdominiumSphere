@@ -9,6 +9,12 @@ use Laravel\Fortify\Features;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['inertia.ssr.enabled' => false]);
+    }
+
     /** Reset request-scoped SSR state when multiple HTTP requests share a test application. */
     public function call(mixed $method, mixed $uri, mixed $parameters = [], mixed $cookies = [], mixed $files = [], mixed $server = [], mixed $content = null): TestResponse
     {

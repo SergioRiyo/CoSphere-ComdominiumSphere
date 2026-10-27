@@ -167,6 +167,10 @@ export default function UserFormDialog({
                                         onValueChange={(value) =>
                                             handleRoleChange(value as UserRole)
                                         }
+                                        disabled={
+                                            user !== null &&
+                                            !user.can_change_role
+                                        }
                                     >
                                         <SelectTrigger
                                             id="role-select"
@@ -186,6 +190,13 @@ export default function UserFormDialog({
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {user !== null && !user.can_change_role && (
+                                        <p className="text-xs text-muted-foreground">
+                                            O perfil deste administrador é
+                                            protegido para manter o acesso
+                                            administrativo ao sistema.
+                                        </p>
+                                    )}
                                     <InputError message={errors.role} />
                                 </div>
 

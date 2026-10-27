@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\AdminIncidentController;
 use App\Http\Controllers\AdminReservationController;
 use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\IncidentAttachmentController;
+use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\MaintenanceRequestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
 use App\Http\Controllers\PortariaOrderHistoryController;
@@ -12,9 +16,11 @@ use App\Http\Controllers\PortariaVisitorAccessController;
 use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
+use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
 use App\Http\Controllers\VisitorInvitationController;
@@ -27,10 +33,21 @@ Route::prefix('convites/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->middle
 });
 
 Route::middleware(['auth', 'active', 'verified'])->group(function () {
+    Route::get('incident-attachments/{incidentAttachment}', IncidentAttachmentController::class)
+        ->whereNumber('incidentAttachment')->name('incident-attachments.download');
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');
+        Route::patch('service-providers/{service_provider}/archive', [ServiceProviderController::class, 'archive'])->whereNumber('service_provider')->name('service-providers.archive');
+        Route::resource('maintenances', MaintenanceRequestController::class)->parameters(['maintenances' => 'maintenance'])->only(['index', 'create', 'store', 'show', 'update'])->whereNumber('maintenance');
+        Route::get('incidents', [AdminIncidentController::class, 'index'])->name('incidents.index');
+        Route::get('incidents/{incident}', [AdminIncidentController::class, 'show'])->whereNumber('incident')->name('incidents.show');
+        Route::patch('incidents/{incident}/status', [AdminIncidentController::class, 'status'])->whereNumber('incident')->name('incidents.status');
+        Route::patch('incidents/{incident}/priority', [AdminIncidentController::class, 'priority'])->whereNumber('incident')->name('incidents.priority');
+        Route::post('incidents/{incident}/maintenance', [AdminIncidentController::class, 'maintenance'])->whereNumber('incident')->name('incidents.maintenance');
         Route::get('dashboard', [DashboardController::class, 'admin'])->name('dashboard');
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
         Route::get('reservations/{reservation}', [AdminReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/approve', [AdminReservationController::class, 'approve'])->whereNumber('reservation')->name('reservations.approve');
@@ -50,6 +67,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::resource('incidents', IncidentController::class)->only(['index', 'create', 'store', 'show'])->whereNumber('incident');
         Route::resource('orders', ResidentOrderController::class)->only(['index', 'store', 'show'])->whereNumber('order');
         Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
