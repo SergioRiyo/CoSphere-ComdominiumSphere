@@ -21,8 +21,11 @@ class UserController extends Controller
     {
         $filters = $request->validated();
 
+        /** @var User $actor */
+        $actor = $request->user();
+
         return Inertia::render('admin/users', [
-            'users' => $this->userManagementService->paginate($filters),
+            'users' => $this->userManagementService->paginate($actor, $filters),
             'units' => $this->userManagementService->unitOptions(),
             'roleOptions' => array_map(
                 static fn (UserRole $role): array => [
@@ -53,7 +56,10 @@ class UserController extends Controller
 
     public function update(UpdateUserRequest $request, User $user): RedirectResponse
     {
-        $this->userManagementService->update($user, $request->validated());
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $this->userManagementService->update($actor, $user, $request->validated());
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -67,7 +73,10 @@ class UserController extends Controller
     {
         $isActive = $request->boolean('is_active');
 
-        $this->userManagementService->updateStatus($user, $isActive);
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $this->userManagementService->updateStatus($actor, $user, $isActive);
 
         Inertia::flash('toast', [
             'type' => 'success',

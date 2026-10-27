@@ -11,6 +11,7 @@ export function maintenanceMoney(value: string | null) {
 const labels: Record<string, string> = {
     description: 'Descrição',
     admin_id: 'Responsável',
+    common_area_id: 'Área comum',
     service_provider_id: 'Prestador',
     scheduled_at: 'Agendamento',
     cost: 'Custo',

@@ -1,6 +1,6 @@
 # Desenvolvimento do Projeto
 
-Este é o guia oficial de desenvolvimento do CoSphere, TCC de Engenharia de Software. Ele descreve a base técnica entregue no Módulo 0 e o fluxo para os módulos do TCC II.
+Este é o guia oficial de desenvolvimento do CoSphere, TCC de Engenharia de Software. Ele descreve a base técnica e o estado do MVP entregue nos Módulos 1 a 4 do TCC II.
 
 ## Estado e stack verificados
 
@@ -96,16 +96,21 @@ Não introduzir abstrações vazias, microservices, CQRS ou event sourcing. Ante
 | Módulo | Escopo | Status |
 | --- | --- | --- |
 | Módulo 1 | Base, autenticação e usuários | Concluído (MVP) |
-| Módulo 2 | Visitantes e controle de acesso | Pendente |
-| Módulo 3 | Reservas e encomendas | Pendente |
-| Módulo 4 | Ocorrências, manutenção e relatórios | Pendente |
+| Módulo 2 | Visitantes e controle de acesso | Concluído (MVP) |
+| Módulo 3 | Reservas e encomendas | Concluído (MVP) |
+| Módulo 4 | Ocorrências, manutenção e relatórios | Concluído (MVP) |
 | Módulo 5 | Comunicação, comunidade e integração | Pendente |
 
-No Módulo 1, a autorização principal é aplicada pelo Laravel com autenticação,
-status e papéis. A RLS foi validada como prova de conceito PostgreSQL para o
-isolamento de unidades e não representa uma integração completa ao runtime.
+Nos Módulos 1 a 4, a autorização real é aplicada pelo Laravel com autenticação,
+status, papéis, Policies, Form Requests, Services e filtros de ownership. A RLS
+foi validada como prova de conceito PostgreSQL para o isolamento de `units` e
+não representa uma integração completa ao runtime.
 
-O Módulo 0 é somente a fundação técnica. Não antecipar telas, CRUDs, controle de acesso por perfil, RLS, policies ou regras de negócio desses módulos em correções da base.
+O Módulo 4 inclui ocorrências com retorno administrativo, manutenção de unidade
+e manutenção de área comum. A manutenção de área cria um bloqueio durante todo
+o horário operacional da data e impede reservas conflitantes. A administração
+também dispõe de relatórios paginados de reservas, acessos e ocorrências, sem
+exportações ou BI.
 
 ## Fluxo Git
 
@@ -140,11 +145,21 @@ docs: align module workflow and environment setup
 
 Antes de abrir um Pull Request, executar as validações aplicáveis e registrar o resultado. O PR deve incluir descrição objetiva, testes executados, impacto em migrations e atualização de documentação quando houver alteração de setup ou fluxo.
 
-## Pendências que não pertencem ao Módulo 0
+## Limitações e evoluções posteriores
 
-- Módulo 1 (MVP concluído): uma eventual evolução para produção pode integrar a
-  RLS ao runtime e ampliar o hardening, sem fazer parte da entrega atual.
-- Módulo 2: implementar a validação de vínculo e papéis no fluxo de visitantes e controle de acesso.
-- Módulo 3: implementar autorização e fluxos de reservas e encomendas.
-- Módulo 4: implementar regras de ocorrências, manutenção e relatórios.
-- Módulo 5: implementar canais e entregas de comunicação comunitária.
+As seguintes capacidades ficam intencionalmente fora do escopo anterior ao
+Módulo 5:
+
+- RLS operacional e multitenancy;
+- exportação PDF/Excel, BI e gráficos avançados;
+- validação matemática de CPF;
+- saída do visitante pelo mesmo QR;
+- rastreamento de transportadora;
+- testes end-to-end de navegador;
+- chat em ocorrências;
+- exclusão completa de usuários;
+- alterações estruturais grandes na central de notificações.
+
+O Módulo 5 permanece reservado para comunicação, comunidade e integrações. Uma
+eventual evolução para produção pode integrar a RLS ao runtime e ampliar o
+hardening, sem fazer parte do MVP atual.

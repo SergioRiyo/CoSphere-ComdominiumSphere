@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\MaintenanceRequestStatus;
 use App\Enums\UserRole;
+use App\Models\CommonArea;
 use App\Models\MaintenanceRequest;
 use App\Models\MaintenanceRequestChange;
 use App\Models\MaintenanceRequestStatusHistory;
@@ -22,8 +23,8 @@ class MaintenanceRequestQueryService
     public function paginate(User $actor, array $filters): LengthAwarePaginator
     {
         Gate::forUser($actor)->authorize('viewAny', MaintenanceRequest::class);
-        $query = MaintenanceRequest::query()->with(['unit:id,block,number,complement', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name,deleted_at']);
-        foreach (['unit_id', 'admin_id', 'service_provider_id', 'status'] as $field) {
+        $query = MaintenanceRequest::query()->with(['unit:id,block,number,complement', 'commonArea:id,name', 'commonAreaBlock:id,starts_at,ends_at', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name,deleted_at']);
+        foreach (['unit_id', 'common_area_id', 'admin_id', 'service_provider_id', 'status'] as $field) {
             if (isset($filters[$field]) && $filters[$field] !== '') {
                 $query->where($field, $filters[$field]);
             }
@@ -33,6 +34,12 @@ class MaintenanceRequestQueryService
         }
         if (($filters['link'] ?? '') === 'direct') {
             $query->whereNull('incident_id');
+        }
+        if (($filters['target'] ?? '') === 'unit') {
+            $query->whereNotNull('unit_id');
+        }
+        if (($filters['target'] ?? '') === 'common_area') {
+            $query->whereNotNull('common_area_id');
         }
         if (! empty($filters['date_from'])) {
             $query->where('created_at', '>=', CarbonImmutable::parse($filters['date_from'])->startOfDay());
@@ -53,6 +60,8 @@ class MaintenanceRequestQueryService
         return [
             'units' => Unit::query()->when(! $filters, fn (Builder $query): Builder => $query->where('status', 'active'))->orderBy('block')->orderBy('number')->get(['id', 'block', 'number', 'complement'])
                 ->map(fn (Unit $unit): array => ['value' => (string) $unit->id, 'label' => $this->unitLabel($unit)])->all(),
+            'common_areas' => CommonArea::query()->when(! $filters, fn (Builder $query): Builder => $query->where('status', 'active'))->orderBy('name')->get(['id', 'name'])
+                ->map(fn (CommonArea $area): array => ['value' => (string) $area->id, 'label' => $area->name])->all(),
             'admins' => User::query()->where('role', UserRole::Admin)->when(! $filters, fn (Builder $query): Builder => $query->where('is_active', true))->orderBy('name')->get(['id', 'name'])
                 ->map(fn (User $user): array => ['value' => (string) $user->id, 'label' => $user->name])->all(),
             'providers' => ServiceProvider::query()->when($filters, fn (Builder $query): Builder => $query->withTrashed())->orderBy('name')->get(['id', 'name', 'deleted_at'])
@@ -66,7 +75,7 @@ class MaintenanceRequestQueryService
     {
         Gate::forUser($actor)->authorize('viewAny', MaintenanceRequest::class);
         Gate::forUser($actor)->authorize('view', $request);
-        $request->load(['unit:id,block,number,complement', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name,deleted_at', 'statusHistory.changedBy:id,name', 'changes.changedBy:id,name']);
+        $request->load(['unit:id,block,number,complement', 'commonArea:id,name', 'commonAreaBlock:id,starts_at,ends_at', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name,deleted_at', 'statusHistory.changedBy:id,name', 'changes.changedBy:id,name']);
 
         return $this->serialize($request) + [
             'history' => $this->history($request, true),
@@ -111,8 +120,12 @@ class MaintenanceRequestQueryService
         return $status->concat($changes)->sortBy('at')->values()->all();
     }
 
-    private function unitLabel(Unit $unit): string
+    private function unitLabel(?Unit $unit): ?string
     {
+        if ($unit === null) {
+            return null;
+        }
+
         return implode(' · ', array_filter([$unit->block, $unit->number, $unit->complement]));
     }
 
@@ -120,6 +133,10 @@ class MaintenanceRequestQueryService
     private function serialize(MaintenanceRequest $request, bool $summary = false): array
     {
         return ['id' => $request->id, 'unit_id' => $request->unit_id, 'unit' => $this->unitLabel($request->unit),
+            'common_area_id' => $request->common_area_id, 'common_area' => $request->commonArea?->name,
+            'common_area_block_id' => $request->common_area_block_id,
+            'block_starts_at' => $request->commonAreaBlock?->starts_at->format('Y-m-d H:i:s'),
+            'block_ends_at' => $request->commonAreaBlock?->ends_at->format('Y-m-d H:i:s'),
             'incident_id' => $request->incident_id, 'incident_title' => $request->incident?->title,
             'admin_id' => $request->admin_id, 'admin' => $request->admin?->name,
             'service_provider_id' => $request->service_provider_id, 'provider' => $request->serviceProvider?->name,

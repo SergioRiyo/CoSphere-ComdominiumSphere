@@ -167,7 +167,7 @@ try {
     } elseif (($operation['action'] ?? null) === 'maintenance') {
         app(\App\Services\MaintenanceRequestService::class)->createFromIncident($actor, $entity);
     } elseif ($operation['entity'] === 'incident') {
-        app(\App\Services\IncidentService::class)->transition($actor, $entity, \App\Enums\IncidentStatus::from($operation['status']));
+        app(\App\Services\IncidentService::class)->transition($actor, $entity, \App\Enums\IncidentStatus::from($operation['status']), 'Retorno concorrente ao morador.');
     } else {
         app(\App\Services\MaintenanceRequestService::class)->transition($actor, $entity, \App\Enums\MaintenanceRequestStatus::from($operation['status']), $operation['data']);
     }

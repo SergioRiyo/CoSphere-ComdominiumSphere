@@ -311,7 +311,13 @@ export default function UsersPage({
                                                                 }
                                                                 size="sm"
                                                                 disabled={
-                                                                    processing
+                                                                    processing ||
+                                                                    !user.can_change_status
+                                                                }
+                                                                title={
+                                                                    !user.can_change_status
+                                                                        ? 'Esta conta administrativa não pode ser inativada.'
+                                                                        : undefined
                                                                 }
                                                             >
                                                                 {user.is_active ? (

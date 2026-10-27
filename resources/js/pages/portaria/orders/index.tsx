@@ -117,7 +117,8 @@ export default function PortariaOrdersPage({
                     </h1>
                     <p className="text-sm text-muted-foreground">
                         Localize a previsão antes de registrar uma encomenda não
-                        prevista.
+                        prevista. Para um novo recebimento, selecione primeiro a
+                        unidade e depois o morador destinatário daquela unidade.
                     </p>
                 </header>
                 {requestError && (
@@ -463,7 +464,9 @@ export default function PortariaOrdersPage({
                     <CardContent className="flex flex-col gap-4">
                         <p className="text-sm text-muted-foreground">
                             Se a encomenda não corresponde aos registros acima,
-                            selecione a unidade e cadastre o recebimento abaixo.
+                            selecione a unidade destinatária na busca e escolha
+                            abaixo qual morador dessa unidade receberá a
+                            notificação.
                         </p>
                         {!filters.unit_id ? (
                             <p className="text-sm">
@@ -497,22 +500,34 @@ export default function PortariaOrdersPage({
                                             name="unit_id"
                                             value={filters.unit_id ?? ''}
                                         />
-                                        <p className="text-sm font-medium">
-                                            {unitOptions.find(
-                                                (unit) =>
-                                                    unit.id === filters.unit_id,
-                                            ) &&
-                                                unitLabel(
-                                                    unitOptions.find(
-                                                        (unit) =>
-                                                            unit.id ===
-                                                            filters.unit_id,
-                                                    )!,
-                                                )}
-                                        </p>
+                                        <div className="rounded-lg border bg-muted/30 p-3">
+                                            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                                1. Unidade destinatária
+                                            </p>
+                                            <p className="mt-1 text-sm font-medium">
+                                                {unitOptions.find(
+                                                    (unit) =>
+                                                        unit.id ===
+                                                        filters.unit_id,
+                                                ) &&
+                                                    unitLabel(
+                                                        unitOptions.find(
+                                                            (unit) =>
+                                                                unit.id ===
+                                                                filters.unit_id,
+                                                        )!,
+                                                    )}
+                                            </p>
+                                        </div>
                                         <Label htmlFor="resident">
-                                            Morador destinatário
+                                            2. Morador destinatário
                                         </Label>
+                                        <p className="text-sm text-muted-foreground">
+                                            Apenas moradores ativos vinculados à
+                                            unidade selecionada são exibidos. A
+                                            notificação será enviada somente ao
+                                            destinatário escolhido.
+                                        </p>
                                         <select
                                             id="resident"
                                             name="resident_id"

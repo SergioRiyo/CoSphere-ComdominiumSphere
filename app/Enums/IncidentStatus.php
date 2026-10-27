@@ -18,6 +18,11 @@ enum IncidentStatus: string
         }, true);
     }
 
+    public function requiresResidentFeedback(): bool
+    {
+        return in_array($this, [self::Completed, self::Canceled], true);
+    }
+
     public function label(): string
     {
         return match ($this) {

@@ -80,6 +80,7 @@ class PortariaOrderTest extends TestCase
         $this->freezeTime();
         $doorman = User::factory()->porteiro()->create();
         $order = $this->expectedOrder(['tracking_code' => $trackingCode]);
+        $coResident = User::factory()->morador()->create(['unit_id' => $order->unit_id]);
         $this->actingAs($doorman)->from(route('portaria.orders.index'))
             ->patch(route('portaria.orders.receive', $order))->assertSessionHasNoErrors()->assertRedirect();
         $this->assertDatabaseCount('orders', 1);
@@ -91,6 +92,7 @@ class PortariaOrderTest extends TestCase
         ]);
         $notification = Notification::query()->sole();
         $this->assertSame($order->resident_id, $notification->recipient_id);
+        $this->assertDatabaseMissing('notifications', ['recipient_id' => $coResident->id]);
         $this->assertFalse($notification->is_read);
         $this->travel(5)->minutes();
         $this->actingAs(User::factory()->porteiro()->create())->patch(route('portaria.orders.receive', $order))
@@ -111,6 +113,7 @@ class PortariaOrderTest extends TestCase
     public function test_unexpected_receipt_uses_session_doorman_and_notifies_recipient(?string $trackingCode): void
     {
         $resident = User::factory()->create();
+        $coResident = User::factory()->morador()->create(['unit_id' => $resident->unit_id]);
         $doorman = User::factory()->porteiro()->create();
         $this->actingAs($doorman)->post(route('portaria.orders.store'), [
             'unit_id' => $resident->unit_id, 'resident_id' => $resident->id,
@@ -124,6 +127,7 @@ class PortariaOrderTest extends TestCase
         $this->assertNull($order->picked_up_at);
         $this->assertSame($trackingCode, $order->tracking_code);
         $this->assertSame($resident->id, Notification::query()->sole()->recipient_id);
+        $this->assertDatabaseMissing('notifications', ['recipient_id' => $coResident->id]);
         $this->patch(route('portaria.orders.receive', $order))->assertSessionHasErrors('order');
         $this->assertDatabaseCount('notifications', 1);
         $this->actingAs($resident)->get(route('morador.notifications.index'))
@@ -166,7 +170,7 @@ class PortariaOrderTest extends TestCase
         $resident = User::factory()->create();
         $this->actingAs(User::factory()->porteiro()->create())->post(route('portaria.orders.store'), [
             'unit_id' => Unit::factory()->create()->id, 'resident_id' => $resident->id, 'description' => 'Livros',
-        ])->assertSessionHasErrors('unit_id');
+        ])->assertSessionHasErrors('resident_id');
         foreach ([User::factory()->inactive()->create(), User::factory()->admin()->create(), User::factory()->create(['unit_id' => null])] as $invalid) {
             $this->post(route('portaria.orders.store'), ['unit_id' => $resident->unit_id, 'resident_id' => $invalid->id, 'description' => 'Livros'])
                 ->assertSessionHasErrors();

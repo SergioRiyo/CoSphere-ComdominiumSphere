@@ -158,7 +158,10 @@ class IncidentFlowTest extends TestCase
         $this->travel(1)->second();
         $this->patchJson(route('admin.incidents.priority', $incident), ['priority' => 'high'])->assertOk();
         $this->travel(1)->second();
-        $this->patchJson(route('admin.incidents.status', $incident), ['status' => 'completed'])->assertOk();
+        $this->patchJson(route('admin.incidents.status', $incident), [
+            'status' => 'completed',
+            'reason' => 'Atendimento concluído e validado.',
+        ])->assertOk();
         $this->patchJson(route('admin.incidents.status', $incident), ['status' => 'canceled'])->assertUnprocessable();
         $this->get(route('admin.incidents.show', $incident))->assertInertia(fn (Assert $page) => $page
             ->component('admin/incident-details')->where('incident.resident', $resident->name)
@@ -168,14 +171,59 @@ class IncidentFlowTest extends TestCase
             ->where('incident.history.0.from_label', null)->where('incident.history.1.to_label', 'Em andamento')
             ->where('incident.history.2.kind', 'priority')->where('incident.history.2.to_label', 'Alta')
             ->where('incident.history.2.actor', 'Administrador')->where('incident.history.3.to_label', 'Finalizada')
+            ->where('incident.history.3.reason', 'Atendimento concluído e validado.')
             ->missing('incident.resident')->missing('incident.unit'));
+    }
+
+    #[DataProvider('terminalStatuses')]
+    public function test_admin_must_provide_resident_feedback_for_terminal_statuses(string $currentStatus, string $targetStatus): void
+    {
+        $incident = Incident::factory()->create(['status' => $currentStatus]);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.incidents.status', $incident), [
+                'status' => $targetStatus,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('reason');
+
+        $this->patchJson(route('admin.incidents.status', $incident), [
+            'status' => $targetStatus,
+            'reason' => '   ',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('reason');
+
+        $this->assertSame(IncidentStatus::from($currentStatus), $incident->refresh()->status);
+        $this->assertDatabaseCount('incident_status_histories', 0);
+
+        $this->patchJson(route('admin.incidents.status', $incident), [
+            'status' => $targetStatus,
+            'reason' => 'Retorno conclusivo ao morador.',
+        ])->assertOk();
+
+        $history = $incident->statusHistory()->sole();
+        $this->assertSame(IncidentStatus::from($targetStatus), $incident->refresh()->status);
+        $this->assertSame('Retorno conclusivo ao morador.', $history->reason);
+    }
+
+    public static function terminalStatuses(): array
+    {
+        return [
+            'finalização' => [IncidentStatus::InProgress->value, IncidentStatus::Completed->value],
+            'cancelamento' => [IncidentStatus::Open->value, IncidentStatus::Canceled->value],
+        ];
     }
 
     #[DataProvider('cancelableStates')]
     public function test_admin_cancels_only_nonterminal_incidents(string $state): void
     {
         $incident = Incident::factory()->create(['status' => $state]);
-        $this->actingAs(User::factory()->admin()->create())->patchJson(route('admin.incidents.status', $incident), ['status' => 'canceled'])->assertOk();
+        $this->actingAs(User::factory()->admin()->create())->patchJson(route('admin.incidents.status', $incident), [
+            'status' => 'canceled',
+            'reason' => 'Solicitação recusada pelo condomínio.',
+        ])->assertOk();
         $this->patchJson(route('admin.incidents.status', $incident), ['status' => 'in_progress'])->assertUnprocessable();
         $this->assertSame(1, $incident->statusHistory()->count());
     }

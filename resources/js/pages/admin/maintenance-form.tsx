@@ -24,7 +24,11 @@ export default function MaintenanceForm({
 }) {
     const lock = useRef(false);
     const form = useForm({
-        unit_id: maintenance ? String(maintenance.unit_id) : '',
+        target_type: maintenance?.common_area_id ? 'common_area' : 'unit',
+        unit_id: maintenance?.unit_id ? String(maintenance.unit_id) : '',
+        common_area_id: maintenance?.common_area_id
+            ? String(maintenance.common_area_id)
+            : '',
         admin_id: String(maintenance?.admin_id || default_admin_id),
         service_provider_id: maintenance?.service_provider_id
             ? String(maintenance.service_provider_id)
@@ -57,6 +61,20 @@ export default function MaintenanceForm({
     }
 
     const admins = [...options.admins];
+    const commonAreas = [...options.common_areas];
+
+    if (
+        maintenance?.common_area_id &&
+        !commonAreas.some(
+            (option) => option.value === String(maintenance.common_area_id),
+        )
+    ) {
+        commonAreas.push({
+            value: String(maintenance.common_area_id),
+            label:
+                (maintenance.common_area || 'Área comum') + ' (indisponível)',
+        });
+    }
 
     if (
         maintenance?.admin_id &&
@@ -92,7 +110,20 @@ export default function MaintenanceForm({
                             <Badge variant="secondary" className="w-fit">
                                 {maintenance.status_label}
                             </Badge>
-                            <p>Unidade: {maintenance.unit}</p>
+                            <p>
+                                {maintenance.common_area
+                                    ? 'Área comum: ' + maintenance.common_area
+                                    : 'Unidade: ' + maintenance.unit}
+                            </p>
+                            {maintenance.common_area_block_id && (
+                                <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                                    Bloqueio #{maintenance.common_area_block_id}{' '}
+                                    vinculado:{' '}
+                                    {incidentDate(maintenance.block_starts_at)}{' '}
+                                    até{' '}
+                                    {incidentDate(maintenance.block_ends_at)}.
+                                </p>
+                            )}
                             <p>
                                 Execução:{' '}
                                 {incidentDate(maintenance.executed_at)} · Custo:{' '}
@@ -138,8 +169,17 @@ export default function MaintenanceForm({
                                     ? data.cost.replace(',', '.')
                                     : null,
                                 ...(!maintenance
-                                    ? { unit_id: data.unit_id }
-                                    : {}),
+                                    ? data.target_type === 'unit'
+                                        ? { unit_id: data.unit_id }
+                                        : {
+                                              common_area_id:
+                                                  data.common_area_id,
+                                          }
+                                    : maintenance.common_area_id
+                                      ? {
+                                            common_area_id: data.common_area_id,
+                                        }
+                                      : {}),
                                 ...(data.status
                                     ? {
                                           status: data.status,
@@ -176,14 +216,44 @@ export default function MaintenanceForm({
                         >
                             {!maintenance && (
                                 <IncidentSelect
-                                    id="unit"
-                                    label="Unidade"
-                                    value={form.data.unit_id}
-                                    options={options.units}
+                                    id="target_type"
+                                    label="Modalidade"
+                                    value={form.data.target_type}
+                                    options={[
+                                        { value: 'unit', label: 'Unidade' },
+                                        {
+                                            value: 'common_area',
+                                            label: 'Área comum',
+                                        },
+                                    ]}
                                     onChange={(value) =>
-                                        form.setData('unit_id', value)
+                                        form.setData('target_type', value)
                                     }
-                                    error={form.errors.unit_id}
+                                />
+                            )}
+                            {!maintenance &&
+                                form.data.target_type === 'unit' && (
+                                    <IncidentSelect
+                                        id="unit"
+                                        label="Unidade"
+                                        value={form.data.unit_id}
+                                        options={options.units}
+                                        onChange={(value) =>
+                                            form.setData('unit_id', value)
+                                        }
+                                        error={form.errors.unit_id}
+                                    />
+                                )}
+                            {form.data.target_type === 'common_area' && (
+                                <IncidentSelect
+                                    id="common_area"
+                                    label="Área comum"
+                                    value={form.data.common_area_id}
+                                    options={commonAreas}
+                                    onChange={(value) =>
+                                        form.setData('common_area_id', value)
+                                    }
+                                    error={form.errors.common_area_id}
                                 />
                             )}
                             <IncidentSelect
@@ -227,11 +297,16 @@ export default function MaintenanceForm({
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="scheduled">
-                                    Agendamento (opcional enquanto pendente)
+                                    {form.data.target_type === 'common_area'
+                                        ? 'Data da manutenção e do bloqueio'
+                                        : 'Agendamento (opcional enquanto pendente)'}
                                 </Label>
                                 <Input
                                     id="scheduled"
                                     type="datetime-local"
+                                    required={
+                                        form.data.target_type === 'common_area'
+                                    }
                                     step="1"
                                     value={form.data.scheduled_at}
                                     onChange={(event) =>
@@ -244,6 +319,14 @@ export default function MaintenanceForm({
                                 <InputError
                                     message={form.errors.scheduled_at}
                                 />
+                                {form.data.target_type === 'common_area' && (
+                                    <p className="text-sm text-muted-foreground">
+                                        A área ficará bloqueada durante todo o
+                                        horário operacional desta data. Reservas
+                                        pendentes ou aprovadas precisam ser
+                                        resolvidas antes.
+                                    </p>
+                                )}
                             </div>
                             <div className="grid gap-2">
                                 <Label htmlFor="cost">
