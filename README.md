@@ -17,12 +17,18 @@ prova de conceito isolada para `units`; ela não integra a conexão principal da
 aplicação e não substitui a autorização Laravel. Consulte
 [`docs/SECURITY_AND_RLS.md`](docs/SECURITY_AND_RLS.md).
 
+O Módulo 5 está em desenvolvimento. As decisões aprovadas para comunicados,
+central de notificações e enquetes estão registradas em
+[`docs/MODULE_05_BUSINESS_RULES.md`](docs/MODULE_05_BUSINESS_RULES.md).
+
 ## Requisitos
 
 - Docker Desktop e Docker Compose (opção recomendada)
 - Ou: PHP 8.3+, Composer 2, Node.js 22+ e PostgreSQL/Supabase
 
-O `Dockerfile` disponibiliza PHP 8.3, Node.js 22 e as extensões necessárias para PostgreSQL e para os testes com SQLite.
+O `Dockerfile` disponibiliza PHP 8.3, Node.js 22 e a extensão PostgreSQL. A
+imagem ainda precisa incorporar GD e `pdo_sqlite` para executar integralmente a
+suíte principal dentro do container.
 
 ## Setup rápido com Docker
 

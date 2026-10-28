@@ -11,7 +11,7 @@ O código e os arquivos de dependência são a fonte de verdade da stack:
 - Inertia Laravel 3.1 e React 19.2;
 - TypeScript 5.9, Vite 8.0 e Tailwind CSS 4.3;
 - PostgreSQL/Supabase como banco de desenvolvimento;
-- SQLite em memória exclusivamente para testes;
+- SQLite em memória para a suíte rápida e PostgreSQL descartável para as suítes de integração e concorrência;
 - PHPUnit 12.5;
 - Docker Compose, Node.js 22 e NPM.
 
@@ -99,7 +99,7 @@ Não introduzir abstrações vazias, microservices, CQRS ou event sourcing. Ante
 | Módulo 2 | Visitantes e controle de acesso | Concluído (MVP) |
 | Módulo 3 | Reservas e encomendas | Concluído (MVP) |
 | Módulo 4 | Ocorrências, manutenção e relatórios | Concluído (MVP) |
-| Módulo 5 | Comunicação, comunidade e integração | Pendente |
+| Módulo 5 | Comunicação, comunidade e integração | Em desenvolvimento (M5-00 concluída) |
 
 Nos Módulos 1 a 4, a autorização real é aplicada pelo Laravel com autenticação,
 status, papéis, Policies, Form Requests, Services e filtros de ownership. A RLS
@@ -111,6 +111,10 @@ e manutenção de área comum. A manutenção de área cria um bloqueio durante 
 o horário operacional da data e impede reservas conflitantes. A administração
 também dispõe de relatórios paginados de reservas, acessos e ocorrências, sem
 exportações ou BI.
+
+O contrato funcional do Módulo 5 está definido em
+[`MODULE_05_BUSINESS_RULES.md`](MODULE_05_BUSINESS_RULES.md). Ele fixa o escopo
+de comunicados, central de notificações e enquetes antes da criação do schema.
 
 ## Fluxo Git
 
