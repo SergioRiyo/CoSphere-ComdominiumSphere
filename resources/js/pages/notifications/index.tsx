@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dashboard } from '@/routes/morador';
-import { index, read } from '@/routes/morador/notifications';
+import { dashboard } from '@/routes';
+import { index, read } from '@/routes/notifications';
 
 type Notification = {
     id: number;

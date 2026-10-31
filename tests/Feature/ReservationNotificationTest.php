@@ -272,7 +272,7 @@ class ReservationNotificationTest extends TestCase
         $reservation = app(ReservationService::class)->create($owner, $this->data(CommonArea::factory()->create()));
         $notification = Notification::sole();
         $this->actingAs($owner)->get(route('morador.notifications.index'))->assertInertia(fn (Assert $page) => $page
-            ->component('morador/notifications/index')->has('notifications.data', 1)
+            ->component('notifications/index')->has('notifications.data', 1)
             ->where('notifications.data.0.title', $notification->title)->where('notifications.data.0.message', $notification->message)
             ->where('notifications.data.0.type_label', 'Reserva')->where('notifications.data.0.is_read', false));
         $this->actingAs($other)->get(route('morador.notifications.index', ['recipient_id' => $owner->id]))->assertInertia(fn (Assert $page) => $page->has('notifications.data', 0));

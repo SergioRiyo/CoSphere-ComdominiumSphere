@@ -14,6 +14,71 @@ class NotificationFeatureTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_shared_inbox_scopes_paginates_and_marks_existing_notifications_for_each_role(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $resident = User::factory()->morador()->create();
+        $adminNotification = Notification::factory()->create([
+            'recipient_id' => $admin->id, 'type' => NotificationType::Occurrence,
+            'title' => 'Ocorrência registrada', 'is_read' => false,
+        ]);
+        $residentNotification = Notification::factory()->create([
+            'recipient_id' => $resident->id, 'type' => NotificationType::Package,
+            'title' => 'Encomenda recebida', 'is_read' => false,
+        ]);
+
+        foreach ([[$admin, $adminNotification, $residentNotification], [$resident, $residentNotification, $adminNotification]] as [$user, $own, $other]) {
+            Notification::factory()->count(10)->create(['recipient_id' => $user->id, 'sent_at' => now()->subDay()]);
+            $this->actingAs($user)->get(route('notifications.index', ['recipient_id' => $other->recipient_id]))
+                ->assertInertia(fn (Assert $page) => $page->component('notifications/index')
+                    ->where('notifications.total', 11)->has('notifications.data', 10)
+                    ->where('notifications.data.0.id', $own->id)
+                    ->where('notifications.data.0.title', $own->title));
+            $this->get(route('notifications.index', ['page' => 2]))
+                ->assertInertia(fn (Assert $page) => $page->where('notifications.current_page', 2)->has('notifications.data', 1));
+            $otherWasRead = $other->fresh()->is_read;
+            $this->patch(route('notifications.read', $other->id))->assertNotFound();
+            $this->assertSame($otherWasRead, $other->fresh()->is_read);
+            $this->from(route('notifications.index'))->patch(route('notifications.read', $own->id))
+                ->assertRedirect(route('notifications.index'));
+            $this->assertTrue($own->fresh()->is_read);
+        }
+    }
+
+    public function test_shared_routes_require_active_verified_admin_or_resident(): void
+    {
+        $notification = Notification::factory()->create(['is_read' => false]);
+        $index = route('notifications.index');
+        $read = route('notifications.read', $notification->id);
+        $this->get($index)->assertRedirect(route('login'));
+        $this->patch($read)->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->porteiro()->create())->get($index)->assertForbidden();
+        $this->patch($read)->assertForbidden();
+        foreach ([User::factory()->admin()->inactive()->create(), User::factory()->morador()->inactive()->create()] as $user) {
+            $this->actingAs($user)->get($index)->assertRedirect(route('login'));
+            $this->actingAs($user)->patch($read)->assertRedirect(route('login'));
+        }
+        foreach ([User::factory()->admin()->unverified()->create(), User::factory()->morador()->unverified()->create()] as $user) {
+            $this->actingAs($user)->get($index)->assertRedirect(route('verification.notice'));
+            $this->patch($read)->assertRedirect(route('verification.notice'));
+        }
+        $this->assertFalse($notification->fresh()->is_read);
+    }
+
+    public function test_legacy_resident_routes_remain_usable_and_scoped(): void
+    {
+        $resident = User::factory()->morador()->create();
+        $notification = Notification::factory()->create(['recipient_id' => $resident->id, 'is_read' => false]);
+        $other = Notification::factory()->create(['is_read' => false]);
+        $this->actingAs($resident)->get(route('morador.notifications.index'))
+            ->assertInertia(fn (Assert $page) => $page->component('notifications/index')
+                ->where('notifications.total', 1)->where('notifications.data.0.id', $notification->id));
+        $this->patch(route('morador.notifications.read', $other->id))->assertNotFound();
+        $this->from(route('morador.notifications.index'))->patch(route('morador.notifications.read', $notification->id))->assertRedirect();
+        $this->assertTrue($notification->fresh()->is_read);
+        $this->assertFalse($other->fresh()->is_read);
+    }
+
     public function test_list_only_contains_recipient_notifications_even_with_a_forged_recipient(): void
     {
         $resident = User::factory()->create();
@@ -29,7 +94,7 @@ class NotificationFeatureTest extends TestCase
         $this->actingAs($resident)->get(route('morador.notifications.index', ['recipient_id' => $coResident->id]))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('morador/notifications/index')
+                ->component('notifications/index')
                 ->has('notifications.data', 1)
                 ->where('notifications.total', 1)
                 ->where('notifications.data.0.id', $notification->id)

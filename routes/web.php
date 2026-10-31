@@ -36,6 +36,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('incident-attachments/{incidentAttachment}', IncidentAttachmentController::class)
         ->whereNumber('incidentAttachment')->name('incident-attachments.download');
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
+    Route::middleware('role:admin,morador')->group(function () {
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
+            ->whereNumber('notification')->name('notifications.read');
+    });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');

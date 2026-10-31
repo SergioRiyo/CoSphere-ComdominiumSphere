@@ -71,7 +71,7 @@ class Module3IntegrationTest extends TestCase
         $this->get(route('morador.reservations.show', $reservation))->assertInertia(fn (Assert $page) => $page
             ->component('morador/reservation-details')->where('reservation.status', 'cancelled')->has('reservation.history', $manual ? 3 : 2));
         $this->get(route('morador.notifications.index'))->assertInertia(fn (Assert $page) => $page
-            ->component('morador/notifications/index')->has('notifications.data', $manual ? 2 : 1));
+            ->component('notifications/index')->has('notifications.data', $manual ? 2 : 1));
         foreach (Notification::all() as $notification) {
             $this->assertSame($resident->id, $notification->recipient_id);
             $this->assertSame(NotificationType::Reservation, $notification->type);

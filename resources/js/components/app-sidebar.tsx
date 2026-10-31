@@ -37,10 +37,10 @@ import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
-import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
+import { index as notificationsIndex } from '@/routes/notifications';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
 import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
@@ -103,6 +103,11 @@ export function AppSidebar() {
                       title: 'Relatórios',
                       href: reportsIndex(),
                       icon: ChartNoAxesCombined,
+                  },
+                  {
+                      title: 'Notificações',
+                      href: notificationsIndex(),
+                      icon: Bell,
                   },
               ]
             : []),
