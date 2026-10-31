@@ -11,7 +11,13 @@ type Notification = {
     id: number;
     title: string;
     message: string;
-    type: string;
+    type:
+        | 'reservation'
+        | 'visitor'
+        | 'package'
+        | 'occurrence'
+        | 'system'
+        | 'announcement';
     type_label: string;
     sent_at: string | null;
     is_read: boolean;

@@ -14,6 +14,18 @@ class NotificationFeatureTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_announcement_notification_is_displayed_with_its_label(): void
+    {
+        $resident = User::factory()->morador()->create();
+        $notification = Notification::factory()->forAnnouncement(42)->create(['recipient_id' => $resident->id]);
+
+        $this->actingAs($resident)->get(route('notifications.index'))
+            ->assertInertia(fn (Assert $page) => $page->component('notifications/index')
+                ->where('notifications.data.0.id', $notification->id)
+                ->where('notifications.data.0.type', 'announcement')
+                ->where('notifications.data.0.type_label', 'Comunicado'));
+    }
+
     public function test_shared_inbox_scopes_paginates_and_marks_existing_notifications_for_each_role(): void
     {
         $admin = User::factory()->admin()->create();
