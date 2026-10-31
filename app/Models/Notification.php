@@ -32,4 +32,9 @@ class Notification extends Model
     {
         return $this->belongsTo(User::class, 'recipient_id');
     }
+
+    public function announcement(): BelongsTo
+    {
+        return $this->belongsTo(Announcement::class);
+    }
 }

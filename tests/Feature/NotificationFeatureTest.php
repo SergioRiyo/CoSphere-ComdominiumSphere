@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\NotificationType;
+use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\OrderService;
@@ -17,7 +18,7 @@ class NotificationFeatureTest extends TestCase
     public function test_announcement_notification_is_displayed_with_its_label(): void
     {
         $resident = User::factory()->morador()->create();
-        $notification = Notification::factory()->forAnnouncement(42)->create(['recipient_id' => $resident->id]);
+        $notification = Notification::factory()->forAnnouncement(Announcement::factory()->create()->id)->create(['recipient_id' => $resident->id]);
 
         $this->actingAs($resident)->get(route('notifications.index'))
             ->assertInertia(fn (Assert $page) => $page->component('notifications/index')

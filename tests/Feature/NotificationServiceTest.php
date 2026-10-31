@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\NotificationType;
+use App\Models\Announcement;
 use App\Models\Notification;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -21,20 +22,22 @@ class NotificationServiceTest extends TestCase
         $first = User::factory()->create();
         $second = User::factory()->create();
         $service = app(NotificationService::class);
-        $notification = $service->createForAnnouncement(101, $first->id, 'Comunicado', 'Mensagem original');
-        $repeat = $service->createForAnnouncement(101, $first->id, 'Outro título', 'Outra mensagem');
+        $announcementId = Announcement::factory()->create()->id;
+        $otherId = Announcement::factory()->create()->id;
+        $notification = $service->createForAnnouncement($announcementId, $first->id, 'Comunicado', 'Mensagem original');
+        $repeat = $service->createForAnnouncement($announcementId, $first->id, 'Outro título', 'Outra mensagem');
 
         $this->assertSame($notification->id, $repeat->id);
         $this->assertSame('Mensagem original', $repeat->message);
         $this->assertSame(NotificationType::Announcement, $repeat->type);
-        $this->assertNotSame($notification->id, $service->createForAnnouncement(101, $second->id, 'Comunicado', 'Mensagem')->id);
-        $this->assertNotSame($notification->id, $service->createForAnnouncement(102, $first->id, 'Comunicado', 'Mensagem')->id);
+        $this->assertNotSame($notification->id, $service->createForAnnouncement($announcementId, $second->id, 'Comunicado', 'Mensagem')->id);
+        $this->assertNotSame($notification->id, $service->createForAnnouncement($otherId, $first->id, 'Comunicado', 'Mensagem')->id);
         $notification->delete();
-        $this->assertSame($notification->id, $service->createForAnnouncement(101, $first->id, 'Comunicado', 'Mensagem')->id);
+        $this->assertSame($notification->id, $service->createForAnnouncement($announcementId, $first->id, 'Comunicado', 'Mensagem')->id);
         $this->assertSame(3, Notification::withTrashed()->count());
 
         try {
-            DB::transaction(fn () => Notification::factory()->forAnnouncement(101)->create(['recipient_id' => $first->id]));
+            DB::transaction(fn () => Notification::factory()->forAnnouncement($announcementId)->create(['recipient_id' => $first->id]));
             $this->fail('The database must reject duplicate announcement deliveries.');
         } catch (QueryException) {
             $this->assertSame(3, Notification::withTrashed()->count());
@@ -44,7 +47,8 @@ class NotificationServiceTest extends TestCase
     public function test_migration_rollback_preserves_legacy_notifications_and_rejects_announcement_data(): void
     {
         $legacy = Notification::factory()->create(['type' => NotificationType::System]);
-        $announcement = Notification::factory()->forAnnouncement(42)->create();
+        $announcementId = Announcement::factory()->create()->id;
+        $announcement = Notification::factory()->forAnnouncement($announcementId)->create();
         $migration = require database_path('migrations/2026_10_31_223915_prepare_notifications_for_announcements.php');
 
         try {
@@ -52,17 +56,21 @@ class NotificationServiceTest extends TestCase
             $this->fail('Rollback must not discard announcement data.');
         } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('announcement notifications exist', $exception->getMessage());
-            $this->assertDatabaseHas('notifications', ['id' => $announcement->id, 'announcement_id' => 42]);
+            $this->assertDatabaseHas('notifications', ['id' => $announcement->id, 'announcement_id' => $announcementId]);
         }
 
         $announcement->forceDelete();
+        Announcement::findOrFail($announcementId)->forceDelete();
+        $domainMigration = require database_path('migrations/2026_10_31_231232_create_announcements_table.php');
+        $domainMigration->down();
         $migration->down();
         $this->assertFalse(Schema::hasColumn('notifications', 'announcement_id'));
         $this->assertSame(NotificationType::System, $legacy->fresh()->type);
         $migration->up();
+        $domainMigration->up();
         $this->assertTrue(Schema::hasColumn('notifications', 'announcement_id'));
         $this->assertSame(NotificationType::System, $legacy->fresh()->type);
-        $this->assertSame(NotificationType::Announcement, Notification::factory()->forAnnouncement(42)->create()->type);
+        $this->assertSame(NotificationType::Announcement, Notification::factory()->forAnnouncement(Announcement::factory()->create()->id)->create()->type);
     }
 
     public function test_deve_criar_notificacao_para_usuario(): void

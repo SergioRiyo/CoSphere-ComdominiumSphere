@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminIncidentController;
 use App\Http\Controllers\AdminReservationController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
@@ -43,6 +44,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+        Route::patch('announcements/{announcement}', [AnnouncementController::class, 'update'])->whereNumber('announcement')->name('announcements.update');
+        Route::patch('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->whereNumber('announcement')->name('announcements.publish');
         Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');
         Route::patch('service-providers/{service_provider}/archive', [ServiceProviderController::class, 'archive'])->whereNumber('service_provider')->name('service-providers.archive');
         Route::resource('maintenances', MaintenanceRequestController::class)->parameters(['maintenances' => 'maintenance'])->only(['index', 'create', 'store', 'show', 'update'])->whereNumber('maintenance');
