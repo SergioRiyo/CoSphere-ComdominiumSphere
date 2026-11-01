@@ -1,10 +1,11 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, Check } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import { show as showAnnouncement } from '@/routes/morador/announcements';
 import { index, read } from '@/routes/notifications';
 
 type Notification = {
@@ -19,6 +20,7 @@ type Notification = {
         | 'system'
         | 'announcement';
     type_label: string;
+    announcement_id: number | null;
     sent_at: string | null;
     is_read: boolean;
 };
@@ -37,6 +39,7 @@ export default function NotificationsPage({
     notifications,
     timezone,
 }: NotificationsPageProps) {
+    const { auth } = usePage().props;
     const [busy, setBusy] = useState(false);
     const [readingId, setReadingId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -197,6 +200,24 @@ export default function NotificationsPage({
                                         <p className="text-sm break-words whitespace-pre-wrap">
                                             {notification.message}
                                         </p>
+                                        {auth.user.role === 'morador' &&
+                                            notification.type ===
+                                                'announcement' &&
+                                            notification.announcement_id !==
+                                                null && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                >
+                                                    <Link
+                                                        href={showAnnouncement(
+                                                            notification.announcement_id,
+                                                        )}
+                                                    >
+                                                        Ver comunicado
+                                                    </Link>
+                                                </Button>
+                                            )}
                                         {!notification.is_read && (
                                             <Button
                                                 variant="outline"

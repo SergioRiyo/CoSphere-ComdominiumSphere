@@ -22,6 +22,7 @@ class NotificationService
                 'message' => $notification->message,
                 'type' => $notification->type->value,
                 'type_label' => $notification->type->label(),
+                'announcement_id' => $notification->type === NotificationType::Announcement ? $notification->announcement_id : null,
                 'sent_at' => $notification->sent_at?->toISOString(),
                 'is_read' => $notification->is_read,
             ]);

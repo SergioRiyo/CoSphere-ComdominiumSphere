@@ -37,6 +37,7 @@ import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
+import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as ordersIndex } from '@/routes/morador/orders';
@@ -120,6 +121,11 @@ export function AppSidebar() {
             : []),
         ...(auth.user.role === 'morador'
             ? [
+                  {
+                      title: 'Comunicados',
+                      href: residentAnnouncementsIndex(),
+                      icon: Megaphone,
+                  },
                   {
                       title: 'Visitantes',
                       href: visitorsIndex(),

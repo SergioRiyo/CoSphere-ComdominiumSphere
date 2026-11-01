@@ -8,6 +8,17 @@ export type AnnouncementSummary = {
 
 export type Announcement = AnnouncementSummary & { content: string };
 
+export type PublishedAnnouncementSummary = {
+    id: number;
+    title: string;
+    author: string;
+    published_at: string;
+};
+
+export type PublishedAnnouncement = PublishedAnnouncementSummary & {
+    content: string;
+};
+
 export function formatAnnouncementDate(
     value: string,
     timezone: string,

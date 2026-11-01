@@ -19,6 +19,7 @@ use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\ResidentAnnouncementController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
 use App\Http\Controllers\ServiceProviderController;
@@ -79,6 +80,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('announcements', [ResidentAnnouncementController::class, 'index'])->name('announcements.index');
+        Route::get('announcements/{announcement}', [ResidentAnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
         Route::resource('incidents', IncidentController::class)->only(['index', 'create', 'store', 'show'])->whereNumber('incident');
         Route::resource('orders', ResidentOrderController::class)->only(['index', 'store', 'show'])->whereNumber('order');
         Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
