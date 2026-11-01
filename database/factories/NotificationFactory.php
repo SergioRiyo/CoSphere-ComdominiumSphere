@@ -25,4 +25,12 @@ class NotificationFactory extends Factory
             'is_read' => $this->faker->boolean(30),
         ];
     }
+
+    public function forAnnouncement(int $announcementId): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'announcement_id' => $announcementId,
+            'type' => NotificationType::Announcement,
+        ]);
+    }
 }

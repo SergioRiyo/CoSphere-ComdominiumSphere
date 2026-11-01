@@ -51,4 +51,12 @@ class NotificationService
             'is_read' => false,
         ]);
     }
+
+    public function createForAnnouncement(int $announcementId, int $recipientId, string $title, string $message): Notification
+    {
+        return Notification::withTrashed()->firstOrCreate(
+            ['announcement_id' => $announcementId, 'recipient_id' => $recipientId],
+            ['title' => $title, 'message' => $message, 'type' => NotificationType::Announcement, 'sent_at' => now(), 'is_read' => false],
+        );
+    }
 }

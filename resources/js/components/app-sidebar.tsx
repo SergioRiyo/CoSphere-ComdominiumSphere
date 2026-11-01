@@ -8,6 +8,7 @@ import {
     FileText,
     History,
     LayoutGrid,
+    Megaphone,
     Package,
     ChartNoAxesCombined,
     Users,
@@ -26,6 +27,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
@@ -37,10 +39,10 @@ import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
-import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
+import { index as notificationsIndex } from '@/routes/notifications';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
 import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
@@ -103,6 +105,16 @@ export function AppSidebar() {
                       title: 'Relatórios',
                       href: reportsIndex(),
                       icon: ChartNoAxesCombined,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: announcementsIndex(),
+                      icon: Megaphone,
+                  },
+                  {
+                      title: 'Notificações',
+                      href: notificationsIndex(),
+                      icon: Bell,
                   },
               ]
             : []),
