@@ -44,6 +44,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+        Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
+        Route::get('announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
         Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
         Route::patch('announcements/{announcement}', [AnnouncementController::class, 'update'])->whereNumber('announcement')->name('announcements.update');
         Route::patch('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->whereNumber('announcement')->name('announcements.publish');

@@ -8,6 +8,7 @@ import {
     FileText,
     History,
     LayoutGrid,
+    Megaphone,
     Package,
     ChartNoAxesCombined,
     Users,
@@ -26,6 +27,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
@@ -103,6 +105,11 @@ export function AppSidebar() {
                       title: 'Relatórios',
                       href: reportsIndex(),
                       icon: ChartNoAxesCombined,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: announcementsIndex(),
+                      icon: Megaphone,
                   },
                   {
                       title: 'Notificações',

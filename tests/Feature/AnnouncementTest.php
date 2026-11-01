@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Inertia\Testing\AssertableInertia as Assert;
 use LogicException;
 use Mockery\MockInterface;
 use RuntimeException;
@@ -22,6 +23,65 @@ use Tests\TestCase;
 class AnnouncementTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_pages_list_paginated_announcements_and_display_drafts_and_publications(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $draft = Announcement::factory()->create(['author_id' => $admin->id, 'title' => 'Rascunho', 'content' => 'Texto do rascunho']);
+        $published = Announcement::factory()->published()->create(['author_id' => $admin->id, 'title' => 'Publicado']);
+        Announcement::factory()->count(14)->create();
+
+        $this->actingAs($admin)->get(route('admin.announcements.index'))
+            ->assertInertia(fn (Assert $page) => $page->component('admin/announcements')
+                ->where('announcements.total', 16)->has('announcements.data', 15)
+                ->where('announcements.data.0.id', $published->id)
+                ->where('announcements.data.0.title', 'Publicado')
+                ->where('announcements.data.0.author', $admin->name)
+                ->where('announcements.data.0.published_at', $published->published_at->toISOString())
+                ->missing('announcements.data.0.content'));
+        $this->get(route('admin.announcements.index', ['page' => 2]))
+            ->assertInertia(fn (Assert $page) => $page->where('announcements.current_page', 2)->has('announcements.data', 1));
+        $this->get(route('admin.announcements.create'))
+            ->assertInertia(fn (Assert $page) => $page->component('admin/announcement-form')->where('announcement', null));
+        $this->get(route('admin.announcements.show', $draft))
+            ->assertInertia(fn (Assert $page) => $page->component('admin/announcement-form')
+                ->where('announcement.title', 'Rascunho')->where('announcement.content', 'Texto do rascunho')
+                ->where('announcement.published_at', null));
+        $this->get(route('admin.announcements.show', $published))
+            ->assertInertia(fn (Assert $page) => $page->component('admin/announcement-form')
+                ->where('announcement.published_at', $published->published_at->toISOString()));
+    }
+
+    public function test_announcement_pages_are_restricted_to_active_verified_administrators(): void
+    {
+        $announcement = Announcement::factory()->create();
+        $urls = [route('admin.announcements.index'), route('admin.announcements.create'), route('admin.announcements.show', $announcement)];
+        foreach ($urls as $url) {
+            $this->get($url)->assertRedirect(route('login'));
+            foreach ([User::factory()->morador()->create(), User::factory()->porteiro()->create()] as $user) {
+                $this->actingAs($user)->get($url)->assertForbidden();
+            }
+            $this->actingAs(User::factory()->admin()->inactive()->create())->get($url)->assertRedirect(route('login'));
+            $this->actingAs(User::factory()->admin()->unverified()->create())->get($url)->assertRedirect(route('verification.notice'));
+            auth()->logout();
+        }
+    }
+
+    public function test_save_and_publish_redirect_to_details_and_validation_retains_form_input(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->from(route('admin.announcements.create'))
+            ->post(route('admin.announcements.store'), ['title' => 'Preservado', 'content' => ''])
+            ->assertRedirect(route('admin.announcements.create'))->assertSessionHasErrors('content')
+            ->assertSessionHasInput('title', 'Preservado');
+        $response = $this->post(route('admin.announcements.store'), ['title' => 'Título', 'content' => 'Conteúdo']);
+        $announcement = Announcement::sole();
+        $response->assertRedirect(route('admin.announcements.show', $announcement));
+        $this->patch(route('admin.announcements.update', $announcement), ['title' => 'Atualizado', 'content' => 'Conteúdo'])
+            ->assertRedirect(route('admin.announcements.show', $announcement));
+        $this->patch(route('admin.announcements.publish', $announcement))
+            ->assertRedirect(route('admin.announcements.show', $announcement));
+    }
 
     public function test_admin_creates_and_updates_drafts_without_trusting_author_or_publication_date(): void
     {
