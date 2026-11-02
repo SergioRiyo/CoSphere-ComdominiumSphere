@@ -4,6 +4,7 @@ import {
     Building2,
     CalendarDays,
     ClipboardCheck,
+    ChartNoAxesColumn,
     ContactRound,
     FileText,
     History,
@@ -32,6 +33,7 @@ import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-block
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
+import { index as pollsIndex } from '@/routes/admin/polls';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
@@ -111,6 +113,11 @@ export function AppSidebar() {
                       title: 'Comunicados',
                       href: announcementsIndex(),
                       icon: Megaphone,
+                  },
+                  {
+                      title: 'Enquetes',
+                      href: pollsIndex(),
+                      icon: ChartNoAxesColumn,
                   },
                   {
                       title: 'Notificações',

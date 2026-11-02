@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminIncidentController;
+use App\Http\Controllers\AdminPollController;
 use App\Http\Controllers\AdminReservationController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CommonAreaBlockController;
@@ -45,6 +46,13 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('polls', [AdminPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/create', [AdminPollController::class, 'create'])->name('polls.create');
+        Route::get('polls/{poll}', [AdminPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls', [AdminPollController::class, 'store'])->name('polls.store');
+        Route::patch('polls/{poll}', [AdminPollController::class, 'update'])->whereNumber('poll')->name('polls.update');
+        Route::patch('polls/{poll}/publish', [AdminPollController::class, 'publish'])->whereNumber('poll')->name('polls.publish');
+        Route::patch('polls/{poll}/close', [AdminPollController::class, 'close'])->whereNumber('poll')->name('polls.close');
         Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
         Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
         Route::get('announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
