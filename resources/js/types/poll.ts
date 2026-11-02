@@ -13,6 +13,19 @@ export type PollSummary = {
 
 export type Poll = PollSummary & { options: { id: number; text: string }[] };
 
+export type ResidentPollSummary = {
+    id: number;
+    question: string;
+    status: PollStatus;
+    starts_at: string | null;
+    ends_at: string | null;
+    has_voted: boolean;
+};
+
+export type ResidentPoll = ResidentPollSummary & {
+    options: { id: number; text: string }[];
+};
+
 export type PollResults = {
     total: number;
     options: { id: number; text: string; votes: number; percentage: number }[];

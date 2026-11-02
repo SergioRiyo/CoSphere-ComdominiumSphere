@@ -23,6 +23,7 @@ use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentAnnouncementController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
+use App\Http\Controllers\ResidentPollController;
 use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
@@ -88,6 +89,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('polls', [ResidentPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/{poll}', [ResidentPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls/{poll}/vote', [ResidentPollController::class, 'vote'])->whereNumber('poll')->name('polls.vote');
         Route::get('announcements', [ResidentAnnouncementController::class, 'index'])->name('announcements.index');
         Route::get('announcements/{announcement}', [ResidentAnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
         Route::resource('incidents', IncidentController::class)->only(['index', 'create', 'store', 'show'])->whereNumber('incident');

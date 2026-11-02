@@ -17,6 +17,22 @@ class PollQueryService
         return $this->visibleTo($user)->orderByDesc('id')->paginate(15);
     }
 
+    public function paginateForResident(User $user, string $state): LengthAwarePaginator
+    {
+        abort_unless($user->role === UserRole::Morador, 403);
+        $query = $this->visibleTo($user)->withExists([
+            'votes as has_voted' => fn (Builder $votes) => $votes->where('user_id', $user->id),
+        ]);
+        if ($state === 'closed') {
+            $query->whereNotNull('ends_at')->where('ends_at', '<=', now());
+        } else {
+            $query->whereNotNull('starts_at')->where('starts_at', '<=', now())
+                ->where(fn (Builder $dates) => $dates->whereNull('ends_at')->orWhere('ends_at', '>', now()));
+        }
+
+        return $query->orderByDesc('starts_at')->orderByDesc('id')->paginate(15)->appends(['state' => $state]);
+    }
+
     public function find(User $user, int $id): Poll
     {
         return $this->visibleTo($user)->with('options')->findOrFail($id);

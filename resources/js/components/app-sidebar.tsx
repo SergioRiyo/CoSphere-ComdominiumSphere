@@ -43,6 +43,7 @@ import { index as residentAnnouncementsIndex } from '@/routes/morador/announceme
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as ordersIndex } from '@/routes/morador/orders';
+import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { index as notificationsIndex } from '@/routes/notifications';
@@ -128,6 +129,11 @@ export function AppSidebar() {
             : []),
         ...(auth.user.role === 'morador'
             ? [
+                  {
+                      title: 'Enquetes',
+                      href: residentPollsIndex(),
+                      icon: ChartNoAxesColumn,
+                  },
                   {
                       title: 'Comunicados',
                       href: residentAnnouncementsIndex(),
