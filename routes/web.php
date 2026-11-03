@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminIncidentController;
+use App\Http\Controllers\AdminPollController;
 use App\Http\Controllers\AdminReservationController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CommonAreaBlockController;
@@ -19,8 +20,10 @@ use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\ResidentAnnouncementController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
+use App\Http\Controllers\ResidentPollController;
 use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
@@ -44,6 +47,13 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('polls', [AdminPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/create', [AdminPollController::class, 'create'])->name('polls.create');
+        Route::get('polls/{poll}', [AdminPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls', [AdminPollController::class, 'store'])->name('polls.store');
+        Route::patch('polls/{poll}', [AdminPollController::class, 'update'])->whereNumber('poll')->name('polls.update');
+        Route::patch('polls/{poll}/publish', [AdminPollController::class, 'publish'])->whereNumber('poll')->name('polls.publish');
+        Route::patch('polls/{poll}/close', [AdminPollController::class, 'close'])->whereNumber('poll')->name('polls.close');
         Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
         Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
         Route::get('announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
@@ -79,6 +89,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('polls', [ResidentPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/{poll}', [ResidentPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls/{poll}/vote', [ResidentPollController::class, 'vote'])->whereNumber('poll')->name('polls.vote');
+        Route::get('announcements', [ResidentAnnouncementController::class, 'index'])->name('announcements.index');
+        Route::get('announcements/{announcement}', [ResidentAnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
         Route::resource('incidents', IncidentController::class)->only(['index', 'create', 'store', 'show'])->whereNumber('incident');
         Route::resource('orders', ResidentOrderController::class)->only(['index', 'store', 'show'])->whereNumber('order');
         Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
