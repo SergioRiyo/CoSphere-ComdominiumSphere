@@ -10,6 +10,9 @@
             <file>tests/Feature/AdminPollTest.php</file>
             <file>tests/Feature/PollSecurityTest.php</file>
         </testsuite>
+        <testsuite name="Module5NotificationsIntegration">
+            <file>tests/Feature/IntegratedNotificationJourneyTest.php</file>
+        </testsuite>
         <testsuite name="Module5PollsConcurrency">
             <file>tests/Integration/Postgres/PollConcurrencyTest.php</file>
         </testsuite>

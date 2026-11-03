@@ -97,7 +97,7 @@ export default function NotificationsPage({
         <>
             <Head title="Notificações" />
             <div
-                className="flex flex-1 flex-col gap-6 p-4 sm:p-6"
+                className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6"
                 aria-busy={busy}
             >
                 <header className="flex flex-col gap-2">
@@ -140,19 +140,19 @@ export default function NotificationsPage({
                     </Card>
                 ) : (
                     <ul
-                        className="flex flex-col gap-4"
+                        className="flex min-w-0 flex-col gap-4"
                         aria-label="Suas notificações"
                     >
                         {notifications.data.map((notification) => (
-                            <li key={notification.id}>
+                            <li key={notification.id} className="min-w-0">
                                 <Card
                                     className={
                                         notification.is_read
-                                            ? ''
-                                            : 'border-primary/40 bg-primary/5'
+                                            ? 'min-w-0'
+                                            : 'min-w-0 border-primary/40 bg-primary/5'
                                     }
                                 >
-                                    <CardHeader className="gap-3">
+                                    <CardHeader className="min-w-0 gap-3">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Badge variant="outline">
                                                 {notification.type_label}
@@ -196,8 +196,8 @@ export default function NotificationsPage({
                                             </span>
                                         )}
                                     </CardHeader>
-                                    <CardContent className="flex flex-col items-start gap-4">
-                                        <p className="text-sm break-words whitespace-pre-wrap">
+                                    <CardContent className="flex min-w-0 flex-col items-start gap-4">
+                                        <p className="w-full text-sm break-words whitespace-pre-wrap">
                                             {notification.message}
                                         </p>
                                         {auth.user.role === 'morador' &&
