@@ -4,6 +4,7 @@ namespace Tests\Integration\Postgres;
 
 use App\Models\PollVote;
 use App\Models\User;
+use App\Services\AnnouncementService;
 use App\Services\PollQueryService;
 use App\Services\PollService;
 use Illuminate\Database\Eloquent\Model;
@@ -25,6 +26,32 @@ class PollConcurrencyTest extends TestCase
         $this->assertSame('cosphere_m5_test', DB::scalar('SELECT current_user'));
         $this->assertSame(0, DB::transactionLevel());
         $this->artisan('migrate:fresh', ['--no-interaction' => true])->assertSuccessful();
+    }
+
+    public function test_simultaneous_announcement_publications_deliver_once_per_eligible_resident(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $otherAdmin = User::factory()->admin()->create();
+        $residents = User::factory()->morador()->count(2)->create();
+        $inactive = User::factory()->morador()->inactive()->create();
+        $unverified = User::factory()->morador()->unverified()->create();
+        $announcement = app(AnnouncementService::class)->save($admin, ['title' => 'Comunicado concorrente', 'content' => 'Conteúdo']);
+        $url = route('admin.announcements.publish', $announcement, false);
+
+        $results = $this->race($announcement, [
+            ['actor' => $admin->id, 'method' => 'PATCH', 'url' => $url, 'data' => []],
+            ['actor' => $otherAdmin->id, 'method' => 'PATCH', 'url' => $url, 'data' => []],
+        ]);
+
+        $this->assertSame([302, 302], array_column($results, 'status'));
+        $this->assertNotNull($announcement->fresh()->published_at);
+        $this->assertSame(2, $announcement->notifications()->count());
+        foreach ($residents as $resident) {
+            $this->assertSame(1, $announcement->notifications()->where('recipient_id', $resident->id)->count());
+        }
+        foreach ([$admin, $otherAdmin, $inactive, $unverified] as $ineligible) {
+            $this->assertSame(0, $announcement->notifications()->where('recipient_id', $ineligible->id)->count());
+        }
     }
 
     public function test_two_simultaneous_http_votes_from_same_resident_produce_one_vote(): void

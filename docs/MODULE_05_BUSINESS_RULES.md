@@ -10,8 +10,8 @@ módulo encerra o MVP integrando:
 - enquetes internas;
 - revisão integrada das jornadas dos Módulos 1 a 4.
 
-A Etapa M5-00 registra decisões e critérios antes da criação de migrations. Não
-faz parte desta etapa criar tabelas, models, rotas ou interfaces.
+Este documento registra o contrato aprovado na M5-00 e a implementação entregue
+até a revisão final M5-11.
 
 ## 2. Atores
 
@@ -37,9 +37,8 @@ O Morador ativo e verificado pode:
 
 ### Porteiro
 
-O Porteiro não participa dos fluxos de comunicados e enquetes no MVP. A central
-de notificações do Módulo 5 não será disponibilizada a esse perfil, salvo nova
-decisão funcional documentada.
+O Porteiro não participa dos fluxos de comunicados e enquetes no MVP e não tem
+acesso à central de notificações.
 
 ## 3. Decisões aprovadas
 
@@ -183,9 +182,13 @@ parte do escopo inicial.
 | Publicar comunicado | Sim | Não | Não |
 | Consultar comunicado publicado | Sim | Sim | Não |
 | Consultar rascunho de comunicado | Sim | Não | Não |
+| Editar ou excluir comunicado publicado | Não | Não | Não |
 | Criar ou editar enquete em rascunho | Sim | Não | Não |
 | Publicar ou encerrar enquete | Sim | Não | Não |
+| Consultar enquete publicada | Sim | Sim | Não |
+| Consultar enquete em rascunho | Sim | Não | Não |
 | Votar em enquete aberta | Não | Sim | Não |
+| Alterar ou excluir voto registrado | Não | Não | Não |
 | Consultar resultados agregados | Sim | Não | Não |
 | Consultar identidade dos votantes | Não | Não | Não |
 
@@ -310,6 +313,7 @@ Não serão implementados no MVP:
 - `phpunit.xml`: suíte rápida em SQLite `:memory:`.
 - `phpunit.module3-pgsql.xml`: integração e concorrência do Módulo 3 em PostgreSQL local na porta `55433`.
 - `phpunit.m4-pgsql.xml`: integração e concorrência do Módulo 4 em PostgreSQL local na porta `55434`.
+- `phpunit.m5-pgsql.xml`: enquetes, notificações integradas e concorrência de votos em PostgreSQL local na porta `55435`.
 - `.github/workflows/tests.yml`: build, TypeScript, suíte principal e PostgreSQL do Módulo 3 em PHP 8.4 e 8.5.
 
 ### Baseline observado antes do Módulo 5
@@ -334,9 +338,42 @@ Esses itens são dívida de ambiente e evidência, não mudanças de regra do M�
 - [x] Ambiente e baseline de testes conhecidos.
 - [x] Nenhuma migration ou implementação de domínio criada nesta etapa.
 
-## 15. Próxima etapa
+## 15. Revisão final M5-11
 
-A próxima etapa é **M5-01 — Tornar a central de notificações compartilhada**.
-Antes de editar rotas, deve-se preservar o ownership atual por destinatário e
-definir a transição da rota exclusiva de Morador para uma rota neutra sem quebrar
-links existentes.
+Os fluxos implementados estão disponíveis em `/notifications`, `/admin/announcements`,
+`/morador/announcements`, `/admin/polls` e `/morador/polls`. As rotas legadas
+de notificações do morador permanecem disponíveis. O README descreve o seeder
+isolado, os comandos de regressão e o roteiro de validação em navegador.
+
+Os testes da central integrada cobrem reserva, encomenda, ocorrência e comunicado;
+os testes de enquetes cobrem voto único, autorização e resultados. Em PostgreSQL,
+testes concorrentes cobrem publicação simultânea de comunicado, voto duplicado e
+corrida entre voto e encerramento. As suítes PostgreSQL usam bancos locais descartáveis e executam
+`migrate:fresh`; nunca devem apontar para dados compartilhados ou de produção.
+O voto é associado ao usuário no banco para assegurar unicidade: a interface de
+resultados não identifica votantes, mas isso não constitui anonimato criptográfico.
+
+### Registro de validação M5-11
+
+Em 02/11/2026, com bancos PostgreSQL descartáveis locais e GD carregado
+temporariamente para os testes de anexos:
+
+| Verificação | Resultado |
+| --- | --- |
+| Suíte principal SQLite | 1.106 testes aprovados, 11.685 assertions |
+| PostgreSQL Módulo 3 | 457 testes aprovados, 4.327 assertions |
+| PostgreSQL Módulo 4 | 285 testes aprovados, 2.384 assertions |
+| PostgreSQL Módulo 5 | 38 testes aprovados, 974 assertions |
+| Pint, ESLint, Prettier, TypeScript e build | Aprovados |
+
+Foi realizada também uma verificação **manual por requisições HTTP**, usando o
+seeder demonstrativo e sessões reais em uma aplicação local com PostgreSQL:
+
+1. O morador consultou a central e encontrou o comunicado publicado e o evento de encomenda.
+2. O administrador publicou o comunicado em rascunho; ele apareceu na central do morador.
+3. O morador registrou um voto; a segunda tentativa retornou HTTP 422 com mensagem de voto já registrado.
+4. O administrador consultou o resultado agregado: um voto, 100% para a opção escolhida, sem lista de votantes.
+
+Essas requisições não verificam apresentação visual ou usabilidade. O roteiro
+de inspeção humana em navegador permanece pendente no README e deve ser executado
+antes da apresentação. O banco usado nessa verificação era descartável.

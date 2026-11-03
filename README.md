@@ -4,12 +4,13 @@ Aplicação para gestão condominial desenvolvida como Trabalho de Conclusão de
 
 ## Estado do MVP
 
-Os Módulos 1 a 4 estão concluídos no escopo de MVP do TCC:
+Os Módulos 1 a 5 estão implementados no escopo de MVP do TCC:
 
 - **Módulo 1:** autenticação, perfis e gestão administrativa de usuários;
 - **Módulo 2:** visitantes, convites e histórico de entrada e saída;
 - **Módulo 3:** áreas comuns, reservas, bloqueios, encomendas e notificações;
 - **Módulo 4:** ocorrências, prestadores, manutenção de unidades e áreas comuns e relatórios administrativos de reservas, acessos e ocorrências.
+- **Módulo 5:** comunicados, central compartilhada de notificações e enquetes com voto único e resultados agregados.
 
 A autorização operacional é aplicada no Laravel por middleware, Form Requests,
 Policies, Services e filtros de ownership. A RLS PostgreSQL existente é uma
@@ -17,8 +18,8 @@ prova de conceito isolada para `units`; ela não integra a conexão principal da
 aplicação e não substitui a autorização Laravel. Consulte
 [`docs/SECURITY_AND_RLS.md`](docs/SECURITY_AND_RLS.md).
 
-O Módulo 5 está em desenvolvimento. As decisões aprovadas para comunicados,
-central de notificações e enquetes estão registradas em
+As regras, permissões e limitações de comunicados, central de notificações e
+enquetes estão registradas em
 [`docs/MODULE_05_BUSINESS_RULES.md`](docs/MODULE_05_BUSINESS_RULES.md).
 
 ## Requisitos
@@ -93,6 +94,7 @@ descartáveis nas portas indicadas pelos respectivos arquivos de configuração:
 ```bash
 php artisan test -c phpunit.module3-pgsql.xml
 php artisan test -c phpunit.m4-pgsql.xml
+php artisan test -c phpunit.m5-pgsql.xml
 ```
 
 Essas suítes executam `migrate:fresh` e não devem apontar para bancos de
@@ -114,6 +116,28 @@ php artisan migrate:fresh --seed
 ```
 
 > Esse último comando remove os dados do banco de desenvolvimento selecionado. Não o execute apontando para um banco compartilhado ou de produção.
+
+## Dados para demonstração da M5
+
+`Module5DemoSeeder` usa `Module3DemoSeeder` e só executa em `APP_ENV=local`
+com PostgreSQL em `127.0.0.1` e banco exclusivo `cosphere_m3_demo`, ou em
+SQLite em memória durante testes. Crie esse banco descartável previamente,
+configure sua conexão no ambiente local e uma senha temporária exclusiva com
+ao menos 12 caracteres em `MODULE3_DEMO_PASSWORD`. Depois execute:
+
+```bash
+php artisan migrate --no-interaction
+php artisan db:seed --class=Module5DemoSeeder --no-interaction
+```
+
+O seeder cria os usuários `admin@m3-demo.cosphere.test`,
+`morador@m3-demo.cosphere.test`, `porteiro@m3-demo.cosphere.test`,
+`vizinho@m3-demo.cosphere.test` e `outra-unidade@m3-demo.cosphere.test`,
+todos com a senha temporária informada; áreas, encomendas, um comunicado publicado
+e um rascunho, uma enquete aberta e outra em rascunho. A publicação é feita pelo
+serviço real e notifica os três moradores elegíveis. Reexecutar o seeder preserva
+votos e não duplica os dados originais enquanto seus títulos não forem alterados.
+Para reiniciar uma demonstração, recrie **somente esse banco descartável**.
 
 ## Execução local sem Docker
 
@@ -143,6 +167,10 @@ multitenancy, exportação PDF/Excel, gráficos avançados, validação matemát
 CPF, saída do visitante pelo mesmo QR, rastreamento de transportadora, testes
 end-to-end de navegador, chat em ocorrências, exclusão completa de usuários ou
 mudanças estruturais amplas na central de notificações.
+Comunicados não têm anexos, segmentação, reações ou entrega externa; enquetes não
+oferecem anonimato criptográfico, alteração de voto, quórum jurídico, votação
+ponderada, agendamento automático ou resultados para moradores. A identificação
+do voto é armazenada para garantir unicidade, embora não apareça nos resultados.
 
 ## Roteiro de validação manual
 
@@ -155,6 +183,10 @@ Antes da apresentação, validar em navegador os fluxos demonstráveis:
 - [ ] A área em manutenção fica indisponível para reserva.
 - [ ] Administrador acessa os relatórios de reservas, acessos e ocorrências.
 - [ ] Reservas, visitantes, encomendas e ocorrências continuam funcionando em suas jornadas principais.
+- [ ] Administrador cria e publica um comunicado; morador encontra o comunicado e sua notificação.
+- [ ] Morador consulta a central e marca uma notificação própria como lida; porteiro não acessa a central.
+- [ ] Administrador publica uma enquete; morador vota uma vez e não consegue alterar ou repetir o voto.
+- [ ] Administrador consulta totais e percentuais agregados e encerra a enquete.
 
 Esse roteiro é uma verificação humana complementar e não substitui as suítes
 automatizadas. Testes end-to-end de navegador permanecem fora do escopo do MVP.

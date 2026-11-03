@@ -11,6 +11,8 @@
             <file>tests/Feature/PollSecurityTest.php</file>
         </testsuite>
         <testsuite name="Module5NotificationsIntegration">
+            <file>tests/Feature/AnnouncementTest.php</file>
+            <file>tests/Feature/ResidentAnnouncementTest.php</file>
             <file>tests/Feature/IntegratedNotificationJourneyTest.php</file>
         </testsuite>
         <testsuite name="Module5PollsConcurrency">
