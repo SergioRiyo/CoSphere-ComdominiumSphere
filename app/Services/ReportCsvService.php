@@ -49,8 +49,8 @@ class ReportCsvService
     {
         return match ($kind) {
             'reservations' => ['id' => 'ID', 'area' => 'Área comum', 'date' => 'Data', 'start' => 'Horário inicial', 'end' => 'Horário final', 'status' => 'Status', 'resident' => 'Morador', 'unit' => 'Unidade'],
-            'incidents' => ['id' => 'ID', 'title' => 'Título', 'type' => 'Tipo', 'category' => 'Categoria', 'priority' => 'Prioridade', 'status' => 'Status', 'resident' => 'Morador', 'unit' => 'Unidade', 'created_at' => 'Data de abertura'],
-            'maintenances' => ['id' => 'ID', 'description' => 'Descrição', 'unit' => 'Unidade', 'origin' => 'Origem', 'incident' => 'Ocorrência vinculada', 'admin' => 'Administrador responsável', 'provider' => 'Prestador', 'status' => 'Status', 'created_at' => 'Data de abertura', 'scheduled_at' => 'Agendamento', 'executed_at' => 'Execução', 'cost' => 'Custo'],
+            'incidents' => ['id' => 'ID', 'title' => 'Título', 'type' => 'Tipo', 'category' => 'Categoria', 'priority' => 'Prioridade', 'status' => 'Status', 'resident' => 'Morador', 'unit' => 'Unidade', 'opened_at' => 'Data de abertura'],
+            'maintenances' => ['id' => 'ID', 'description' => 'Descrição', 'unit' => 'Unidade', 'origin' => 'Origem', 'incident' => 'Ocorrência vinculada', 'admin' => 'Administrador responsável', 'provider' => 'Prestador', 'status' => 'Status', 'created_at' => 'Data de abertura', 'scheduled_at' => 'Agendamento', 'executed_at' => 'Execução', 'cost' => 'Custo', 'area' => 'Área comum'],
         };
     }
 

@@ -15,6 +15,7 @@ use App\Services\ReportQueryService;
 use Illuminate\Database\Eloquent\Factories\Sequence;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -26,6 +27,37 @@ class ReportCsvTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+    }
+
+    public function test_incident_report_filters_orders_and_exports_by_opening_date(): void
+    {
+        $first = Incident::factory()->create(['opened_at' => '2026-10-01 12:00:00', 'created_at' => '2026-10-03 12:00:00']);
+        $last = Incident::factory()->create(['opened_at' => '2026-10-01 14:00:00', 'created_at' => '2026-09-01 12:00:00']);
+        Incident::factory()->create(['opened_at' => '2026-10-02 12:00:00', 'created_at' => '2026-10-01 12:00:00']);
+        $filters = ['date_from' => '2026-10-01', 'date_to' => '2026-10-01'];
+
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.reports.incidents', $filters))
+            ->assertInertia(fn (Assert $page) => $page->where('records.total', 2)
+                ->where('records.data.0.id', $last->id)->where('records.data.0.opened_at', '01/10/2026 14:00:00')
+                ->where('records.data.1.id', $first->id));
+        $rows = $this->parse($this->get(route('admin.reports.incidents.export', $filters))->streamedContent());
+        $this->assertSame([(string) $last->id, (string) $first->id], array_column(array_slice($rows, 1), 0));
+        $this->assertSame('01/10/2026 14:00:00', $rows[1][8]);
+    }
+
+    public function test_common_area_maintenance_is_identified_on_report_and_csv(): void
+    {
+        $area = CommonArea::factory()->create(['name' => '=Salao']);
+        $maintenance = MaintenanceRequest::factory()->forCommonArea($area)->create();
+
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.reports.maintenances'))
+            ->assertInertia(fn (Assert $page) => $page->where('records.total', 1)
+                ->where('records.data.0.id', $maintenance->id)->where('records.data.0.area', '=Salao')
+                ->where('records.data.0.unit', null));
+        $rows = $this->parse($this->get(route('admin.reports.maintenances.export'))->streamedContent());
+        $this->assertSame('Área comum', $rows[0][12]);
+        $this->assertSame("'=Salao", $rows[1][12]);
+        $this->assertSame('', $rows[1][2]);
     }
 
     #[DataProvider('kinds')]
@@ -40,7 +72,7 @@ class ReportCsvTest extends TestCase
             'maintenances' => MaintenanceRequest::factory()->administrativeDirect()->state(['unit_id' => $resident->unit_id, 'admin_id' => $admin->id, 'cost' => '0.10']),
         };
         $column = match ($kind) {
-            'reservations' => 'starts_at', 'incidents' => 'created_at', 'maintenances' => 'scheduled_at'
+            'reservations' => 'starts_at', 'incidents' => 'opened_at', 'maintenances' => 'scheduled_at'
         };
         $records = $factory->count($count)->sequence(fn (Sequence $sequence): array => [$column => $kind === 'maintenances' && $sequence->index >= 240 ? null : ($sequence->index % 2 === 0 ? '2026-10-01 12:00:00' : '2026-10-02 12:00:00')])->create();
         $factory->create(['status' => $kind === 'reservations' ? 'cancelled' : 'canceled']);
@@ -91,7 +123,7 @@ class ReportCsvTest extends TestCase
         $response = $this->actingAs(User::factory()->admin()->create())->get(route('admin.reports.maintenances.export'));
         $csv = $response->streamedContent();
         $rows = $this->parse($csv);
-        $this->assertSame(['ID', 'Descrição', 'Unidade', 'Origem', 'Ocorrência vinculada', 'Administrador responsável', 'Prestador', 'Status', 'Data de abertura', 'Agendamento', 'Execução', 'Custo'], $rows[0]);
+        $this->assertSame(['ID', 'Descrição', 'Unidade', 'Origem', 'Ocorrência vinculada', 'Administrador responsável', 'Prestador', 'Status', 'Data de abertura', 'Agendamento', 'Execução', 'Custo', 'Área comum'], $rows[0]);
         $this->assertSame($maintenance->description, $rows[1][1]);
         $this->assertSame($provider->name, $rows[1][6]);
         $this->assertSame('Direta', $rows[1][3]);
@@ -138,7 +170,7 @@ class ReportCsvTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame('ID', $rows[0][0]);
         $this->assertCount(match ($kind) {
-            'reservations' => 8, 'incidents' => 9, 'maintenances' => 12
+            'reservations' => 8, 'incidents' => 9, 'maintenances' => 13
         }, $rows[0]);
     }
 

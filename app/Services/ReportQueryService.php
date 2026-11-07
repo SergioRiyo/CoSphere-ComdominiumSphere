@@ -81,7 +81,7 @@ class ReportQueryService
     {
         return match ($kind) {
             'reservations' => 'starts_at',
-            'incidents' => 'created_at',
+            'incidents' => 'opened_at',
             'maintenances' => match ($filters['date_reference'] ?? 'opening') {
                 'scheduled' => 'scheduled_at', 'executed' => 'executed_at', default => 'created_at',
             },
@@ -138,10 +138,10 @@ class ReportQueryService
         return match ($kind) {
             'reservations' => $query->select(['id', 'common_area_id', 'user_id', 'unit_id', 'starts_at', 'ends_at', 'status'])
                 ->with(['commonArea:id,name', 'user:id,name', 'unit:id,block,number,complement']),
-            'incidents' => $query->select(['id', 'title', 'type', 'category', 'priority', 'status', 'resident_id', 'unit_id', 'created_at'])
+            'incidents' => $query->select(['id', 'title', 'type', 'category', 'priority', 'status', 'resident_id', 'unit_id', 'opened_at'])
                 ->with(['resident:id,name', 'unit:id,block,number,complement']),
-            'maintenances' => $query->select(['id', 'description', 'unit_id', 'incident_id', 'admin_id', 'service_provider_id', 'status', 'created_at', 'scheduled_at', 'executed_at', 'cost'])
-                ->with(['unit:id,block,number,complement', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name']),
+            'maintenances' => $query->select(['id', 'description', 'unit_id', 'common_area_id', 'incident_id', 'admin_id', 'service_provider_id', 'status', 'created_at', 'scheduled_at', 'executed_at', 'cost'])
+                ->with(['unit:id,block,number,complement', 'commonArea:id,name', 'incident:id,title', 'admin:id,name', 'serviceProvider:id,name']),
         };
     }
 
@@ -188,10 +188,11 @@ class ReportQueryService
             return $common + ['title' => $record->title, 'type' => $record->type->label(),
                 'category' => $record->category instanceof IncidentCategory ? $record->category->label() : $record->category,
                 'priority' => $record->priority->label(), 'resident' => $record->resident?->name,
-                'created_at' => $record->created_at->format('d/m/Y H:i:s')];
+                'opened_at' => $record->opened_at->format('d/m/Y H:i:s')];
         }
 
         return $common + ['description' => $export ? $record->description : Str::limit($record->description, 160),
+            'area' => $record->commonArea?->name,
             'origin' => $record->incident_id === null ? 'Direta' : 'Vinculada',
             'incident' => $record->incident ? '#'.$record->incident->id.' — '.$record->incident->title : null,
             'admin' => $record->admin?->name, 'provider' => $record->serviceProvider?->name,
