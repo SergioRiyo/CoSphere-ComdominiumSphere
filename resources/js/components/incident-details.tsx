@@ -41,6 +41,9 @@ export default function IncidentDetails({
     const maintenanceForm = useHttp<Record<string, never>, { message: string }>(
         {},
     );
+    const requiresResidentFeedback = ['completed', 'canceled'].includes(
+        statusForm.data.status,
+    );
     async function act(operation: () => Promise<{ message: string }>) {
         if (lock.current) {
             return;
@@ -207,6 +210,10 @@ export default function IncidentDetails({
                                                 <p>{event.actor}</p>
                                                 {event.reason && (
                                                     <p className="break-words whitespace-pre-wrap">
+                                                        <span className="font-medium">
+                                                            Retorno ao
+                                                            morador:{' '}
+                                                        </span>
                                                         {event.reason}
                                                     </p>
                                                 )}
@@ -299,7 +306,10 @@ export default function IncidentDetails({
                                                 error={statusForm.errors.status}
                                             />
                                             <Label htmlFor="incident-reason">
-                                                Motivo (opcional)
+                                                Retorno ao morador
+                                                {requiresResidentFeedback
+                                                    ? ' *'
+                                                    : ' (opcional)'}
                                             </Label>
                                             <Input
                                                 id="incident-reason"
@@ -312,6 +322,10 @@ export default function IncidentDetails({
                                                     )
                                                 }
                                                 disabled={busy}
+                                                required={
+                                                    requiresResidentFeedback
+                                                }
+                                                placeholder="Informe a orientação ou conclusão para o morador"
                                             />
                                             <InputError
                                                 message={
@@ -321,7 +335,9 @@ export default function IncidentDetails({
                                             <Button
                                                 disabled={
                                                     busy ||
-                                                    !statusForm.data.status
+                                                    !statusForm.data.status ||
+                                                    (requiresResidentFeedback &&
+                                                        !statusForm.data.reason.trim())
                                                 }
                                                 type="submit"
                                             >

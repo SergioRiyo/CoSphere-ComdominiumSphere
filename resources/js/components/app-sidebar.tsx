@@ -4,11 +4,14 @@ import {
     Building2,
     CalendarDays,
     ClipboardCheck,
+    ChartNoAxesColumn,
     ContactRound,
     FileText,
     History,
     LayoutGrid,
+    Megaphone,
     Package,
+    ChartNoAxesCombined,
     Users,
     UsersRound,
 } from 'lucide-react';
@@ -25,21 +28,25 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
-import { reservations as reportsIndex } from '@/routes/admin/reports';
+import { index as pollsIndex } from '@/routes/admin/polls';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
+import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
-import { index as notificationsIndex } from '@/routes/morador/notifications';
 import { index as ordersIndex } from '@/routes/morador/orders';
+import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
+import { index as notificationsIndex } from '@/routes/notifications';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
 import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
@@ -103,10 +110,40 @@ export function AppSidebar() {
                       href: commonAreaBlocksIndex(),
                       icon: CalendarDays,
                   },
+                  {
+                      title: 'Relatórios',
+                      href: reportsIndex(),
+                      icon: ChartNoAxesCombined,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: announcementsIndex(),
+                      icon: Megaphone,
+                  },
+                  {
+                      title: 'Enquetes',
+                      href: pollsIndex(),
+                      icon: ChartNoAxesColumn,
+                  },
+                  {
+                      title: 'Notificações',
+                      href: notificationsIndex(),
+                      icon: Bell,
+                  },
               ]
             : []),
         ...(auth.user.role === 'morador'
             ? [
+                  {
+                      title: 'Enquetes',
+                      href: residentPollsIndex(),
+                      icon: ChartNoAxesColumn,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: residentAnnouncementsIndex(),
+                      icon: Megaphone,
+                  },
                   {
                       title: 'Visitantes',
                       href: visitorsIndex(),

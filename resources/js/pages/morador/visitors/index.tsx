@@ -46,7 +46,6 @@ type VisitorsPageProps = {
     authorizations: PaginatedVisitorAuthorizations;
     filters: VisitorAuthorizationFilters;
     statusOptions: VisitorAuthorizationStatusOption[];
-    timezone: string;
     invitationUrl: string | null;
     errors?: Partial<Record<keyof VisitorAuthorizationFilters, string>>;
 };
@@ -55,7 +54,6 @@ export default function VisitorsPage({
     authorizations,
     filters,
     statusOptions,
-    timezone,
     errors = {},
     invitationUrl,
 }: VisitorsPageProps) {
@@ -286,12 +284,8 @@ export default function VisitorsPage({
                         <>
                             <DesktopTable
                                 authorizations={authorizations.data}
-                                timezone={timezone}
                             />
-                            <MobileCards
-                                authorizations={authorizations.data}
-                                timezone={timezone}
-                            />
+                            <MobileCards authorizations={authorizations.data} />
                         </>
                     )}
 
@@ -339,7 +333,6 @@ export default function VisitorsPage({
                 <VisitorAuthorizationFormDialog
                     open={isAuthorizationDialogOpen}
                     onOpenChange={setIsAuthorizationDialogOpen}
-                    timezone={timezone}
                 />
                 <VisitorInvitationDialog
                     open={isInvitationDialogOpen}
@@ -358,10 +351,8 @@ export default function VisitorsPage({
 
 function DesktopTable({
     authorizations,
-    timezone,
 }: {
     authorizations: VisitorAuthorizationSummary[];
-    timezone: string;
 }) {
     return (
         <div className="hidden overflow-x-auto md:block">
@@ -387,10 +378,7 @@ function DesktopTable({
                                 />
                             </td>
                             <td className="px-5 py-4">
-                                <Period
-                                    authorization={authorization}
-                                    timezone={timezone}
-                                />
+                                <Period authorization={authorization} />
                             </td>
                             <td className="px-5 py-4 text-muted-foreground">
                                 {unitLabel(authorization)}
@@ -422,10 +410,8 @@ function DesktopTable({
 
 function MobileCards({
     authorizations,
-    timezone,
 }: {
     authorizations: VisitorAuthorizationSummary[];
-    timezone: string;
 }) {
     return (
         <div className="grid gap-3 p-3 md:hidden">
@@ -442,10 +428,7 @@ function MobileCards({
                         />
                     </div>
                     <div className="grid gap-3 border-y py-3 text-sm">
-                        <Period
-                            authorization={authorization}
-                            timezone={timezone}
-                        />
+                        <Period authorization={authorization} />
                         <p className="text-muted-foreground">
                             {unitLabel(authorization)}
                         </p>
@@ -486,15 +469,13 @@ function VisitorIdentity({
 
 function Period({
     authorization,
-    timezone,
 }: {
     authorization: VisitorAuthorizationSummary;
-    timezone: string;
 }) {
     const start = new Date(authorization.start_date);
     const end = new Date(authorization.end_date);
-    const startDate = formatDate(start, timezone);
-    const endDate = formatDate(end, timezone);
+    const startDate = formatDate(start);
+    const endDate = formatDate(end);
 
     return (
         <div className="flex items-start gap-2">
@@ -506,7 +487,7 @@ function Period({
                         : `${startDate}–${endDate}`}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                    {formatTime(start, timezone)}–{formatTime(end, timezone)}
+                    {formatTime(start)}–{formatTime(end)}
                 </p>
             </div>
         </div>
@@ -603,18 +584,16 @@ function unitLabel(authorization: VisitorAuthorizationSummary) {
         : `Unidade ${authorization.unit.number}`;
 }
 
-function formatDate(date: Date, timezone: string) {
+function formatDate(date: Date) {
     return new Intl.DateTimeFormat('pt-BR', {
         dateStyle: 'short',
-        timeZone: timezone,
     }).format(date);
 }
 
-function formatTime(date: Date, timezone: string) {
+function formatTime(date: Date) {
     return new Intl.DateTimeFormat('pt-BR', {
         hour: '2-digit',
         minute: '2-digit',
-        timeZone: timezone,
     }).format(date);
 }
 

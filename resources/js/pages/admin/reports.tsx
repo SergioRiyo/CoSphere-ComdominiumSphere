@@ -8,7 +8,12 @@ import ManagementPagination from '@/components/management-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { incidents, maintenances, reservations } from '@/routes/admin/reports';
+import {
+    index as overview,
+    incidents,
+    maintenances,
+    reservations,
+} from '@/routes/admin/reports';
 import { exportMethod as exportIncidents } from '@/routes/admin/reports/incidents';
 import { exportMethod as exportMaintenances } from '@/routes/admin/reports/maintenances';
 import { exportMethod as exportReservations } from '@/routes/admin/reports/reservations';
@@ -166,6 +171,9 @@ function Report({ kind, records, filters, options, metrics }: Props) {
                     </p>
                 </header>
                 <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline">
+                        <Link href={overview()}>Visão geral e acessos</Link>
+                    </Button>
                     {Object.entries(reports).map(([key, report]) => (
                         <Button
                             key={key}

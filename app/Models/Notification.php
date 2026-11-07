@@ -14,6 +14,7 @@ class Notification extends Model
 
     protected $fillable = [
         'recipient_id',
+        'announcement_id',
         'title',
         'message',
         'type',
@@ -30,5 +31,10 @@ class Notification extends Model
     public function recipient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'recipient_id');
+    }
+
+    public function announcement(): BelongsTo
+    {
+        return $this->belongsTo(Announcement::class);
     }
 }

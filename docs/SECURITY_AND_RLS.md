@@ -8,10 +8,11 @@ Middleware de papel, Form Requests, Services, filtros de consulta e, quando
 existirem recursos individuais, Policies Laravel continuam obrigatórios. RLS
 não substitui nenhuma dessas proteções.
 
-RLS será adotado como defesa em profundidade. Seu objetivo é limitar o impacto
-de uma consulta incompleta, de um filtro de ownership ausente ou de uma
-regressão futura quando a aplicação usar uma role PostgreSQL de runtime sujeita
-às policies.
+RLS foi validada somente como prova de conceito de defesa em profundidade. Seu
+objetivo seria limitar o impacto de uma consulta incompleta, de um filtro de
+ownership ausente ou de uma regressão futura caso a aplicação passe a usar uma
+role PostgreSQL de runtime sujeita às policies. Essa integração operacional não
+faz parte do MVP do TCC.
 
 Atualmente, Laravel conecta ao PostgreSQL/Supabase como `postgres`, uma role
 com `BYPASSRLS`. Portanto, RLS habilitado e policies eventualmente criadas não
@@ -56,9 +57,9 @@ O escopo inicial de RLS é restrito a:
   outros fluxos de autenticação precisam localizar o usuário antes de existir
   `app.user_id`.
 
-Não antecipar policies para reservas, veículos, visitantes, encomendas,
-ocorrências, manutenção ou notificações antes que esses módulos tenham
-superfícies web correspondentes.
+A POC não define policies para reservas, veículos, visitantes, encomendas,
+ocorrências, manutenção, relatórios ou notificações. Embora esses módulos já
+tenham superfícies web no MVP, sua autorização real permanece no Laravel.
 
 Quando uma policy precisar consultar o papel e a unidade do ator, ela deverá
 derivá-los exclusivamente de `app.user_id`. Caso seja necessária uma função

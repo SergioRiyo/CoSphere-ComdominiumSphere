@@ -159,10 +159,10 @@ class OccurrenceMaintenanceMigrationTest extends TestCase
         $this->assertNull(DB::table('maintenance_requests')->find($request->id)->resident_id);
     }
 
-    public function test_required_context_foreign_keys_and_lookup_indexes_survive_column_changes(): void
+    public function test_context_foreign_keys_and_lookup_indexes_survive_column_changes(): void
     {
         $request = MaintenanceRequest::factory()->linkedToIncident()->create();
-        $expectedReferences = ['incidents', 'units', 'users', 'service_providers'];
+        $expectedReferences = ['incidents', 'units', 'common_areas', 'common_area_blocks', 'users', 'service_providers'];
         $actual = collect(Schema::getForeignKeys('maintenance_requests'))->pluck('foreign_table')->all();
         foreach ($expectedReferences as $table) {
             $this->assertContains($table, $actual);
@@ -171,7 +171,7 @@ class OccurrenceMaintenanceMigrationTest extends TestCase
         $this->assertContains(['incident_id', 'status'], $indexes);
         $this->assertContains(['resident_id', 'status'], $indexes);
         $this->assertContains(['unit_id', 'status'], $indexes);
-        foreach (['incident_id' => 999999, 'resident_id' => 999999, 'unit_id' => null] as $field => $value) {
+        foreach (['incident_id' => 999999, 'resident_id' => 999999, 'common_area_id' => 999999, 'common_area_block_id' => 999999] as $field => $value) {
             try {
                 DB::transaction(fn () => DB::table('maintenance_requests')->where('id', $request->id)->update([$field => $value]));
                 $this->fail('Required ownership and valid foreign keys must be enforced.');

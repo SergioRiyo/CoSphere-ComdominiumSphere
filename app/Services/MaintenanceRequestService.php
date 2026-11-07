@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\MaintenanceRequestStatus;
 use App\Enums\NotificationType;
 use App\Enums\UserRole;
+use App\Models\CommonArea;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
 use App\Models\MaintenanceRequestChange;
@@ -21,7 +22,10 @@ use RuntimeException;
 
 class MaintenanceRequestService
 {
-    public function __construct(private readonly NotificationService $notifications) {}
+    public function __construct(
+        private readonly NotificationService $notifications,
+        private readonly CommonAreaBlockService $commonAreaBlocks,
+    ) {}
 
     public function createFromIncident(User $actor, Incident $incident): MaintenanceRequest
     {
@@ -87,15 +91,28 @@ class MaintenanceRequestService
         return DB::transaction(function () use ($actor, $data): MaintenanceRequest {
             $actor = $this->resolveActor($actor);
             Gate::forUser($actor)->authorize('createAdministrative', MaintenanceRequest::class);
-            $unitId = Validator::make($data, ['unit_id' => ['required', 'integer']])->validate()['unit_id'];
-            if (! Unit::query()->whereKey($unitId)->where('status', 'active')->lockForUpdate()->first()) {
+            $target = Validator::make($data, [
+                'unit_id' => ['nullable', 'required_without:common_area_id', 'prohibits:common_area_id', 'integer'],
+                'common_area_id' => ['nullable', 'required_without:unit_id', 'prohibits:unit_id', 'integer'],
+            ])->validate();
+            if (isset($target['unit_id']) && ! Unit::query()->whereKey($target['unit_id'])->where('status', 'active')->lockForUpdate()->first()) {
                 throw ValidationException::withMessages(['unit_id' => 'Selecione uma unidade ativa.']);
             }
-            $request = new MaintenanceRequest(['unit_id' => $unitId, 'resident_id' => null, 'incident_id' => null, 'admin_id' => $actor->id]);
+            $request = new MaintenanceRequest([
+                'unit_id' => $target['unit_id'] ?? null,
+                'common_area_id' => $target['common_area_id'] ?? null,
+                'resident_id' => null,
+                'incident_id' => null,
+                'admin_id' => $actor->id,
+            ]);
             $request->created_at = now()->startOfSecond();
             $this->fillAdministrative($request, $data, MaintenanceRequestStatus::Pending, true);
             if (! $request->save()) {
                 throw new RuntimeException('Não foi possível salvar a manutenção.');
+            }
+            if ($request->common_area_id !== null) {
+                $request->commonAreaBlock()->associate($this->commonAreaBlocks->syncMaintenanceBlock($actor, $request));
+                $request->save();
             }
             $this->recordHistory($request, $actor, null);
 
@@ -139,8 +156,12 @@ class MaintenanceRequestService
             foreach ($after as $field => $value) {
                 if ($before[$field] !== $value) {
                     $changes[$field] = ['old' => $before[$field], 'new' => $value];
-                    if (in_array($field, ['admin_id', 'service_provider_id'], true)) {
-                        $model = $field === 'admin_id' ? User::query() : ServiceProvider::withTrashed();
+                    if (in_array($field, ['admin_id', 'service_provider_id', 'common_area_id'], true)) {
+                        $model = match ($field) {
+                            'admin_id' => User::query(),
+                            'common_area_id' => CommonArea::query(),
+                            default => ServiceProvider::withTrashed(),
+                        };
                         $names = $model->whereIn('id', array_filter([$before[$field], $value]))->pluck('name', 'id');
                         $changes[$field] += ['old_label' => $names[$before[$field]] ?? null, 'new_label' => $names[$value] ?? null];
                     }
@@ -148,6 +169,13 @@ class MaintenanceRequestService
             }
             if (! $current->isDirty()) {
                 return $current;
+            }
+            if ($current->common_area_id !== null) {
+                if ($target === MaintenanceRequestStatus::Canceled) {
+                    $this->commonAreaBlocks->removeMaintenanceBlock($actor, $current);
+                } elseif ($current->common_area_block_id === null || $current->isDirty(['common_area_id', 'scheduled_at', 'description'])) {
+                    $current->commonAreaBlock()->associate($this->commonAreaBlocks->syncMaintenanceBlock($actor, $current));
+                }
             }
             if (! $current->save()) {
                 throw new RuntimeException('Não foi possível persistir o status da manutenção.');
@@ -178,6 +206,7 @@ class MaintenanceRequestService
             'description' => [$creating ? 'required' : 'sometimes', 'required', 'string', 'max:10000'],
             'admin_id' => ['sometimes', 'required', 'integer'],
             'service_provider_id' => ['sometimes', 'nullable', 'integer'],
+            'common_area_id' => ['sometimes', 'required', 'integer'],
             'scheduled_at' => ['sometimes', 'nullable', 'date'],
             'cost' => ['sometimes', 'nullable', 'regex:/^[0-9]{1,8}(?:\\.[0-9]{1,2})?$/D'],
         ], ['cost.regex' => 'Informe um custo não negativo, até 99.999.999,99 e com no máximo duas casas decimais.'])->validate();
@@ -188,6 +217,20 @@ class MaintenanceRequestService
         }
         $previousProvider = $request->service_provider_id;
         $request->fill($validated);
+        if ($request->unit_id !== null && $request->common_area_id !== null) {
+            throw ValidationException::withMessages(['common_area_id' => 'Selecione apenas uma unidade ou uma área comum.']);
+        }
+        if ($request->common_area_id !== null && $request->isDirty('common_area_id')) {
+            $area = CommonArea::query()->whereKey($request->common_area_id)->where('status', 'active')->lockForUpdate()->first();
+            if ($area === null) {
+                throw ValidationException::withMessages(['common_area_id' => 'Selecione uma área comum ativa.']);
+            }
+        }
+        if ($request->common_area_id !== null) {
+            if ($request->scheduled_at === null) {
+                throw ValidationException::withMessages(['scheduled_at' => 'Informe a data da manutenção da área comum.']);
+            }
+        }
         $responsible = User::query()->whereKey($request->admin_id)->lockForUpdate()->first();
         if (! $responsible || $responsible->role !== UserRole::Admin || ! $responsible->is_active) {
             throw ValidationException::withMessages(['admin_id' => 'Selecione um administrador ativo.']);
@@ -221,6 +264,7 @@ class MaintenanceRequestService
     private function snapshot(MaintenanceRequest $request): array
     {
         return ['description' => $request->description, 'admin_id' => $request->admin_id,
+            'common_area_id' => $request->common_area_id,
             'service_provider_id' => $request->service_provider_id,
             'scheduled_at' => $request->scheduled_at?->format('Y-m-d H:i:s'), 'cost' => $request->cost];
     }

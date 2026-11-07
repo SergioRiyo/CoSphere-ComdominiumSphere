@@ -26,7 +26,10 @@ class StoreUnexpectedOrderRequest extends FormRequest
     {
         return [
             'unit_id' => ['required', 'integer', 'exists:units,id'],
-            'resident_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', UserRole::Morador->value)->where('is_active', true)],
+            'resident_id' => ['required', 'integer', Rule::exists('users', 'id')
+                ->where('role', UserRole::Morador->value)
+                ->where('is_active', true)
+                ->where('unit_id', $this->integer('unit_id'))],
             'description' => ['required', 'string', 'max:5000'],
             'carrier' => ['nullable', 'string', 'max:255'],
             'sender' => ['nullable', 'string', 'max:255'],
@@ -47,7 +50,7 @@ class StoreUnexpectedOrderRequest extends FormRequest
             'unit_id.required' => 'Selecione a unidade destinatária.',
             'unit_id.exists' => 'A unidade selecionada não existe.',
             'resident_id.required' => 'Selecione o morador destinatário.',
-            'resident_id.exists' => 'Selecione um morador ativo válido.',
+            'resident_id.exists' => 'Selecione um morador ativo vinculado à unidade destinatária.',
             '*.missing' => 'O campo :attribute é controlado pelo sistema e não pode ser enviado.',
         ];
     }

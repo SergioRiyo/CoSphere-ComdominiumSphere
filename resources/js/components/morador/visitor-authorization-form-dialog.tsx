@@ -18,7 +18,6 @@ import { Label } from '@/components/ui/label';
 type VisitorAuthorizationFormDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    timezone: string;
 };
 
 function formatCpf(value: string): string {
@@ -68,7 +67,6 @@ function dateTimeValue(hoursFromNow: number): string {
 export default function VisitorAuthorizationFormDialog({
     open,
     onOpenChange,
-    timezone,
 }: VisitorAuthorizationFormDialogProps) {
     const [cpf, setCpf] = useState('');
     const [phone, setPhone] = useState('');
@@ -243,8 +241,8 @@ export default function VisitorAuthorizationFormDialog({
 
                             <p className="text-xs text-muted-foreground">
                                 Informe os horários locais do seu navegador.
-                                Eles serão enviados em UTC e exibidos no
-                                timezone da aplicação: {timezone}.
+                                Eles serão normalizados no envio e exibidos no
+                                seu horário local.
                             </p>
 
                             <DialogFooter>

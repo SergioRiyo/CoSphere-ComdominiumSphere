@@ -110,6 +110,32 @@ class UserManagementTest extends TestCase
                 ));
     }
 
+    public function test_user_listing_exposes_protected_administrative_actions_to_the_interface(): void
+    {
+        $actor = User::factory()->admin()->create([
+            'email' => 'actor.admin@example.com',
+        ]);
+        $otherAdministrator = User::factory()->admin()->create([
+            'email' => 'other.admin@example.com',
+        ]);
+
+        $this->actingAs($actor)
+            ->get(route('admin.users.index', ['search' => $actor->email]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $actor->id)
+                ->where('users.data.0.can_change_role', false)
+                ->where('users.data.0.can_change_status', false));
+
+        $this->actingAs($actor)
+            ->get(route('admin.users.index', ['search' => $otherAdministrator->email]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $otherAdministrator->id)
+                ->where('users.data.0.can_change_role', true)
+                ->where('users.data.0.can_change_status', true));
+    }
+
     public function test_administrator_can_create_a_resident_with_a_unit(): void
     {
         $admin = User::factory()->admin()->create();
@@ -462,6 +488,101 @@ class UserManagementTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($user->refresh()->is_active);
+    }
+
+    public function test_administrator_cannot_inactivate_own_account(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.status.update', $admin), [
+                'is_active' => false,
+            ])
+            ->assertSessionHasErrors([
+                'is_active' => 'Você não pode inativar a própria conta.',
+            ]);
+
+        $this->assertTrue($admin->refresh()->is_active);
+    }
+
+    public function test_administrator_cannot_demote_own_account(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->admin()->create();
+        $unit = Unit::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $admin), $this->validUserUpdateData($admin, [
+                'role' => UserRole::Morador->value,
+                'unit_id' => $unit->id,
+            ]))
+            ->assertSessionHasErrors([
+                'role' => 'Você não pode alterar o próprio perfil administrativo.',
+            ]);
+
+        $this->assertSame(UserRole::Admin, $admin->refresh()->role);
+    }
+
+    public function test_last_active_administrator_cannot_be_inactivated(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.status.update', $admin), [
+                'is_active' => false,
+            ])
+            ->assertSessionHasErrors([
+                'is_active' => 'Não é possível inativar o último administrador ativo.',
+            ]);
+
+        $this->assertTrue($admin->refresh()->is_active);
+    }
+
+    public function test_last_active_administrator_cannot_change_role(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $unit = Unit::factory()->create();
+
+        $this->actingAs($admin)
+            ->patch(route('admin.users.update', $admin), $this->validUserUpdateData($admin, [
+                'role' => UserRole::Morador->value,
+                'unit_id' => $unit->id,
+            ]))
+            ->assertSessionHasErrors([
+                'role' => 'Não é possível alterar o perfil do último administrador ativo.',
+            ]);
+
+        $this->assertSame(UserRole::Admin, $admin->refresh()->role);
+    }
+
+    public function test_administrator_can_manage_other_administrators_when_another_active_administrator_remains(): void
+    {
+        $actor = User::factory()->admin()->create();
+        $administratorToInactivate = User::factory()->admin()->create();
+        $administratorToDemote = User::factory()->admin()->create();
+        $unit = Unit::factory()->create();
+
+        $this->actingAs($actor)
+            ->patch(route('admin.users.status.update', $administratorToInactivate), [
+                'is_active' => false,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($actor)
+            ->patch(
+                route('admin.users.update', $administratorToDemote),
+                $this->validUserUpdateData($administratorToDemote, [
+                    'role' => UserRole::Morador->value,
+                    'unit_id' => $unit->id,
+                ]),
+            )
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse($administratorToInactivate->refresh()->is_active);
+        $this->assertSame(UserRole::Morador, $administratorToDemote->refresh()->role);
+        $this->assertSame(UserRole::Admin, $actor->refresh()->role);
+        $this->assertTrue($actor->is_active);
     }
 
     public function test_status_update_requires_a_boolean_value(): void

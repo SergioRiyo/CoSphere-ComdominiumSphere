@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\OrderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -101,6 +102,25 @@ class OrderServiceTest extends TestCase
             'title' => 'Encomenda recebida na portaria',
             'type' => NotificationType::Package->value,
         ]);
+    }
+
+    public function test_servico_rejeita_destinatario_de_outra_unidade(): void
+    {
+        $resident = User::factory()->morador()->create();
+
+        try {
+            $this->orderService->createUnexpectedByDoorman([
+                'unit_id' => Unit::factory()->create()->id,
+                'resident_id' => $resident->id,
+                'description' => 'Pacote',
+            ], User::factory()->porteiro()->create());
+            $this->fail('Era esperada a rejeição da unidade incompatível.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('unit_id', $exception->errors());
+        }
+
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('notifications', 0);
     }
 
     public function test_deve_registrar_recebimento_na_portaria(): void

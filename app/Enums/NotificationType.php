@@ -9,6 +9,7 @@ enum NotificationType: string
     case Package = 'package';
     case Occurrence = 'occurrence';
     case System = 'system';
+    case Announcement = 'announcement';
 
     public function label(): string
     {
@@ -18,6 +19,7 @@ enum NotificationType: string
             self::Package => 'Encomenda',
             self::Occurrence => 'Ocorrência',
             self::System => 'Sistema',
+            self::Announcement => 'Comunicado',
         };
     }
 }

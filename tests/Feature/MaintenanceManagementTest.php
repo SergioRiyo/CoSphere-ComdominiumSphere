@@ -4,9 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\MaintenanceRequestStatus;
 use App\Enums\UserRole;
+use App\Models\CommonArea;
+use App\Models\CommonAreaBlock;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
 use App\Models\MaintenanceRequestChange;
+use App\Models\Reservation;
 use App\Models\ServiceProvider;
 use App\Models\Unit;
 use App\Models\User;
@@ -46,6 +49,119 @@ class MaintenanceManagementTest extends TestCase
         $this->assertSame($responsible->id, $maintenance->fresh()->admin_id);
         $this->assertNull($maintenance->fresh()->scheduled_at);
         $this->assertDatabaseCount('notifications', 0);
+    }
+
+    public function test_admin_creates_common_area_maintenance_with_full_operating_hours_block(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $area = CommonArea::factory()->create(['available_from' => '07:30', 'available_until' => '20:15']);
+
+        $this->actingAs($admin)->post(route('admin.maintenances.store'), [
+            'common_area_id' => $area->id,
+            'admin_id' => $admin->id,
+            'description' => 'Revisão da iluminação',
+            'scheduled_at' => now()->addDay()->setTime(12, 0)->toDateTimeString(),
+        ])->assertRedirect();
+
+        $maintenance = MaintenanceRequest::sole();
+        $block = CommonAreaBlock::sole();
+        $this->assertNull($maintenance->unit_id);
+        $this->assertSame($area->id, $maintenance->common_area_id);
+        $this->assertSame($block->id, $maintenance->common_area_block_id);
+        $this->assertSame(now()->addDay()->format('Y-m-d').' 07:30:00', $block->starts_at->format('Y-m-d H:i:s'));
+        $this->assertSame(now()->addDay()->format('Y-m-d').' 20:15:00', $block->ends_at->format('Y-m-d H:i:s'));
+        $this->assertStringContainsString('Manutenção #'.$maintenance->id, $block->reason);
+    }
+
+    public function test_common_area_maintenance_block_prevents_reservations(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $resident = User::factory()->morador()->create();
+        $area = CommonArea::factory()->create();
+        $date = now()->addDay()->format('Y-m-d');
+
+        $this->actingAs($admin)->post(route('admin.maintenances.store'), [
+            'common_area_id' => $area->id, 'admin_id' => $admin->id,
+            'description' => 'Pintura', 'scheduled_at' => $date.' 10:00:00',
+        ])->assertRedirect();
+
+        $this->actingAs($resident)->postJson(route('morador.reservations.store'), [
+            'common_area_id' => $area->id, 'starts_at' => $date.' 14:00', 'ends_at' => $date.' 16:00',
+        ])->assertUnprocessable()->assertJsonValidationErrors('starts_at');
+        $this->assertDatabaseCount('reservations', 0);
+    }
+
+    public function test_conflicting_reservation_rolls_back_common_area_maintenance(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $area = CommonArea::factory()->create();
+        $date = now()->addDay()->format('Y-m-d');
+        $reservation = Reservation::factory()->create([
+            'common_area_id' => $area->id, 'starts_at' => $date.' 14:00', 'ends_at' => $date.' 16:00', 'status' => 'pending',
+        ]);
+        $before = $reservation->refresh()->getRawOriginal();
+
+        $this->actingAs($admin)->postJson(route('admin.maintenances.store'), [
+            'common_area_id' => $area->id, 'admin_id' => $admin->id,
+            'description' => 'Pintura', 'scheduled_at' => $date.' 10:00:00',
+        ])->assertUnprocessable()->assertJsonValidationErrors('scheduled_at');
+
+        $this->assertDatabaseCount('maintenance_requests', 0);
+        $this->assertDatabaseCount('common_area_blocks', 0);
+        $this->assertSame($before, $reservation->fresh()->getRawOriginal());
+    }
+
+    public function test_canceling_common_area_maintenance_removes_linked_block(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $maintenance = MaintenanceRequest::factory()->forCommonArea()->create();
+        $blockId = $maintenance->common_area_block_id;
+
+        $this->actingAs($admin)->deleteJson(route('admin.common-area-blocks.destroy', $blockId))
+            ->assertUnprocessable()->assertJsonValidationErrors('block');
+        $this->actingAs($admin)->patch(route('admin.maintenances.update', $maintenance), ['status' => 'canceled'])->assertRedirect();
+
+        $this->assertSame(MaintenanceRequestStatus::Canceled, $maintenance->fresh()->status);
+        $this->assertNull($maintenance->fresh()->common_area_block_id);
+        $this->assertDatabaseMissing('common_area_blocks', ['id' => $blockId]);
+    }
+
+    public function test_updating_common_area_and_date_updates_the_same_linked_block(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $maintenance = MaintenanceRequest::factory()->forCommonArea()->create();
+        $replacement = CommonArea::factory()->create(['available_from' => '09:00', 'available_until' => '18:00']);
+        $blockId = $maintenance->common_area_block_id;
+        $date = now()->addDays(3)->format('Y-m-d');
+
+        $this->actingAs($admin)->patch(route('admin.maintenances.update', $maintenance), [
+            'common_area_id' => $replacement->id, 'scheduled_at' => $date.' 12:00:00',
+        ])->assertRedirect();
+
+        $maintenance->refresh();
+        $block = CommonAreaBlock::findOrFail($blockId);
+        $this->assertSame($replacement->id, $maintenance->common_area_id);
+        $this->assertSame($blockId, $maintenance->common_area_block_id);
+        $this->assertSame($replacement->id, $block->common_area_id);
+        $this->assertSame($date.' 09:00:00', $block->starts_at->format('Y-m-d H:i:s'));
+        $this->assertSame($date.' 18:00:00', $block->ends_at->format('Y-m-d H:i:s'));
+    }
+
+    public function test_completing_common_area_maintenance_keeps_historical_block(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $provider = ServiceProvider::factory()->create();
+        $maintenance = MaintenanceRequest::factory()->forCommonArea()->create([
+            'status' => 'in_progress', 'service_provider_id' => $provider->id,
+            'created_at' => now()->subDays(2), 'scheduled_at' => now()->subDay(),
+        ]);
+        $blockId = $maintenance->common_area_block_id;
+        $maintenance->commonArea->update(['status' => 'inactive']);
+
+        $this->actingAs($admin)->patch(route('admin.maintenances.update', $maintenance), ['status' => 'completed'])->assertRedirect();
+
+        $this->assertSame($blockId, $maintenance->fresh()->common_area_block_id);
+        $this->assertDatabaseHas('common_area_blocks', ['id' => $blockId]);
     }
 
     #[DataProvider('transitions')]

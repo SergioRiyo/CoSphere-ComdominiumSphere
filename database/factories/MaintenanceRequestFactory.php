@@ -3,6 +3,8 @@
 namespace Database\Factories;
 
 use App\Enums\MaintenanceRequestStatus;
+use App\Models\CommonArea;
+use App\Models\CommonAreaBlock;
 use App\Models\Incident;
 use App\Models\MaintenanceRequest;
 use App\Models\ServiceProvider;
@@ -31,6 +33,8 @@ class MaintenanceRequestFactory extends Factory
 
                 return User::query()->findOrFail($attributes['resident_id'])->unit_id;
             },
+            'common_area_id' => null,
+            'common_area_block_id' => null,
             'service_provider_id' => null,
             'admin_id' => null,
             'description' => fake()->paragraph(),
@@ -57,6 +61,34 @@ class MaintenanceRequestFactory extends Factory
     public function administrativeDirect(): static
     {
         return $this->state(['incident_id' => null, 'resident_id' => null, 'unit_id' => Unit::factory(), 'admin_id' => User::factory()->admin()]);
+    }
+
+    public function forCommonArea(?CommonArea $area = null): static
+    {
+        $scheduledAt = now()->addDay()->setTime(10, 0);
+
+        return $this->state(function () use ($area, $scheduledAt): array {
+            $commonArea = $area ?? CommonArea::factory()->create();
+            $admin = User::factory()->admin()->create();
+            $block = CommonAreaBlock::factory()->create([
+                'common_area_id' => $commonArea->id,
+                'admin_id' => $admin->id,
+                'starts_at' => $scheduledAt->copy()->setTimeFromTimeString($commonArea->available_from ?? '00:00'),
+                'ends_at' => $commonArea->available_until === null
+                    ? $scheduledAt->copy()->addDay()->startOfDay()
+                    : $scheduledAt->copy()->setTimeFromTimeString($commonArea->available_until),
+            ]);
+
+            return [
+                'incident_id' => null,
+                'resident_id' => null,
+                'unit_id' => null,
+                'common_area_id' => $commonArea->id,
+                'common_area_block_id' => $block->id,
+                'admin_id' => $admin->id,
+                'scheduled_at' => $scheduledAt,
+            ];
+        });
     }
 
     public function linkedToIncident(?Incident $incident = null): static

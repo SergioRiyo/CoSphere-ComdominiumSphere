@@ -606,6 +606,11 @@ Ao receber, registrar:
 - Porteiro responsável;
 - unidade destinatária.
 
+No recebimento sem previsão, o Porteiro seleciona explicitamente a unidade e o
+morador destinatário. O destinatário deve ser um Morador ativo vinculado à
+unidade selecionada; a interface filtra as opções e o backend revalida o vínculo
+antes de persistir.
+
 O Porteiro responsável deve ser derivado da sessão.
 
 ---
@@ -677,7 +682,9 @@ Quando uma encomenda passar para:
 RECEIVED
 ```
 
-o sistema deve notificar os Moradores da unidade destinatária conforme a política definida pelo módulo.
+o sistema notifica somente o Morador definido como destinatário da encomenda.
+Essa é uma decisão intencional do MVP: `resident_id` permanece obrigatório e não
+há broadcast para os demais moradores da unidade antes do Módulo 5.
 
 Exemplo:
 
@@ -721,7 +728,7 @@ Eventos mínimos do Módulo 3:
 | Reserva aprovada | Morador responsável |
 | Reserva recusada | Morador responsável |
 | Reserva cancelada pelo Admin | Morador responsável |
-| Encomenda recebida | Moradores da unidade |
+| Encomenda recebida | Morador destinatário (`resident_id`) |
 | Encomenda retirada | Opcional |
 
 A notificação não é a fonte de verdade do estado.

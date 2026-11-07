@@ -91,6 +91,27 @@ class IncidentNotificationTest extends TestCase
         $this->assertSame(UserRole::Admin, $history->fresh()->actor_role);
     }
 
+    public function test_terminal_status_notification_includes_the_resident_feedback(): void
+    {
+        $incident = Incident::factory()->create(['status' => IncidentStatus::InProgress]);
+        $admin = User::factory()->admin()->create();
+        $feedback = 'O reparo foi concluído e o equipamento está liberado.';
+
+        $this->actingAs($admin)
+            ->patchJson(route('admin.incidents.status', $incident), [
+                'status' => IncidentStatus::Completed->value,
+                'reason' => $feedback,
+            ])
+            ->assertOk();
+
+        $notification = Notification::query()->sole();
+
+        $this->assertSame($incident->resident_id, $notification->recipient_id);
+        $this->assertStringContainsString(IncidentStatus::Completed->label(), $notification->message);
+        $this->assertStringContainsString('Retorno ao morador: '.$feedback, $notification->message);
+        $this->assertSame($feedback, $incident->statusHistory()->sole()->reason);
+    }
+
     #[DataProvider('notificationFailures')]
     public function test_notification_failure_rolls_back_business_state_history_and_uploaded_files(string $operation, bool $veto): void
     {

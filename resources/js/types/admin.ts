@@ -24,6 +24,8 @@ export type ManagedUser = {
     role: UserRole;
     role_label: string;
     is_active: boolean;
+    can_change_role: boolean;
+    can_change_status: boolean;
     unit: ManagedUserUnit | null;
 };
 

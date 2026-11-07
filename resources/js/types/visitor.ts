@@ -44,6 +44,18 @@ export type VisitorAuthorizationDetails = Omit<
     visitor: (VisitorSummary & { phone: string | null }) | null;
     vehicle_plate: string | null;
     qr_available: boolean;
+    is_present: boolean;
+    accesses: ResidentVisitorAccessHistory[];
+};
+
+export type ResidentVisitorAccessHistory = {
+    id: number;
+    entry_time: string | null;
+    exit_time: string | null;
+    entry_doorman_name: string | null;
+    exit_doorman_name: string | null;
+    situation: PortariaVisitorAccessSituation;
+    situation_label: string;
 };
 
 export type PortariaValidatedAuthorization = {

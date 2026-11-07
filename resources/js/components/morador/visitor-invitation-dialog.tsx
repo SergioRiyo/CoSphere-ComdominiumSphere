@@ -34,6 +34,18 @@ export default function VisitorInvitationDialog({
                 </DialogHeader>
                 <Form
                     {...store.form()}
+                    transform={(data) => ({
+                        ...data,
+                        start_date:
+                            typeof data.start_date === 'string' &&
+                            data.start_date
+                                ? new Date(data.start_date).toISOString()
+                                : data.start_date,
+                        end_date:
+                            typeof data.end_date === 'string' && data.end_date
+                                ? new Date(data.end_date).toISOString()
+                                : data.end_date,
+                    })}
                     onSuccess={() => onOpenChange(false)}
                     className="grid gap-4"
                 >
@@ -68,6 +80,10 @@ export default function VisitorInvitationDialog({
                                     {errors.end_date}
                                 </p>
                             </div>
+                            <p className="text-xs text-muted-foreground">
+                                Os horários serão normalizados no envio e
+                                exibidos no seu horário local.
+                            </p>
                             <Button disabled={processing}>
                                 {processing ? 'Gerando...' : 'Gerar link'}
                             </Button>

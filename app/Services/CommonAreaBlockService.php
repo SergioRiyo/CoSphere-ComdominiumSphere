@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Enums\UserRole;
 use App\Models\CommonArea;
 use App\Models\CommonAreaBlock;
+use App\Models\MaintenanceRequest;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CommonAreaBlockService
@@ -65,8 +67,65 @@ class CommonAreaBlockService
             $this->resolveAdmin($admin);
             $current = CommonAreaBlock::query()->where('common_area_id', $area->id)
                 ->lockForUpdate()->findOrFail($block->getKey());
+            if ($current->maintenanceRequest()->exists()) {
+                throw ValidationException::withMessages(['block' => 'Este bloqueio está vinculado a uma manutenção. Cancele a manutenção para removê-lo.']);
+            }
             $current->delete();
         });
+    }
+
+    public function syncMaintenanceBlock(User $admin, MaintenanceRequest $maintenance): CommonAreaBlock
+    {
+        return DB::transaction(function () use ($admin, $maintenance): CommonAreaBlock {
+            $admin = $this->resolveAdmin($admin);
+            $area = CommonArea::query()->lockForUpdate()->find($maintenance->common_area_id);
+            if ($area === null || $area->status !== 'active') {
+                throw ValidationException::withMessages(['common_area_id' => 'Selecione uma área ativa para a manutenção.']);
+            }
+            if ($maintenance->scheduled_at === null) {
+                throw ValidationException::withMessages(['scheduled_at' => 'Informe a data da manutenção da área comum.']);
+            }
+
+            $date = $maintenance->scheduled_at->copy()->startOfDay();
+            $start = $area->available_from === null
+                ? $date->copy() : Carbon::parse($date->toDateString().' '.$area->available_from);
+            $end = $area->available_until === null
+                ? $date->copy()->addDay() : Carbon::parse($date->toDateString().' '.$area->available_until);
+
+            if ($this->reservations->hasConflictingReservations($area, $start, $end)) {
+                throw ValidationException::withMessages(['scheduled_at' => 'Existem reservas pendentes ou aprovadas nesta data. Resolva essas reservas antes de agendar a manutenção.']);
+            }
+
+            $block = $maintenance->common_area_block_id === null
+                ? new CommonAreaBlock : CommonAreaBlock::query()->lockForUpdate()->findOrFail($maintenance->common_area_block_id);
+            if (CommonAreaBlock::query()->conflicting($area, $start, $end)->whereKeyNot($block->getKey())->exists()) {
+                throw ValidationException::withMessages(['scheduled_at' => 'Já existe um bloqueio para esta área na data selecionada.']);
+            }
+
+            $block->fill([
+                'starts_at' => $start,
+                'ends_at' => $end,
+                'reason' => Str::limit('Manutenção #'.$maintenance->id.': '.$maintenance->description, 255, ''),
+            ]);
+            $block->commonArea()->associate($area);
+            $block->admin()->associate($admin);
+            $block->save();
+
+            return $block;
+        });
+    }
+
+    public function removeMaintenanceBlock(User $admin, MaintenanceRequest $maintenance): void
+    {
+        if ($maintenance->common_area_block_id === null) {
+            return;
+        }
+
+        $this->resolveAdmin($admin);
+        $block = CommonAreaBlock::query()->lockForUpdate()->findOrFail($maintenance->common_area_block_id);
+        $maintenance->common_area_block_id = null;
+        $maintenance->save();
+        $block->delete();
     }
 
     private function resolveAdmin(User $admin): User

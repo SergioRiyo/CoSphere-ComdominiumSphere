@@ -81,13 +81,25 @@ class IncidentService
             if (! $current->status->canTransitionTo($target)) {
                 throw ValidationException::withMessages(['status' => 'Transição de ocorrência inválida. Atualize os dados.']);
             }
-            $reason = Validator::make(['reason' => $reason], ['reason' => ['nullable', 'string', 'max:255']])->validate()['reason'];
+            $reason = is_string($reason) ? trim($reason) : $reason;
+            $reason = Validator::make(
+                ['reason' => $reason],
+                ['reason' => [Rule::requiredIf($target->requiresResidentFeedback()), 'nullable', 'string', 'max:255']],
+                [
+                    'reason.required' => 'Informe o retorno ao morador para finalizar ou cancelar a ocorrência.',
+                    'reason.max' => 'O retorno ao morador deve ter no máximo 255 caracteres.',
+                ],
+            )->validate()['reason'];
             $from = $current->status;
             if (! $current->update(['status' => $target])) {
                 throw new RuntimeException('Não foi possível persistir o status da ocorrência.');
             }
             $this->recordHistory($current, $actor, $from, $reason);
-            $this->notify($current->resident_id, 'Status da solicitação atualizado', $current->title.'. Novo status: '.$current->status->label().'.');
+            $message = $current->title.'. Novo status: '.$current->status->label().'.';
+            if ($reason !== null) {
+                $message .= ' Retorno ao morador: '.$reason;
+            }
+            $this->notify($current->resident_id, 'Status da solicitação atualizado', $message);
 
             return $current;
         });

@@ -46,7 +46,6 @@ class VisitorAuthorizationController extends Controller
                 'date_from' => $filters['date_from'] ?? '',
                 'date_to' => $filters['date_to'] ?? '',
             ],
-            'timezone' => config('app.timezone'),
             'invitationUrl' => $request->session()->get('invitation_url'),
         ]);
     }
@@ -79,7 +78,6 @@ class VisitorAuthorizationController extends Controller
         return Inertia::render('morador/visitors/show', [
             'authorization' => $this->visitorAuthorizationQueryService
                 ->details($request->user(), $visitorAuthorization),
-            'timezone' => config('app.timezone'),
         ]);
     }
 

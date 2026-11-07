@@ -183,6 +183,27 @@ class VisitorInvitationTest extends TestCase
         );
     }
 
+    public function test_utc_instants_submitted_by_the_invitation_form_are_preserved(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-20T12:00:00Z'));
+        $unit = Unit::factory()->create(['status' => 'active']);
+        $resident = User::factory()->morador()->create(['unit_id' => $unit->id]);
+        $start = Carbon::parse('2026-10-21T09:30:00-04:00');
+        $end = Carbon::parse('2026-10-21T11:00:00-04:00');
+
+        $this->actingAs($resident)
+            ->post(route('morador.visitor-invitations.store'), [
+                'start_date' => '2026-10-21T13:30:00.000Z',
+                'end_date' => '2026-10-21T15:00:00.000Z',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $authorization = VisitorAuthorization::query()->sole();
+
+        $this->assertTrue($start->equalTo($authorization->start_date));
+        $this->assertTrue($end->equalTo($authorization->end_date));
+    }
+
     public function test_invitation_is_unavailable_when_the_visit_start_is_reached(): void
     {
         $token = str_repeat('I', 64);
