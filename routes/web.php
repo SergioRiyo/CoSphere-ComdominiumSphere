@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminIncidentController;
 use App\Http\Controllers\AdminPollController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminReservationController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CommonAreaBlockController;
@@ -47,6 +48,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        foreach (['reservations', 'incidents', 'maintenances'] as $report) {
+            Route::get('reports/'.$report, [AdminReportController::class, 'index'])->defaults('report', $report)->name('reports.'.$report);
+            Route::get('reports/'.$report.'/csv', [AdminReportController::class, 'export'])->defaults('report', $report)->name('reports.'.$report.'.export');
+        }
         Route::get('polls', [AdminPollController::class, 'index'])->name('polls.index');
         Route::get('polls/create', [AdminPollController::class, 'create'])->name('polls.create');
         Route::get('polls/{poll}', [AdminPollController::class, 'show'])->whereNumber('poll')->name('polls.show');

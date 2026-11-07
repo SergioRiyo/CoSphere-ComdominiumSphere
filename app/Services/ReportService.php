@@ -2,14 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\IncidentCategory;
-use App\Enums\IncidentStatus;
-use App\Enums\IncidentType;
-use App\Enums\ReservationStatus;
 use App\Enums\VisitorAccessStatus;
-use App\Models\CommonArea;
-use App\Models\Incident;
-use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\VisitorAccess;
 use Carbon\CarbonImmutable;
@@ -24,36 +17,9 @@ class ReportService
     public function data(array $filters): array
     {
         return [
-            'reservations' => $this->reservations($filters),
             'accesses' => $this->accesses($filters),
-            'incidents' => $this->incidents($filters),
             'options' => $this->options(),
         ];
-    }
-
-    /** @param array<string, mixed> $filters
-     * @return LengthAwarePaginator<int, array<string, mixed>>
-     */
-    private function reservations(array $filters): LengthAwarePaginator
-    {
-        $query = Reservation::query()
-            ->with(['commonArea:id,name', 'user:id,name', 'unit:id,block,number,complement'])
-            ->when($filters['reservation_status'] ?? null, fn (Builder $query, string $status): Builder => $query->where('status', $status))
-            ->when($filters['common_area_id'] ?? null, fn (Builder $query, int $areaId): Builder => $query->where('common_area_id', $areaId));
-
-        $this->applyPeriod($query, 'starts_at', $filters['reservation_date_from'] ?? null, $filters['reservation_date_to'] ?? null);
-
-        return $query->orderByDesc('starts_at')->orderByDesc('id')
-            ->paginate(10, ['*'], 'reservations_page')->appends($filters)
-            ->through(fn (Reservation $reservation): array => [
-                'area' => $reservation->commonArea->name,
-                'resident' => $reservation->user->name,
-                'unit' => $this->unitLabel($reservation->unit),
-                'starts_at' => $reservation->starts_at->toIso8601String(),
-                'ends_at' => $reservation->ends_at->toIso8601String(),
-                'status' => $reservation->status->value,
-                'status_label' => $reservation->status->label(),
-            ]);
     }
 
     /** @param array<string, mixed> $filters
@@ -94,44 +60,10 @@ class ReportService
             });
     }
 
-    /** @param array<string, mixed> $filters
-     * @return LengthAwarePaginator<int, array<string, mixed>>
-     */
-    private function incidents(array $filters): LengthAwarePaginator
-    {
-        $query = Incident::query()
-            ->where('type', IncidentType::Incident)
-            ->with('unit:id,block,number,complement')
-            ->when($filters['incident_category'] ?? null, fn (Builder $query, string $category): Builder => $query->where('category', $category))
-            ->when($filters['incident_status'] ?? null, fn (Builder $query, string $status): Builder => $query->where('status', $status));
-
-        $this->applyPeriod($query, 'opened_at', $filters['incident_date_from'] ?? null, $filters['incident_date_to'] ?? null);
-
-        return $query->orderByDesc('opened_at')->orderByDesc('id')
-            ->paginate(10, ['*'], 'incidents_page')->appends($filters)
-            ->through(function (Incident $incident): array {
-                $category = $incident->category;
-
-                return [
-                    'category' => $category instanceof IncidentCategory ? $category->value : $category,
-                    'category_label' => $category instanceof IncidentCategory ? $category->label() : $category,
-                    'title' => $incident->title,
-                    'unit' => $this->unitLabel($incident->unit),
-                    'status' => $incident->status->value,
-                    'status_label' => $incident->status->label(),
-                    'opened_at' => $incident->opened_at->toIso8601String(),
-                    'updated_at' => $incident->updated_at->toIso8601String(),
-                ];
-            });
-    }
-
     /** @return array<string, list<array{value: string, label: string}>> */
     private function options(): array
     {
         return [
-            'common_areas' => CommonArea::query()->orderBy('name')->get(['id', 'name'])
-                ->map(fn (CommonArea $area): array => ['value' => (string) $area->id, 'label' => $area->name])->all(),
-            'reservation_statuses' => array_map(fn (ReservationStatus $status): array => ['value' => $status->value, 'label' => $status->label()], ReservationStatus::cases()),
             'access_situations' => [
                 ['value' => 'pending', 'label' => 'Aguardando (legado)'],
                 ['value' => 'validated', 'label' => 'Validado sem entrada (legado)'],
@@ -139,20 +71,7 @@ class ReportService
                 ['value' => 'finished', 'label' => 'Finalizado'],
                 ['value' => 'denied', 'label' => 'Entrada negada'],
             ],
-            'incident_categories' => array_map(fn (IncidentCategory $category): array => ['value' => $category->value, 'label' => $category->label()], IncidentCategory::cases()),
-            'incident_statuses' => array_map(fn (IncidentStatus $status): array => ['value' => $status->value, 'label' => $status->label()], IncidentStatus::cases()),
         ];
-    }
-
-    /** @param Builder<Reservation|Incident> $query */
-    private function applyPeriod(Builder $query, string $column, ?string $from, ?string $to): void
-    {
-        if ($from !== null) {
-            $query->where($column, '>=', CarbonImmutable::parse($from)->startOfDay());
-        }
-        if ($to !== null) {
-            $query->where($column, '<', CarbonImmutable::parse($to)->addDay()->startOfDay());
-        }
     }
 
     /** @param Builder<VisitorAccess> $query */

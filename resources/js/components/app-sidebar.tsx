@@ -34,7 +34,7 @@ import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as pollsIndex } from '@/routes/admin/polls';
-import { index as reportsIndex } from '@/routes/admin/reports';
+import { reservations as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';

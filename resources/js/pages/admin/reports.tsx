@@ -1,693 +1,417 @@
-import { Head, router, usePage } from '@inertiajs/react';
-import {
-    CalendarDays,
-    ClipboardList,
-    DoorOpen,
-    SlidersHorizontal,
-} from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Download } from 'lucide-react';
 import { useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import { toast } from 'sonner';
 import { IncidentSelect } from '@/components/incident-fields';
 import InputError from '@/components/input-error';
 import ManagementPagination from '@/components/management-pagination';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { index } from '@/routes/admin/reports';
-import type {
-    AccessReportItem,
-    IncidentReportItem,
-    ReportFilters,
-    ReportOptions,
-    ReportPaginator,
-    ReservationReportItem,
-} from '@/types/report';
-
-type Props = {
-    reservations: ReportPaginator<ReservationReportItem>;
-    accesses: ReportPaginator<AccessReportItem>;
-    incidents: ReportPaginator<IncidentReportItem>;
-    filters: ReportFilters;
-    options: ReportOptions;
-};
-
-const emptyFilters: Required<ReportFilters> = {
-    reservation_date_from: '',
-    reservation_date_to: '',
-    reservation_status: '',
-    common_area_id: '',
-    access_date_from: '',
-    access_date_to: '',
-    access_situation: '',
-    incident_date_from: '',
-    incident_date_to: '',
-    incident_category: '',
-    incident_status: '',
-};
-
-function dateTime(value: string | null) {
-    return value
-        ? new Intl.DateTimeFormat('pt-BR', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-          }).format(new Date(value))
-        : 'Não registrado';
-}
-
-function Status({ children }: { children: ReactNode }) {
-    return <Badge variant="secondary">{children}</Badge>;
-}
-
-function Metric({
-    label,
-    value,
-    icon: Icon,
-}: {
-    label: string;
-    value: number;
-    icon: typeof CalendarDays;
-}) {
-    return (
-        <Card className="overflow-hidden border-cosphere-line/80 shadow-sm dark:border-border">
-            <CardContent className="flex items-center justify-between gap-4 p-5">
-                <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="mt-1 text-3xl font-semibold tabular-nums">
-                        {value}
-                    </p>
-                </div>
-                <span className="grid size-12 place-items-center rounded-2xl bg-cosphere-blue/10 text-cosphere-blue">
-                    <Icon className="size-5" aria-hidden="true" />
-                </span>
-            </CardContent>
-        </Card>
-    );
-}
-
-function DateField({
-    id,
-    label,
-    value,
-    error,
-    onChange,
-}: {
-    id: string;
-    label: string;
-    value: string;
-    error?: string;
-    onChange: (value: string) => void;
-}) {
-    return (
-        <div className="grid gap-2">
-            <Label htmlFor={id}>{label}</Label>
-            <Input
-                id={id}
-                type="date"
-                value={value}
-                onChange={(event) => onChange(event.target.value)}
-            />
-            <InputError message={error} />
-        </div>
-    );
-}
-
-function Empty() {
-    return (
-        <p className="p-5 text-sm text-muted-foreground">
-            Nenhum registro encontrado para os filtros selecionados.
-        </p>
-    );
-}
-
-export default function Reports({
-    reservations,
-    accesses,
+import {
+    index as overview,
     incidents,
-    filters,
-    options,
-}: Props) {
-    const { errors } = usePage().props;
-    const [draft, setDraft] = useState<Required<ReportFilters>>({
-        ...emptyFilters,
-        ...filters,
-    });
-    const [busy, setBusy] = useState(false);
+    maintenances,
+    reservations,
+} from '@/routes/admin/reports';
+import { exportMethod as exportIncidents } from '@/routes/admin/reports/incidents';
+import { exportMethod as exportMaintenances } from '@/routes/admin/reports/maintenances';
+import { exportMethod as exportReservations } from '@/routes/admin/reports/reservations';
+import type { Paged } from '@/types/maintenance';
 
-    const visit = (next: Record<string, string | number | undefined>) => {
-        const query = Object.fromEntries(
-            Object.entries(next).filter(
-                ([, value]) => value !== '' && value !== undefined,
-            ),
-        );
-        router.get(index.url(), query, {
-            preserveScroll: true,
-            replace: true,
-            onStart: () => setBusy(true),
-            onFinish: () => setBusy(false),
-        });
+type Kind = 'reservations' | 'incidents' | 'maintenances';
+type Option = { value: string; label: string };
+type Props = {
+    kind: Kind;
+    records: Paged<Record<string, string | number | null> & { id: number }>;
+    filters: Record<string, string | null>;
+    options: Record<string, Option[]>;
+    metrics: {
+        total: number;
+        statuses: (Option & { count: number })[];
+        cost_total?: string;
+        cost_average?: string | null;
+        cost_count?: number;
     };
-    const apply = (
-        event: FormEvent,
-        keys: (keyof ReportFilters)[],
-        page: string,
-    ) => {
-        event.preventDefault();
-        visit({
-            ...filters,
-            ...Object.fromEntries(keys.map((key) => [key, draft[key]])),
-            [page]: undefined,
-        });
+};
+const reports = {
+    reservations: {
+        label: 'Reservas',
+        route: reservations,
+        csv: exportReservations,
+    },
+    incidents: { label: 'Ocorrências', route: incidents, csv: exportIncidents },
+    maintenances: {
+        label: 'Manutenções',
+        route: maintenances,
+        csv: exportMaintenances,
+    },
+};
+const columns: Record<Kind, [string, string][]> = {
+    reservations: [
+        ['id', 'ID'],
+        ['area', 'Área comum'],
+        ['date', 'Data'],
+        ['start', 'Início'],
+        ['end', 'Fim'],
+        ['status', 'Status'],
+        ['resident', 'Morador'],
+        ['unit', 'Unidade'],
+    ],
+    incidents: [
+        ['id', 'ID'],
+        ['title', 'Título'],
+        ['type', 'Tipo'],
+        ['category', 'Categoria'],
+        ['priority', 'Prioridade'],
+        ['status', 'Status'],
+        ['resident', 'Morador'],
+        ['unit', 'Unidade'],
+        ['created_at', 'Abertura'],
+    ],
+    maintenances: [
+        ['id', 'ID'],
+        ['description', 'Descrição'],
+        ['unit', 'Unidade'],
+        ['origin', 'Origem'],
+        ['incident', 'Ocorrência vinculada'],
+        ['admin', 'Responsável'],
+        ['provider', 'Prestador'],
+        ['status', 'Status'],
+        ['created_at', 'Abertura'],
+        ['scheduled_at', 'Agendamento'],
+        ['executed_at', 'Execução'],
+        ['cost', 'Custo'],
+    ],
+};
+const selects: Record<Kind, [string, string, string][]> = {
+    reservations: [
+        ['common_area_id', 'Área comum', 'areas'],
+        ['status', 'Status', 'statuses'],
+        ['unit_id', 'Unidade', 'units'],
+        ['resident_id', 'Morador', 'residents'],
+    ],
+    incidents: [
+        ['type', 'Tipo', 'types'],
+        ['category', 'Categoria', 'categories'],
+        ['priority', 'Prioridade', 'priorities'],
+        ['status', 'Status', 'statuses'],
+        ['unit_id', 'Unidade', 'units'],
+        ['resident_id', 'Morador', 'residents'],
+    ],
+    maintenances: [
+        ['date_reference', 'Referência do período', 'references'],
+        ['status', 'Status', 'statuses'],
+        ['service_provider_id', 'Prestador', 'providers'],
+        ['origin', 'Origem', 'origins'],
+    ],
+};
+function money(value: string | null | undefined) {
+    if (value == null) {
+        return 'Não informado';
+    }
+
+    const [integer, cents] = value.split('.');
+
+    return `R$ ${integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
+}
+export default function Reports(props: Props) {
+    return <Report key={props.kind} {...props} />;
+}
+function Report({ kind, records, filters, options, metrics }: Props) {
+    const current = reports[kind];
+    const initial: Record<string, string> = {
+        date_from: filters.date_from || '',
+        date_to: filters.date_to || '',
     };
-    const clear = (keys: (keyof ReportFilters)[], page: string) => {
-        const nextDraft = { ...draft };
-        const nextFilters: Record<string, string | undefined> = {
-            ...filters,
-            [page]: undefined,
-        };
-        keys.forEach((key) => {
-            nextDraft[key] = '';
-            nextFilters[key] = undefined;
-        });
-        setDraft(nextDraft);
-        visit(nextFilters);
+
+    for (const [key] of selects[kind]) {
+        initial[key] =
+            filters[key] || (key === 'date_reference' ? 'opening' : '');
+    }
+
+    const form = useForm(initial);
+    const [busy, setBusy] = useState(false);
+    const [failure, setFailure] = useState('');
+    const loading = busy || form.processing;
+    const callbacks = {
+        preserveScroll: true,
+        onStart: () => {
+            setBusy(true);
+            setFailure('');
+        },
+        onFinish: () => setBusy(false),
+        onError: () => {
+            setFailure('Confira os filtros informados e tente novamente.');
+        },
+        onHttpException: () => {
+            setFailure(
+                'Não foi possível consultar o relatório. Tente novamente.',
+            );
+
+            return false;
+        },
+        onNetworkError: () => {
+            setFailure('Falha de conexão. Tente novamente.');
+
+            return false;
+        },
     };
-    const paginate = (pageName: string, page: number) =>
-        visit({ ...filters, [pageName]: page });
 
     return (
         <>
-            <Head title="Relatórios" />
-            <main className="mx-auto grid w-full max-w-7xl gap-8 p-4 sm:p-6">
-                <header className="max-w-3xl">
-                    <p className="text-sm font-medium text-cosphere-blue">
-                        Visão administrativa
-                    </p>
-                    <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-                        Relatórios
+            <Head title={`Relatórios — ${current.label}`} />
+            <div className="grid min-w-0 gap-6 p-4 sm:p-6">
+                <header>
+                    <h1 className="text-2xl font-semibold">
+                        Relatórios gerenciais
                     </h1>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                        Consulte reservas, acessos de visitantes e ocorrências.
-                        Os totais acompanham os filtros aplicados em cada seção.
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Consulte registros e exporte os resultados filtrados.
                     </p>
                 </header>
-
-                <section
-                    className="grid gap-4 sm:grid-cols-3"
-                    aria-label="Totais dos relatórios"
+                <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline">
+                        <Link href={overview()}>Acessos</Link>
+                    </Button>
+                    {Object.entries(reports).map(([key, report]) => (
+                        <Button
+                            key={key}
+                            asChild
+                            variant={key === kind ? 'default' : 'outline'}
+                        >
+                            <Link
+                                href={report.route()}
+                                aria-current={key === kind ? 'page' : undefined}
+                            >
+                                {report.label}
+                            </Link>
+                        </Button>
+                    ))}
+                </nav>
+                <form
+                    className="grid gap-4 rounded-xl border p-4"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        form.get(current.route.url(), {
+                            ...callbacks,
+                            onSuccess: () =>
+                                toast.success('Filtros aplicados.'),
+                        });
+                    }}
                 >
-                    <Metric
-                        label="Reservas"
-                        value={reservations.total}
-                        icon={CalendarDays}
-                    />
-                    <Metric
-                        label="Acessos"
-                        value={accesses.total}
-                        icon={DoorOpen}
-                    />
-                    <Metric
-                        label="Ocorrências"
-                        value={incidents.total}
-                        icon={ClipboardList}
+                    <h2 className="font-semibold">
+                        Filtros de {current.label.toLowerCase()}
+                    </h2>
+                    <fieldset
+                        disabled={loading}
+                        className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+                    >
+                        {selects[kind].map(([key, label, source]) => (
+                            <IncidentSelect
+                                key={key}
+                                id={key}
+                                label={label}
+                                value={form.data[key]}
+                                options={options[source]}
+                                all={key !== 'date_reference'}
+                                onChange={(value) => form.setData(key, value)}
+                                error={form.errors[key]}
+                                disabled={loading}
+                            />
+                        ))}
+                        {(['date_from', 'date_to'] as const).map((key) => (
+                            <div key={key} className="grid gap-2">
+                                <Label htmlFor={key}>
+                                    {key === 'date_from'
+                                        ? 'Data inicial'
+                                        : 'Data final'}
+                                </Label>
+                                <Input
+                                    id={key}
+                                    type="date"
+                                    value={form.data[key]}
+                                    onChange={(event) =>
+                                        form.setData(key, event.target.value)
+                                    }
+                                />
+                                <InputError message={form.errors[key]} />
+                            </div>
+                        ))}
+                    </fieldset>
+                    <p className="text-sm text-muted-foreground">
+                        {kind === 'reservations'
+                            ? 'Período pelo início da reserva.'
+                            : kind === 'incidents'
+                              ? 'Período pela abertura da ocorrência.'
+                              : 'Período pela referência selecionada.'}{' '}
+                        As datas inicial e final estão incluídas. Horários no
+                        fuso do sistema (UTC).
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                        <Button disabled={loading}>
+                            {loading ? 'Consultando…' : 'Aplicar filtros'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={loading}
+                            onClick={() =>
+                                router.get(
+                                    current.route.url(),
+                                    {},
+                                    { ...callbacks, preserveState: false },
+                                )
+                            }
+                        >
+                            Limpar filtros
+                        </Button>
+                    </div>
+                    {failure && (
+                        <p role="alert" className="text-sm text-destructive">
+                            {failure}
+                        </p>
+                    )}
+                </form>
+                <section
+                    aria-label="Indicadores"
+                    aria-busy={loading}
+                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+                >
+                    {[
+                        { label: 'Total', value: metrics.total },
+                        ...metrics.statuses.map((status) => ({
+                            label: status.label,
+                            value: status.count,
+                        })),
+                        ...(kind === 'maintenances'
+                            ? [
+                                  {
+                                      label: 'Custo total',
+                                      value: money(metrics.cost_total),
+                                  },
+                                  {
+                                      label: 'Custo médio',
+                                      value:
+                                          metrics.cost_average == null
+                                              ? 'Não disponível'
+                                              : money(metrics.cost_average),
+                                  },
+                              ]
+                            : []),
+                    ].map((metric) => (
+                        <div
+                            key={metric.label}
+                            className="rounded-xl border p-4"
+                        >
+                            <p className="text-sm text-muted-foreground">
+                                {metric.label}
+                            </p>
+                            <p className="mt-2 text-xl font-semibold tabular-nums">
+                                {metric.value}
+                            </p>
+                        </div>
+                    ))}
+                </section>
+                {kind === 'maintenances' && (
+                    <p className="text-sm text-muted-foreground">
+                        Média calculada sobre {metrics.cost_count} registro(s)
+                        com custo informado, incluindo valores zero e excluindo
+                        custos não informados.
+                    </p>
+                )}
+                <section className="grid min-w-0 gap-4" aria-busy={loading}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="font-semibold">
+                            {current.label} — {records.total} registro(s)
+                        </h2>
+                        <Button asChild variant="outline">
+                            <a href={current.csv.url({ query: filters })}>
+                                <Download className="size-4" />
+                                Exportar CSV
+                            </a>
+                        </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        O CSV contém todos os registros dos filtros aplicados à
+                        listagem. Altere os campos e aplique os filtros antes de
+                        exportar.
+                    </p>
+                    {loading && (
+                        <p
+                            role="status"
+                            className="text-sm text-muted-foreground"
+                        >
+                            Atualizando resultados…
+                        </p>
+                    )}
+                    {records.data.length === 0 ? (
+                        <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+                            Nenhum registro encontrado para os filtros
+                            selecionados.
+                        </p>
+                    ) : (
+                        <div
+                            className="max-w-full overflow-x-auto rounded-xl border"
+                            tabIndex={0}
+                            role="region"
+                            aria-label={`Tabela de ${current.label.toLowerCase()}`}
+                        >
+                            <table className="w-full text-left text-sm">
+                                <caption className="sr-only">
+                                    {current.label} filtradas, página{' '}
+                                    {records.current_page}
+                                </caption>
+                                <thead className="bg-muted/50">
+                                    <tr>
+                                        {columns[kind].map(([key, label]) => (
+                                            <th
+                                                key={key}
+                                                scope="col"
+                                                className="px-4 py-3 font-medium whitespace-nowrap"
+                                            >
+                                                {label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {records.data.map((row) => (
+                                        <tr key={row.id} className="border-t">
+                                            {columns[kind].map(([key]) => (
+                                                <td
+                                                    key={key}
+                                                    className="max-w-80 min-w-28 px-4 py-3 align-top wrap-break-word"
+                                                >
+                                                    {key === 'cost'
+                                                        ? money(
+                                                              row.cost as
+                                                                  | string
+                                                                  | null,
+                                                          )
+                                                        : (row[key] ?? '—')}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                    <ManagementPagination
+                        page={records.current_page}
+                        last={records.last_page}
+                        busy={loading}
+                        onChange={(page) =>
+                            router.get(
+                                current.route.url(),
+                                { ...filters, page },
+                                callbacks,
+                            )
+                        }
                     />
                 </section>
-
-                <ReportCard
-                    title="Reservas"
-                    description="Período considerado pelo início da reserva."
-                >
-                    <form
-                        className="grid gap-4 border-b p-5 md:grid-cols-2 xl:grid-cols-4"
-                        onSubmit={(event) =>
-                            apply(
-                                event,
-                                [
-                                    'reservation_date_from',
-                                    'reservation_date_to',
-                                    'reservation_status',
-                                    'common_area_id',
-                                ],
-                                'reservations_page',
-                            )
-                        }
-                    >
-                        <DateField
-                            id="reservation-from"
-                            label="Data inicial"
-                            value={draft.reservation_date_from}
-                            error={errors.reservation_date_from}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_date_from: value,
-                                })
-                            }
-                        />
-                        <DateField
-                            id="reservation-to"
-                            label="Data final"
-                            value={draft.reservation_date_to}
-                            error={errors.reservation_date_to}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_date_to: value,
-                                })
-                            }
-                        />
-                        <IncidentSelect
-                            id="reservation-status"
-                            label="Status"
-                            value={draft.reservation_status}
-                            options={options.reservation_statuses}
-                            all
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_status: value,
-                                })
-                            }
-                            error={errors.reservation_status}
-                        />
-                        <IncidentSelect
-                            id="reservation-area"
-                            label="Área comum"
-                            value={draft.common_area_id}
-                            options={options.common_areas}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, common_area_id: value })
-                            }
-                            error={errors.common_area_id}
-                        />
-                        <FilterActions
-                            busy={busy}
-                            onClear={() =>
-                                clear(
-                                    [
-                                        'reservation_date_from',
-                                        'reservation_date_to',
-                                        'reservation_status',
-                                        'common_area_id',
-                                    ],
-                                    'reservations_page',
-                                )
-                            }
-                        />
-                    </form>
-                    {reservations.data.length === 0 ? (
-                        <Empty />
-                    ) : (
-                        <ReservationTable items={reservations.data} />
-                    )}
-                    <Pagination
-                        paginator={reservations}
-                        busy={busy}
-                        onChange={(page) => paginate('reservations_page', page)}
-                    />
-                </ReportCard>
-
-                <ReportCard
-                    title="Acessos"
-                    description="Entradas registradas e tentativas persistidas pela portaria, em modo somente leitura."
-                >
-                    <form
-                        className="grid gap-4 border-b p-5 md:grid-cols-3"
-                        onSubmit={(event) =>
-                            apply(
-                                event,
-                                [
-                                    'access_date_from',
-                                    'access_date_to',
-                                    'access_situation',
-                                ],
-                                'accesses_page',
-                            )
-                        }
-                    >
-                        <DateField
-                            id="access-from"
-                            label="Data inicial"
-                            value={draft.access_date_from}
-                            error={errors.access_date_from}
-                            onChange={(value) =>
-                                setDraft({ ...draft, access_date_from: value })
-                            }
-                        />
-                        <DateField
-                            id="access-to"
-                            label="Data final"
-                            value={draft.access_date_to}
-                            error={errors.access_date_to}
-                            onChange={(value) =>
-                                setDraft({ ...draft, access_date_to: value })
-                            }
-                        />
-                        <IncidentSelect
-                            id="access-situation"
-                            label="Situação"
-                            value={draft.access_situation}
-                            options={options.access_situations}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, access_situation: value })
-                            }
-                            error={errors.access_situation}
-                        />
-                        <FilterActions
-                            busy={busy}
-                            onClear={() =>
-                                clear(
-                                    [
-                                        'access_date_from',
-                                        'access_date_to',
-                                        'access_situation',
-                                    ],
-                                    'accesses_page',
-                                )
-                            }
-                        />
-                    </form>
-                    {accesses.data.length === 0 ? (
-                        <Empty />
-                    ) : (
-                        <AccessTable items={accesses.data} />
-                    )}
-                    <Pagination
-                        paginator={accesses}
-                        busy={busy}
-                        onChange={(page) => paginate('accesses_page', page)}
-                    />
-                </ReportCard>
-
-                <ReportCard
-                    title="Ocorrências"
-                    description="Período considerado pela data de abertura."
-                >
-                    <form
-                        className="grid gap-4 border-b p-5 md:grid-cols-2 xl:grid-cols-4"
-                        onSubmit={(event) =>
-                            apply(
-                                event,
-                                [
-                                    'incident_date_from',
-                                    'incident_date_to',
-                                    'incident_category',
-                                    'incident_status',
-                                ],
-                                'incidents_page',
-                            )
-                        }
-                    >
-                        <DateField
-                            id="incident-from"
-                            label="Data inicial"
-                            value={draft.incident_date_from}
-                            error={errors.incident_date_from}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    incident_date_from: value,
-                                })
-                            }
-                        />
-                        <DateField
-                            id="incident-to"
-                            label="Data final"
-                            value={draft.incident_date_to}
-                            error={errors.incident_date_to}
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_date_to: value })
-                            }
-                        />
-                        <IncidentSelect
-                            id="incident-category"
-                            label="Categoria"
-                            value={draft.incident_category}
-                            options={options.incident_categories}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_category: value })
-                            }
-                            error={errors.incident_category}
-                        />
-                        <IncidentSelect
-                            id="incident-status"
-                            label="Status"
-                            value={draft.incident_status}
-                            options={options.incident_statuses}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_status: value })
-                            }
-                            error={errors.incident_status}
-                        />
-                        <FilterActions
-                            busy={busy}
-                            onClear={() =>
-                                clear(
-                                    [
-                                        'incident_date_from',
-                                        'incident_date_to',
-                                        'incident_category',
-                                        'incident_status',
-                                    ],
-                                    'incidents_page',
-                                )
-                            }
-                        />
-                    </form>
-                    {incidents.data.length === 0 ? (
-                        <Empty />
-                    ) : (
-                        <IncidentTable items={incidents.data} />
-                    )}
-                    <Pagination
-                        paginator={incidents}
-                        busy={busy}
-                        onChange={(page) => paginate('incidents_page', page)}
-                    />
-                </ReportCard>
-            </main>
+            </div>
         </>
     );
 }
-
-function ReportCard({
-    title,
-    description,
-    children,
-}: {
-    title: string;
-    description: string;
-    children: ReactNode;
-}) {
-    return (
-        <Card className="overflow-hidden p-0">
-            <CardHeader className="border-b bg-muted/25 p-5">
-                <CardTitle className="flex items-center gap-2">
-                    <SlidersHorizontal className="size-4 text-cosphere-blue" />
-                    {title}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">{description}</p>
-            </CardHeader>
-            {children}
-        </Card>
-    );
-}
-
-function FilterActions({
-    busy,
-    onClear,
-}: {
-    busy: boolean;
-    onClear: () => void;
-}) {
-    return (
-        <div className="flex flex-wrap gap-2 md:col-span-full">
-            <Button disabled={busy}>Aplicar filtros</Button>
-            <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={onClear}
-            >
-                Limpar seção
-            </Button>
-        </div>
-    );
-}
-
-function Pagination<T>({
-    paginator,
-    busy,
-    onChange,
-}: {
-    paginator: ReportPaginator<T>;
-    busy: boolean;
-    onChange: (page: number) => void;
-}) {
-    return (
-        <div className="border-t p-5">
-            <ManagementPagination
-                page={paginator.current_page}
-                last={paginator.last_page}
-                busy={busy}
-                onChange={onChange}
-            />
-        </div>
-    );
-}
-
-function ReservationTable({ items }: { items: ReservationReportItem[] }) {
-    return (
-        <ResponsiveTable
-            headers={['Área', 'Morador / unidade', 'Período', 'Status']}
-            rows={items.map((item) => [
-                item.area,
-                <span key="resident">
-                    {item.resident}
-                    <small className="block text-muted-foreground">
-                        {item.unit}
-                    </small>
-                </span>,
-                <span key="period">
-                    {dateTime(item.starts_at)}
-                    <small className="block text-muted-foreground">
-                        até {dateTime(item.ends_at)}
-                    </small>
-                </span>,
-                <Status key="status">{item.status_label}</Status>,
-            ])}
-        />
-    );
-}
-
-function AccessTable({ items }: { items: AccessReportItem[] }) {
-    return (
-        <ResponsiveTable
-            headers={[
-                'Visitante / unidade',
-                'Entrada / saída',
-                'Porteiros',
-                'Situação',
-            ]}
-            rows={items.map((item) => [
-                <span key="visitor">
-                    {item.visitor}
-                    <small className="block text-muted-foreground">
-                        {item.unit}
-                    </small>
-                </span>,
-                <span key="period">
-                    {dateTime(item.entry_at)}
-                    <small className="block text-muted-foreground">
-                        Saída: {dateTime(item.exit_at)}
-                    </small>
-                </span>,
-                <span key="doormen">
-                    Entrada: {item.entry_doorman || 'Não identificado'}
-                    <small className="block text-muted-foreground">
-                        Saída: {item.exit_doorman || 'Não identificado'}
-                    </small>
-                </span>,
-                <Status key="status">{item.situation_label}</Status>,
-            ])}
-        />
-    );
-}
-
-function IncidentTable({ items }: { items: IncidentReportItem[] }) {
-    return (
-        <ResponsiveTable
-            headers={[
-                'Categoria / título',
-                'Unidade',
-                'Status',
-                'Abertura / atualização',
-            ]}
-            rows={items.map((item) => [
-                <span key="incident">
-                    {item.category_label}
-                    <small className="block font-medium text-foreground">
-                        {item.title}
-                    </small>
-                </span>,
-                item.unit,
-                <Status key="status">{item.status_label}</Status>,
-                <span key="dates">
-                    {dateTime(item.opened_at)}
-                    <small className="block text-muted-foreground">
-                        Atualizada: {dateTime(item.updated_at)}
-                    </small>
-                </span>,
-            ])}
-        />
-    );
-}
-
-function ResponsiveTable({
-    headers,
-    rows,
-}: {
-    headers: string[];
-    rows: ReactNode[][];
-}) {
-    return (
-        <div>
-            <div className="hidden overflow-x-auto md:block">
-                <table className="w-full text-left text-sm">
-                    <thead className="border-b bg-muted/15">
-                        <tr>
-                            {headers.map((header) => (
-                                <th
-                                    key={header}
-                                    className="px-5 py-3 font-medium"
-                                >
-                                    {header}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row, index) => (
-                            <tr key={index} className="border-b last:border-0">
-                                {row.map((cell, cellIndex) => (
-                                    <td
-                                        key={cellIndex}
-                                        className="px-5 py-4 align-top"
-                                    >
-                                        {cell}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-            <div className="grid gap-3 p-4 md:hidden">
-                {rows.map((row, index) => (
-                    <article
-                        key={index}
-                        className="grid gap-3 rounded-xl border p-4"
-                    >
-                        {row.map((cell, cellIndex) => (
-                            <div key={cellIndex}>
-                                <p className="mb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                                    {headers[cellIndex]}
-                                </p>
-                                <div className="text-sm break-words">
-                                    {cell}
-                                </div>
-                            </div>
-                        ))}
-                    </article>
-                ))}
-            </div>
-        </div>
-    );
-}
-
-Reports.layout = { breadcrumbs: [{ title: 'Relatórios', href: index() }] };
