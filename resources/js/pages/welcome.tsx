@@ -37,7 +37,7 @@ export default function Welcome() {
         <>
             <Head title="CoSphere" />
 
-            <div className="dark flex h-svh flex-col overflow-hidden bg-cosphere-surface text-cosphere-navy">
+            <div className="dark flex min-h-svh flex-col bg-cosphere-surface text-cosphere-navy">
                 <header className="mx-auto flex w-full max-w-7xl shrink-0 items-center justify-end px-5 py-3 sm:px-8 lg:px-10">
                     <Button
                         asChild
@@ -48,7 +48,7 @@ export default function Welcome() {
                     </Button>
                 </header>
 
-                <main className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col justify-center px-5 pb-2 sm:px-8 lg:px-10">
+                <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center px-5 pb-8 sm:px-8 lg:px-10 [@media(max-height:700px)]:pb-4">
                     <section className="grid items-center gap-6 md:grid-cols-[minmax(0,0.94fr)_minmax(16rem,0.68fr)] lg:gap-10 xl:gap-16">
                         <div className="max-w-2xl">
                             <Link
@@ -58,25 +58,25 @@ export default function Welcome() {
                             >
                                 <CoSphereLogo
                                     size="lg"
-                                    className="size-64 sm:size-72"
+                                    className="size-64 sm:size-72 [@media(max-height:700px)]:size-36"
                                 />
                             </Link>
 
-                            <h1 className="mt-1 text-2xl leading-[1.08] font-semibold tracking-tight text-cosphere-navy sm:text-3xl lg:text-4xl xl:text-5xl dark:text-foreground">
+                            <h1 className="mt-1 text-2xl leading-[1.08] font-semibold tracking-tight text-cosphere-navy sm:text-3xl lg:text-4xl xl:text-5xl dark:text-foreground [@media(max-height:700px)]:text-2xl">
                                 Tudo o que seu condomínio precisa,
                                 <span className="block text-cosphere-orange">
                                     em um só lugar.
                                 </span>
                             </h1>
 
-                            <p className="mt-4 max-w-xl text-sm leading-relaxed text-cosphere-muted sm:text-base">
+                            <p className="mt-4 max-w-xl text-sm leading-relaxed text-cosphere-muted sm:text-base [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:text-sm">
                                 O CoSphere centraliza a gestão e a comunicação
                                 do condomínio: unidades, moradores, documentos,
                                 solicitações e avisos em um ambiente seguro e
                                 organizado.
                             </p>
 
-                            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+                            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 [@media(max-height:700px)]:mt-2">
                                 <span className="inline-flex items-center gap-2 text-sm font-medium text-cosphere-muted">
                                     <ShieldCheck
                                         className="size-5 text-emerald-600"
@@ -87,7 +87,7 @@ export default function Welcome() {
                             </div>
                         </div>
 
-                        <div className="relative mx-auto hidden h-[26rem] w-full max-w-sm md:block lg:h-[29rem] lg:max-w-[24rem] xl:h-[31rem] xl:max-w-[27rem]">
+                        <div className="relative mx-auto hidden h-[26rem] w-full max-w-sm md:block lg:h-[29rem] lg:max-w-[24rem] xl:h-[31rem] xl:max-w-[27rem] [@media(max-height:700px)]:h-[17rem]">
                             <div className="h-full overflow-hidden rounded-3xl border border-cosphere-line shadow-cosphere-panel">
                                 <img
                                     src={condominioNoite}
@@ -110,10 +110,11 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section className="mt-5 hidden gap-3 lg:grid lg:grid-cols-3">
+                    <section className="mt-5 hidden gap-3 lg:grid lg:grid-cols-3 [@media(max-height:700px)]:mt-3">
                         {features.map((feature) => (
                             <WelcomeFeatureCard
                                 key={feature.title}
+                                className="[@media(max-height:700px)]:p-3"
                                 {...feature}
                             />
                         ))}

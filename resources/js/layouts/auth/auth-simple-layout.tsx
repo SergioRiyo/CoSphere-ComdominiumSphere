@@ -10,12 +10,12 @@ export default function AuthSimpleLayout({
     description,
 }: AuthLayoutProps) {
     return (
-        <main className="dark h-svh overflow-hidden bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:p-3 xl:p-4">
-            <div className="hidden min-h-0 overflow-hidden lg:block">
+        <main className="dark min-h-svh bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:p-3 xl:p-4">
+            <div className="hidden lg:block">
                 <AuthLoginShowcase />
             </div>
 
-            <section className="relative flex h-svh items-center bg-background px-5 py-3 sm:px-8 lg:h-auto lg:min-h-0 lg:rounded-[1.75rem] xl:px-12">
+            <section className="relative flex min-h-svh items-center bg-background px-5 py-6 sm:px-8 lg:min-h-0 lg:rounded-[1.75rem] xl:px-12">
                 <div className="mx-auto w-full max-w-sm">
                     <div className="flex flex-col gap-4">
                         <div className="flex flex-col items-center gap-2">
