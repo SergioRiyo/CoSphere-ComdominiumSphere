@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminIncidentController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminReservationController;
 use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
@@ -37,6 +38,10 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        foreach (['reservations', 'incidents', 'maintenances'] as $report) {
+            Route::get('reports/'.$report, [AdminReportController::class, 'index'])->defaults('report', $report)->name('reports.'.$report);
+            Route::get('reports/'.$report.'/csv', [AdminReportController::class, 'export'])->defaults('report', $report)->name('reports.'.$report.'.export');
+        }
         Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');
         Route::patch('service-providers/{service_provider}/archive', [ServiceProviderController::class, 'archive'])->whereNumber('service_provider')->name('service-providers.archive');
         Route::resource('maintenances', MaintenanceRequestController::class)->parameters(['maintenances' => 'maintenance'])->only(['index', 'create', 'store', 'show', 'update'])->whereNumber('maintenance');
