@@ -67,7 +67,7 @@ const columns: Record<Kind, [string, string][]> = {
         ['status', 'Status'],
         ['resident', 'Morador'],
         ['unit', 'Unidade'],
-        ['created_at', 'Abertura'],
+        ['opened_at', 'Abertura'],
     ],
     maintenances: [
         ['id', 'ID'],
@@ -82,6 +82,7 @@ const columns: Record<Kind, [string, string][]> = {
         ['scheduled_at', 'Agendamento'],
         ['executed_at', 'Execução'],
         ['cost', 'Custo'],
+        ['area', 'Área comum'],
     ],
 };
 const selects: Record<Kind, [string, string, string][]> = {

@@ -59,7 +59,9 @@ class AdminReportTest extends TestCase
         $other = User::factory()->morador()->create();
         $area = CommonArea::factory()->create();
         $provider = ServiceProvider::factory()->create();
-        $date = $kind === 'reservations' ? 'starts_at' : 'created_at';
+        $date = match ($kind) {
+            'reservations' => 'starts_at', 'incidents' => 'opened_at', default => 'created_at',
+        };
         $attributes = match ($kind) {
             'reservations' => ['user_id' => $resident->id, 'unit_id' => $resident->unit_id, 'common_area_id' => $area->id, 'status' => 'pending'],
             'incidents' => ['resident_id' => $resident->id, 'unit_id' => $resident->unit_id, 'status' => 'open', 'type' => 'maintenance_request', 'category' => 'Legado local', 'priority' => 'high'],
@@ -107,7 +109,9 @@ class AdminReportTest extends TestCase
     public function test_dates_are_inclusive_and_only_selected_reference_is_used(string $kind, ?string $reference): void
     {
         $column = match ($reference) {
-            'scheduled' => 'scheduled_at', 'executed' => 'executed_at', default => $kind === 'reservations' ? 'starts_at' : 'created_at'
+            'scheduled' => 'scheduled_at', 'executed' => 'executed_at', default => match ($kind) {
+                'reservations' => 'starts_at', 'incidents' => 'opened_at', default => 'created_at',
+            },
         };
         foreach (['2026-09-30 23:59:59', '2026-10-01 00:00:00', '2026-10-01 23:59:59', '2026-10-02 00:00:00'] as $date) {
             $this->record($kind, [$column => $date]);
@@ -241,7 +245,7 @@ class AdminReportTest extends TestCase
     {
         return match ($kind) {
             'reservations' => Reservation::factory()->create($attributes + ['starts_at' => '2026-10-01 12:00:00', 'ends_at' => '2026-10-03 14:00:00', 'status' => 'pending']),
-            'incidents' => Incident::factory()->create($attributes + ['created_at' => '2026-10-01 12:00:00', 'opened_at' => '2026-01-01']),
+            'incidents' => Incident::factory()->create($attributes + ['created_at' => '2026-01-01 12:00:00', 'opened_at' => '2026-10-01 12:00:00']),
             'maintenances' => MaintenanceRequest::factory()->administrativeDirect()->create($attributes + ['created_at' => '2026-10-01 12:00:00']),
         };
     }
