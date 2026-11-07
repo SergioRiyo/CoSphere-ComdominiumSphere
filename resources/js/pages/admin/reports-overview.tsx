@@ -1,10 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import {
-    CalendarDays,
-    ClipboardList,
-    DoorOpen,
-    SlidersHorizontal,
-} from 'lucide-react';
+import { DoorOpen, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { IncidentSelect } from '@/components/incident-fields';
@@ -15,36 +10,29 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { index, reservations as detailedReports } from '@/routes/admin/reports';
+import {
+    index,
+    reservations,
+    incidents,
+    maintenances,
+} from '@/routes/admin/reports';
 import type {
     AccessReportItem,
-    IncidentReportItem,
     ReportFilters,
     ReportOptions,
     ReportPaginator,
-    ReservationReportItem,
 } from '@/types/report';
 
 type Props = {
-    reservations: ReportPaginator<ReservationReportItem>;
     accesses: ReportPaginator<AccessReportItem>;
-    incidents: ReportPaginator<IncidentReportItem>;
     filters: ReportFilters;
     options: ReportOptions;
 };
 
 const emptyFilters: Required<ReportFilters> = {
-    reservation_date_from: '',
-    reservation_date_to: '',
-    reservation_status: '',
-    common_area_id: '',
     access_date_from: '',
     access_date_to: '',
     access_situation: '',
-    incident_date_from: '',
-    incident_date_to: '',
-    incident_category: '',
-    incident_status: '',
 };
 
 function dateTime(value: string | null) {
@@ -67,7 +55,7 @@ function Metric({
 }: {
     label: string;
     value: number;
-    icon: typeof CalendarDays;
+    icon: typeof DoorOpen;
 }) {
     return (
         <Card className="overflow-hidden border-cosphere-line/80 shadow-sm dark:border-border">
@@ -121,13 +109,7 @@ function Empty() {
     );
 }
 
-export default function Reports({
-    reservations,
-    accesses,
-    incidents,
-    filters,
-    options,
-}: Props) {
+export default function Reports({ accesses, filters, options }: Props) {
     const { errors } = usePage().props;
     const [draft, setDraft] = useState<Required<ReportFilters>>({
         ...emptyFilters,
@@ -188,131 +170,26 @@ export default function Reports({
                         Relatórios
                     </h1>
                     <p className="mt-2 text-sm text-muted-foreground">
-                        Consulte reservas, acessos de visitantes e ocorrências.
-                        Os totais acompanham os filtros aplicados em cada seção.
+                        Consulte acessos de visitantes.
                     </p>
-                    <Button asChild variant="outline" className="mt-4">
-                        <Link href={detailedReports()}>
-                            Relat?rios detalhados e CSV
-                        </Link>
-                    </Button>
                 </header>
-
-                <section
-                    className="grid gap-4 sm:grid-cols-3"
-                    aria-label="Totais dos relatórios"
-                >
-                    <Metric
-                        label="Reservas"
-                        value={reservations.total}
-                        icon={CalendarDays}
-                    />
-                    <Metric
-                        label="Acessos"
-                        value={accesses.total}
-                        icon={DoorOpen}
-                    />
-                    <Metric
-                        label="Ocorrências"
-                        value={incidents.total}
-                        icon={ClipboardList}
-                    />
-                </section>
-
-                <ReportCard
-                    title="Reservas"
-                    description="Período considerado pelo início da reserva."
-                >
-                    <form
-                        className="grid gap-4 border-b p-5 md:grid-cols-2 xl:grid-cols-4"
-                        onSubmit={(event) =>
-                            apply(
-                                event,
-                                [
-                                    'reservation_date_from',
-                                    'reservation_date_to',
-                                    'reservation_status',
-                                    'common_area_id',
-                                ],
-                                'reservations_page',
-                            )
-                        }
-                    >
-                        <DateField
-                            id="reservation-from"
-                            label="Data inicial"
-                            value={draft.reservation_date_from}
-                            error={errors.reservation_date_from}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_date_from: value,
-                                })
-                            }
-                        />
-                        <DateField
-                            id="reservation-to"
-                            label="Data final"
-                            value={draft.reservation_date_to}
-                            error={errors.reservation_date_to}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_date_to: value,
-                                })
-                            }
-                        />
-                        <IncidentSelect
-                            id="reservation-status"
-                            label="Status"
-                            value={draft.reservation_status}
-                            options={options.reservation_statuses}
-                            all
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    reservation_status: value,
-                                })
-                            }
-                            error={errors.reservation_status}
-                        />
-                        <IncidentSelect
-                            id="reservation-area"
-                            label="Área comum"
-                            value={draft.common_area_id}
-                            options={options.common_areas}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, common_area_id: value })
-                            }
-                            error={errors.common_area_id}
-                        />
-                        <FilterActions
-                            busy={busy}
-                            onClear={() =>
-                                clear(
-                                    [
-                                        'reservation_date_from',
-                                        'reservation_date_to',
-                                        'reservation_status',
-                                        'common_area_id',
-                                    ],
-                                    'reservations_page',
-                                )
-                            }
-                        />
-                    </form>
-                    {reservations.data.length === 0 ? (
-                        <Empty />
-                    ) : (
-                        <ReservationTable items={reservations.data} />
-                    )}
-                    <Pagination
-                        paginator={reservations}
-                        busy={busy}
-                        onChange={(page) => paginate('reservations_page', page)}
-                    />
-                </ReportCard>
+                <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline">
+                        <Link href={reservations()}>Reservas</Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href={incidents()}>Ocorrências</Link>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href={maintenances()}>Manutenções</Link>
+                    </Button>
+                    <Button aria-current="page">Acessos</Button>
+                </nav>
+                <Metric
+                    label="Acessos"
+                    value={accesses.total}
+                    icon={DoorOpen}
+                />
 
                 <ReportCard
                     title="Acessos"
@@ -386,95 +263,6 @@ export default function Reports({
                         onChange={(page) => paginate('accesses_page', page)}
                     />
                 </ReportCard>
-
-                <ReportCard
-                    title="Ocorrências"
-                    description="Período considerado pela data de abertura."
-                >
-                    <form
-                        className="grid gap-4 border-b p-5 md:grid-cols-2 xl:grid-cols-4"
-                        onSubmit={(event) =>
-                            apply(
-                                event,
-                                [
-                                    'incident_date_from',
-                                    'incident_date_to',
-                                    'incident_category',
-                                    'incident_status',
-                                ],
-                                'incidents_page',
-                            )
-                        }
-                    >
-                        <DateField
-                            id="incident-from"
-                            label="Data inicial"
-                            value={draft.incident_date_from}
-                            error={errors.incident_date_from}
-                            onChange={(value) =>
-                                setDraft({
-                                    ...draft,
-                                    incident_date_from: value,
-                                })
-                            }
-                        />
-                        <DateField
-                            id="incident-to"
-                            label="Data final"
-                            value={draft.incident_date_to}
-                            error={errors.incident_date_to}
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_date_to: value })
-                            }
-                        />
-                        <IncidentSelect
-                            id="incident-category"
-                            label="Categoria"
-                            value={draft.incident_category}
-                            options={options.incident_categories}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_category: value })
-                            }
-                            error={errors.incident_category}
-                        />
-                        <IncidentSelect
-                            id="incident-status"
-                            label="Status"
-                            value={draft.incident_status}
-                            options={options.incident_statuses}
-                            all
-                            onChange={(value) =>
-                                setDraft({ ...draft, incident_status: value })
-                            }
-                            error={errors.incident_status}
-                        />
-                        <FilterActions
-                            busy={busy}
-                            onClear={() =>
-                                clear(
-                                    [
-                                        'incident_date_from',
-                                        'incident_date_to',
-                                        'incident_category',
-                                        'incident_status',
-                                    ],
-                                    'incidents_page',
-                                )
-                            }
-                        />
-                    </form>
-                    {incidents.data.length === 0 ? (
-                        <Empty />
-                    ) : (
-                        <IncidentTable items={incidents.data} />
-                    )}
-                    <Pagination
-                        paginator={incidents}
-                        busy={busy}
-                        onChange={(page) => paginate('incidents_page', page)}
-                    />
-                </ReportCard>
             </main>
         </>
     );
@@ -546,30 +334,6 @@ function Pagination<T>({
     );
 }
 
-function ReservationTable({ items }: { items: ReservationReportItem[] }) {
-    return (
-        <ResponsiveTable
-            headers={['Área', 'Morador / unidade', 'Período', 'Status']}
-            rows={items.map((item) => [
-                item.area,
-                <span key="resident">
-                    {item.resident}
-                    <small className="block text-muted-foreground">
-                        {item.unit}
-                    </small>
-                </span>,
-                <span key="period">
-                    {dateTime(item.starts_at)}
-                    <small className="block text-muted-foreground">
-                        até {dateTime(item.ends_at)}
-                    </small>
-                </span>,
-                <Status key="status">{item.status_label}</Status>,
-            ])}
-        />
-    );
-}
-
 function AccessTable({ items }: { items: AccessReportItem[] }) {
     return (
         <ResponsiveTable
@@ -599,35 +363,6 @@ function AccessTable({ items }: { items: AccessReportItem[] }) {
                     </small>
                 </span>,
                 <Status key="status">{item.situation_label}</Status>,
-            ])}
-        />
-    );
-}
-
-function IncidentTable({ items }: { items: IncidentReportItem[] }) {
-    return (
-        <ResponsiveTable
-            headers={[
-                'Categoria / título',
-                'Unidade',
-                'Status',
-                'Abertura / atualização',
-            ]}
-            rows={items.map((item) => [
-                <span key="incident">
-                    {item.category_label}
-                    <small className="block font-medium text-foreground">
-                        {item.title}
-                    </small>
-                </span>,
-                item.unit,
-                <Status key="status">{item.status_label}</Status>,
-                <span key="dates">
-                    {dateTime(item.opened_at)}
-                    <small className="block text-muted-foreground">
-                        Atualizada: {dateTime(item.updated_at)}
-                    </small>
-                </span>,
             ])}
         />
     );

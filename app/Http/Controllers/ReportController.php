@@ -11,7 +11,7 @@ class ReportController extends Controller
 {
     public function index(IndexReportRequest $request, ReportService $reports): Response
     {
-        $filters = $request->safe()->except(['reservations_page', 'accesses_page', 'incidents_page']);
+        $filters = $request->safe()->except(['accesses_page']);
 
         return Inertia::render('admin/reports-overview', $reports->data($request->validated()) + ['filters' => $filters]);
     }

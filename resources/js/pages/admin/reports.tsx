@@ -172,7 +172,7 @@ function Report({ kind, records, filters, options, metrics }: Props) {
                 </header>
                 <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
                     <Button asChild variant="outline">
-                        <Link href={overview()}>Visão geral e acessos</Link>
+                        <Link href={overview()}>Acessos</Link>
                     </Button>
                     {Object.entries(reports).map(([key, report]) => (
                         <Button
