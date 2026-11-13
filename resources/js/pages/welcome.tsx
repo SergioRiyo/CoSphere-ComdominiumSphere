@@ -37,7 +37,7 @@ export default function Welcome() {
         <>
             <Head title="CoSphere" />
 
-            <div className="dark flex min-h-svh flex-col bg-cosphere-surface text-cosphere-navy">
+            <div className="flex min-h-svh flex-col bg-cosphere-surface text-cosphere-navy">
                 <header className="mx-auto flex w-full max-w-7xl shrink-0 items-center justify-end px-5 py-3 sm:px-8 lg:px-10">
                     <Button
                         asChild

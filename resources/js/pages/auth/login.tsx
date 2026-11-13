@@ -24,7 +24,7 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title="Entrar" />
 
-            <main className="dark min-h-svh bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:p-3 xl:p-4">
+            <main className="min-h-svh bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:p-3 xl:p-4">
                 <div className="hidden lg:block">
                     <AuthLoginShowcase />
                 </div>

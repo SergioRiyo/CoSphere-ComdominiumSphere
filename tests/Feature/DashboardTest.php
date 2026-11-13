@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\Incident;
+use App\Models\Notification;
+use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\VisitorAccess;
@@ -15,6 +18,26 @@ use Tests\TestCase;
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_admin_overview_uses_real_upcoming_records_and_only_their_notifications(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->admin()->create();
+        $upcoming = Reservation::factory()->create(['starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHour(), 'status' => 'pending']);
+        Reservation::factory()->create(['starts_at' => now()->subDays(2), 'ends_at' => now()->subDays(2)->addHour(), 'status' => 'cancelled']);
+        Incident::factory()->create(['status' => 'open']);
+        Incident::factory()->create(['status' => 'completed']);
+        Notification::factory()->create(['recipient_id' => $admin->id, 'title' => 'Minha notificação', 'is_read' => false]);
+        Notification::factory()->create(['recipient_id' => $other->id, 'title' => 'Privada de outro', 'is_read' => false]);
+
+        $this->actingAs($admin)->get(route('admin.dashboard'))->assertInertia(fn (Assert $page) => $page
+            ->where('overview.pending_reservations', 1)->where('overview.open_incidents', 1)
+            ->has('overview.upcoming_reservations', 1)->where('overview.upcoming_reservations.0.id', $upcoming->id)
+            ->has('overview.recent_notifications', 1)->where('overview.recent_notifications.0.title', 'Minha notificação')
+            ->where('unreadNotifications', 1));
+        $this->actingAs(User::factory()->porteiro()->create())->get(route('portaria.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page->where('unreadNotifications', null));
+    }
 
     public function test_guests_are_redirected_to_the_login_page(): void
     {

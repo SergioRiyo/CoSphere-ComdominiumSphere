@@ -1,6 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    Bell,
+    Headset,
     Building2,
     CalendarDays,
     ClipboardCheck,
@@ -46,7 +46,6 @@ import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
-import { index as notificationsIndex } from '@/routes/notifications';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
 import { index as orderHistoryIndex } from '@/routes/portaria/order-history';
 import { index as portariaOrdersIndex } from '@/routes/portaria/orders';
@@ -120,11 +119,6 @@ export function AppSidebar() {
                       href: pollsIndex(),
                       icon: ChartNoAxesColumn,
                   },
-                  {
-                      title: 'Notificações',
-                      href: notificationsIndex(),
-                      icon: Bell,
-                  },
               ]
             : []),
         ...(auth.user.role === 'morador'
@@ -158,11 +152,6 @@ export function AppSidebar() {
                       title: 'Minhas reservas',
                       href: residentReservationsIndex(),
                       icon: CalendarDays,
-                  },
-                  {
-                      title: 'Notificações',
-                      href: notificationsIndex(),
-                      icon: Bell,
                   },
                   {
                       title: 'Encomendas',
@@ -225,6 +214,19 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            tooltip="Suporte: (67) 9 9909-1520"
+                        >
+                            <a href="tel:+5567999091520">
+                                <Headset />
+                                <span>Suporte · (67) 9 9909-1520</span>
+                            </a>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
