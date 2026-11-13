@@ -16,10 +16,11 @@ class DashboardController extends Controller
         private readonly VisitorDashboardService $visitorDashboardService,
     ) {}
 
-    public function admin(): Response
+    public function admin(Request $request): Response
     {
         return Inertia::render('admin/dashboard', [
             'metrics' => $this->adminDashboardService->metrics(),
+            'overview' => $this->adminDashboardService->overview($request->user()),
         ]);
     }
 
