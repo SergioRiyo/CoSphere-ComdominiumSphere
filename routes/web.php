@@ -12,6 +12,7 @@ use App\Http\Controllers\DashboardRedirectController;
 use App\Http\Controllers\FinancialChargeController;
 use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\LostFoundController;
 use App\Http\Controllers\MaintenanceRequestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
@@ -50,6 +51,12 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('lost-found', [LostFoundController::class, 'index'])->name('lost-found.index');
+        Route::get('lost-found/{lostFoundItem}', [LostFoundController::class, 'show'])->whereNumber('lostFoundItem')->name('lost-found.show');
+        Route::put('lost-found/{lostFoundItem}', [LostFoundController::class, 'update'])->whereNumber('lostFoundItem')->name('lost-found.update');
+        Route::patch('lost-found/{lostFoundItem}/status', [LostFoundController::class, 'status'])->whereNumber('lostFoundItem')->name('lost-found.status');
+        Route::get('lost-found/{lostFoundItem}/photo', [LostFoundController::class, 'photo'])->whereNumber('lostFoundItem')->name('lost-found.photo');
+        Route::post('lost-found/{lostFoundItem}/conversations/{lostFoundConversation}', [LostFoundController::class, 'reply'])->whereNumber(['lostFoundItem', 'lostFoundConversation'])->name('lost-found.reply');
         Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
         Route::post('financial', [FinancialChargeController::class, 'store'])->name('financial.store');
         Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
@@ -106,6 +113,14 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('lost-found', [LostFoundController::class, 'index'])->name('lost-found.index');
+        Route::post('lost-found', [LostFoundController::class, 'store'])->name('lost-found.store');
+        Route::get('lost-found/{lostFoundItem}', [LostFoundController::class, 'show'])->whereNumber('lostFoundItem')->name('lost-found.show');
+        Route::put('lost-found/{lostFoundItem}', [LostFoundController::class, 'update'])->whereNumber('lostFoundItem')->name('lost-found.update');
+        Route::patch('lost-found/{lostFoundItem}/status', [LostFoundController::class, 'status'])->whereNumber('lostFoundItem')->name('lost-found.status');
+        Route::get('lost-found/{lostFoundItem}/photo', [LostFoundController::class, 'photo'])->whereNumber('lostFoundItem')->name('lost-found.photo');
+        Route::post('lost-found/{lostFoundItem}/messages', [LostFoundController::class, 'message'])->whereNumber('lostFoundItem')->name('lost-found.message');
+        Route::post('lost-found/{lostFoundItem}/conversations/{lostFoundConversation}', [LostFoundController::class, 'reply'])->whereNumber(['lostFoundItem', 'lostFoundConversation'])->name('lost-found.reply');
         Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
         Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
         Route::get('financial/{financialCharge}/boleto', [FinancialChargeController::class, 'boleto'])->whereNumber('financialCharge')->name('financial.boleto');

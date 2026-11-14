@@ -24,6 +24,7 @@ services:
       - .:/var/www/html:Z
       - vendor:/var/www/html/vendor
       - node_modules:/var/www/html/node_modules
+      - ./docker-uploads.ini:/usr/local/etc/php/conf.d/99-uploads.ini:ro
     depends_on:
       setup:
         condition: service_completed_successfully

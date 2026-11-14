@@ -15,6 +15,7 @@ import {
     Users,
     UsersRound,
     Wallet,
+    Search,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -34,6 +35,7 @@ import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-block
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
 import { index as adminFinancialIndex } from '@/routes/admin/financial';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
+import { index as adminLostFoundIndex } from '@/routes/admin/lost-found';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as pollsIndex } from '@/routes/admin/polls';
 import { reservations as reportsIndex } from '@/routes/admin/reports';
@@ -45,6 +47,7 @@ import { index as residentAnnouncementsIndex } from '@/routes/morador/announceme
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentFinancialIndex } from '@/routes/morador/financial';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
+import { index as residentLostFoundIndex } from '@/routes/morador/lost-found';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
@@ -103,11 +106,6 @@ export function AppSidebar() {
                       icon: CalendarDays,
                   },
                   {
-                      title: 'Financeiro',
-                      href: adminFinancialIndex(),
-                      icon: Wallet,
-                  },
-                  {
                       title: 'Bloqueios de áreas',
                       href: commonAreaBlocksIndex(),
                       icon: CalendarDays,
@@ -126,6 +124,16 @@ export function AppSidebar() {
                       title: 'Enquetes',
                       href: pollsIndex(),
                       icon: ChartNoAxesColumn,
+                  },
+                  {
+                      title: 'Financeiro',
+                      href: adminFinancialIndex(),
+                      icon: Wallet,
+                  },
+                  {
+                      title: 'Achados e perdidos',
+                      href: adminLostFoundIndex(),
+                      icon: Search,
                   },
               ]
             : []),
@@ -162,14 +170,19 @@ export function AppSidebar() {
                       icon: CalendarDays,
                   },
                   {
+                      title: 'Encomendas',
+                      href: ordersIndex(),
+                      icon: Package,
+                  },
+                  {
                       title: 'Financeiro',
                       href: residentFinancialIndex(),
                       icon: Wallet,
                   },
                   {
-                      title: 'Encomendas',
-                      href: ordersIndex(),
-                      icon: Package,
+                      title: 'Achados e perdidos',
+                      href: residentLostFoundIndex(),
+                      icon: Search,
                   },
               ]
             : []),
