@@ -23,6 +23,15 @@ class ReservationController extends Controller
         ]);
     }
 
+    public function manage(IndexReservationRequest $request, ReservationQueryService $service): Response
+    {
+        return Inertia::render('morador/reservation-management', [
+            'reservations' => $service->paginate($request->user(), $request->validated()),
+            'filters' => $request->safe()->only(['status', 'date_from', 'date_to']),
+            'statuses' => $service->statuses(),
+        ]);
+    }
+
     public function show(Request $request, int $reservation, ReservationQueryService $service): Response
     {
         return Inertia::render('morador/reservation-details', ['reservation' => $service->details($request->user(), $reservation)]);

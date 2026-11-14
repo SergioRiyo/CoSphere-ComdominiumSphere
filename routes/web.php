@@ -20,6 +20,7 @@ use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservationCalendarController;
 use App\Http\Controllers\ReservationController;
 use App\Http\Controllers\ResidentAnnouncementController;
 use App\Http\Controllers\ResidentCommonAreaController;
@@ -76,6 +77,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'admin'])->name('dashboard');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
+        Route::get('reservations/manage', [AdminReservationController::class, 'manage'])->name('reservations.manage');
+        Route::get('reservations-calendar', ReservationCalendarController::class)->name('reservations.calendar');
         Route::get('reservations/{reservation}', [AdminReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/approve', [AdminReservationController::class, 'approve'])->whereNumber('reservation')->name('reservations.approve');
         Route::patch('reservations/{reservation}/reject', [AdminReservationController::class, 'reject'])->whereNumber('reservation')->name('reservations.reject');
@@ -109,6 +112,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
         Route::post('reservations', [ReservationController::class, 'store'])->name('reservations.store');
         Route::get('reservations', [ReservationController::class, 'index'])->name('reservations.index');
+        Route::get('reservations/manage', [ReservationController::class, 'manage'])->name('reservations.manage');
+        Route::get('reservations-calendar', ReservationCalendarController::class)->name('reservations.calendar');
         Route::get('reservations/{reservation}', [ReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->whereNumber('reservation')->name('reservations.cancel');
         Route::get('common-areas', [ResidentCommonAreaController::class, 'index'])->name('common-areas.index');
