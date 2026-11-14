@@ -62,7 +62,7 @@ class ReportFeatureTest extends TestCase
         $response = $this->actingAs($admin)->get(route('admin.reports.index'));
 
         $response->assertInertia(fn (Assert $page) => $page
-            ->component('admin/reports-overview')
+            ->component('admin/reports')
             ->where('accesses.total', 1)
             ->where('accesses.data.0.visitor', 'Helena Visitante')
             ->where('accesses.data.0.entry_doorman', 'Paulo Entrada')
@@ -145,5 +145,71 @@ class ReportFeatureTest extends TestCase
         $this->getJson(route('admin.reports.incidents', ['category' => 'invalid', 'status' => 'invalid', 'page' => 0]))
             ->assertUnprocessable()->assertJsonValidationErrors(['category', 'status', 'page']);
 
+    }
+
+    public function test_access_export_uses_applied_filters_and_includes_all_pages_safely(): void
+    {
+        $visitor = Visitor::factory()->create(['name' => '=Visitante; João', 'cpf' => '123.456.789-01', 'phone' => 'SECRET PHONE']);
+        $doorman = User::factory()->porteiro()->create(['name' => 'Porteiro']);
+        for ($i = 0; $i < 12; $i++) {
+            $authorization = VisitorAuthorization::factory()->active()->create(['visitor_id' => $visitor->id, 'unit_id' => $visitor->unit_id]);
+            VisitorAccess::factory()->open()->create([
+                'visitor_authorization_id' => $authorization->id, 'doorman_id' => $doorman->id,
+                'entry_time' => '2026-10-20 23:59:59', 'observations' => 'OBSERVAÇÃO SECRETA',
+            ]);
+        }
+        VisitorAccess::factory()->closed()->create(['entry_time' => '2026-10-20 12:00:00']);
+        VisitorAccess::factory()->open()->create(['entry_time' => '2026-10-21 00:00:00']);
+        $filters = ['access_date_from' => '2026-10-20', 'access_date_to' => '2026-10-20', 'access_situation' => 'present'];
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('admin.reports.index', $filters))
+            ->assertInertia(fn (Assert $page) => $page->where('accesses.total', 12)->has('accesses.data', 10));
+        $response = $this->get(route('admin.reports.accesses.export', $filters + ['accesses_page' => 2]))
+            ->assertOk()->assertStreamed()->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $csv = $response->streamedContent();
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
+        $this->assertStringContainsString('relatorio-acessos-', $response->headers->get('Content-Disposition'));
+        $stream = fopen('php://memory', 'w+');
+        fwrite($stream, substr($csv, 3));
+        rewind($stream);
+        $rows = [];
+        while (($row = fgetcsv($stream, null, ';', '"', '')) !== false) {
+            $rows[] = $row;
+        }
+        fclose($stream);
+        $this->assertCount(13, $rows);
+        $this->assertSame(['Visitante', 'Unidade', 'Entrada', 'Saída', 'Porteiro de entrada', 'Porteiro de saída', 'Situação'], $rows[0]);
+        $this->assertSame("'=Visitante; João", $rows[1][0]);
+        $this->assertSame('20/10/2026 23:59:59', $rows[1][2]);
+        $this->assertSame('Presente', $rows[1][6]);
+        foreach (['123.456.789-01', 'SECRET PHONE', 'OBSERVAÇÃO SECRETA'] as $secret) {
+            $this->assertStringNotContainsString($secret, $csv);
+        }
+    }
+
+    public function test_access_export_validates_filters_and_requires_admin(): void
+    {
+        $url = route('admin.reports.accesses.export');
+        $this->get($url)->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->morador()->create())->get($url)->assertForbidden();
+        $this->actingAs(User::factory()->porteiro()->create())->get($url)->assertForbidden();
+        $this->actingAs(User::factory()->admin()->create())
+            ->getJson(route('admin.reports.accesses.export', ['access_date_from' => '2026-10-21', 'access_date_to' => '2026-10-20', 'access_situation' => 'invalid']))
+            ->assertUnprocessable()->assertJsonValidationErrors(['access_date_to', 'access_situation']);
+        $csv = $this->get($url)->assertOk()->streamedContent();
+        $this->assertSame(1, substr_count($csv, "\r\n"));
+    }
+
+    public function test_access_export_filters_denied_attempts_by_creation_date_when_entry_is_missing(): void
+    {
+        VisitorAccess::factory()->rejected()->create(['created_at' => '2026-10-20 23:59:59']);
+        VisitorAccess::factory()->rejected()->create(['created_at' => '2026-10-21 00:00:00']);
+        $filters = ['access_date_from' => '2026-10-20', 'access_date_to' => '2026-10-20', 'access_situation' => 'denied'];
+        $this->actingAs(User::factory()->admin()->create())->get(route('admin.reports.index', $filters))
+            ->assertInertia(fn (Assert $page) => $page->where('accesses.total', 1));
+        $csv = $this->get(route('admin.reports.accesses.export', $filters))->assertOk()->streamedContent();
+        $this->assertSame(2, substr_count($csv, "\r\n"));
+        $this->assertStringContainsString('Entrada negada', $csv);
     }
 }

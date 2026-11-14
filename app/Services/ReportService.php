@@ -6,6 +6,7 @@ use App\Enums\VisitorAccessStatus;
 use App\Models\Unit;
 use App\Models\VisitorAccess;
 use Carbon\CarbonImmutable;
+use Generator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -27,6 +28,16 @@ class ReportService
      */
     private function accesses(array $filters): LengthAwarePaginator
     {
+        return $this->accessQuery($filters)
+            ->paginate(10, ['*'], 'accesses_page')->appends($filters)
+            ->through(fn (VisitorAccess $access): array => $this->accessRow($access));
+    }
+
+    /** @param array<string, mixed> $filters
+     * @return Builder<VisitorAccess>
+     */
+    private function accessQuery(array $filters): Builder
+    {
         $query = VisitorAccess::query()
             ->select(['id', 'visitor_authorization_id', 'doorman_id', 'exit_doorman_id', 'entry_time', 'exit_time', 'validation_status', 'created_at'])
             ->with([
@@ -42,22 +53,37 @@ class ReportService
         }
         $this->applyAccessPeriod($query, $filters['access_date_from'] ?? null, $filters['access_date_to'] ?? null);
 
-        return $query->orderByRaw('COALESCE(entry_time, created_at) DESC')->orderByDesc('id')
-            ->paginate(10, ['*'], 'accesses_page')->appends($filters)
-            ->through(function (VisitorAccess $access): array {
-                [$situation, $label] = $this->accessSituation($access);
+        return $query->orderByRaw('COALESCE(entry_time, created_at) DESC')->orderByDesc('id');
+    }
 
-                return [
-                    'visitor' => $access->visitorAuthorization?->visitor?->name ?? 'Visitante não identificado',
-                    'unit' => $this->unitLabel($access->visitorAuthorization?->unit),
-                    'entry_at' => $access->entry_time?->toIso8601String(),
-                    'exit_at' => $access->exit_time?->toIso8601String(),
-                    'entry_doorman' => $access->doorman?->name,
-                    'exit_doorman' => $access->exitDoorman?->name,
-                    'situation' => $situation,
-                    'situation_label' => $label,
-                ];
-            });
+    /** @param array<string, mixed> $filters
+     * @return Generator<int, array<string, string|null>>
+     */
+    public function exportAccesses(array $filters): Generator
+    {
+        foreach ($this->accessQuery($filters)->lazy(250) as $access) {
+            $row = $this->accessRow($access);
+            $row['entry_at'] = $access->entry_time?->format('d/m/Y H:i:s');
+            $row['exit_at'] = $access->exit_time?->format('d/m/Y H:i:s');
+            yield $row;
+        }
+    }
+
+    /** @return array<string, string|null> */
+    private function accessRow(VisitorAccess $access): array
+    {
+        [$situation, $label] = $this->accessSituation($access);
+
+        return [
+            'visitor' => $access->visitorAuthorization?->visitor?->name ?? 'Visitante não identificado',
+            'unit' => $this->unitLabel($access->visitorAuthorization?->unit),
+            'entry_at' => $access->entry_time?->toIso8601String(),
+            'exit_at' => $access->exit_time?->toIso8601String(),
+            'entry_doorman' => $access->doorman?->name,
+            'exit_doorman' => $access->exitDoorman?->name,
+            'situation' => $situation,
+            'situation_label' => $label,
+        ];
     }
 
     /** @return array<string, list<array{value: string, label: string}>> */

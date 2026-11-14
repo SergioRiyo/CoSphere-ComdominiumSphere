@@ -201,7 +201,7 @@ class ReportQueryService
     }
 
     /** @return array<string, mixed> */
-    private function options(User $user, string $kind): array
+    public function options(User $user, string $kind): array
     {
         if ($kind === 'incidents') {
             return $this->incidents->options($user);

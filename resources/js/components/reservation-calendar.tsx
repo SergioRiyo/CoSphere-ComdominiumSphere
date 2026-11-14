@@ -312,7 +312,7 @@ export default function ReservationCalendar({
                                 : 'Escolha uma área e consulte os horários para reservar.'}
                         </p>
                     </div>
-                    <Button asChild variant="outline">
+                    <Button asChild variant={admin ? 'default' : 'outline'}>
                         <Link href={admin ? adminManage() : residentManage()}>
                             {admin ? 'Gerenciar reservas' : 'Minhas reservas'}
                         </Link>

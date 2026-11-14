@@ -9,6 +9,7 @@ use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\FinancialChargeController;
 use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\MaintenanceRequestController;
@@ -49,9 +50,15 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
+        Route::post('financial', [FinancialChargeController::class, 'store'])->name('financial.store');
+        Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
+        Route::put('financial/{financialCharge}', [FinancialChargeController::class, 'update'])->whereNumber('financialCharge')->name('financial.update');
+        Route::patch('financial/{financialCharge}/status', [FinancialChargeController::class, 'change'])->whereNumber('financialCharge')->name('financial.change');
         foreach (['reservations', 'incidents', 'maintenances'] as $report) {
             Route::get('reports/'.$report, [AdminReportController::class, 'index'])->defaults('report', $report)->name('reports.'.$report);
             Route::get('reports/'.$report.'/csv', [AdminReportController::class, 'export'])->defaults('report', $report)->name('reports.'.$report.'.export');
+            Route::get('reports/'.$report.'/xlsx', [AdminReportController::class, 'spreadsheet'])->defaults('report', $report)->name('reports.'.$report.'.spreadsheet');
         }
         Route::get('polls', [AdminPollController::class, 'index'])->name('polls.index');
         Route::get('polls/create', [AdminPollController::class, 'create'])->name('polls.create');
@@ -76,6 +83,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::post('incidents/{incident}/maintenance', [AdminIncidentController::class, 'maintenance'])->whereNumber('incident')->name('incidents.maintenance');
         Route::get('dashboard', [DashboardController::class, 'admin'])->name('dashboard');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/accesses/csv', [ReportController::class, 'export'])->name('reports.accesses.export');
+        Route::get('reports/accesses/xlsx', [ReportController::class, 'spreadsheet'])->name('reports.accesses.spreadsheet');
         Route::get('reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
         Route::get('reservations/manage', [AdminReservationController::class, 'manage'])->name('reservations.manage');
         Route::get('reservations-calendar', ReservationCalendarController::class)->name('reservations.calendar');
@@ -97,6 +106,9 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
+        Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
+        Route::get('financial/{financialCharge}/boleto', [FinancialChargeController::class, 'boleto'])->whereNumber('financialCharge')->name('financial.boleto');
         Route::get('polls', [ResidentPollController::class, 'index'])->name('polls.index');
         Route::get('polls/{poll}', [ResidentPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
         Route::post('polls/{poll}/vote', [ResidentPollController::class, 'vote'])->whereNumber('poll')->name('polls.vote');

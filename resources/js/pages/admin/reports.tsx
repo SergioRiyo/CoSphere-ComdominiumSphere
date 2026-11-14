@@ -2,9 +2,12 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import { Download } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import AccessReport from '@/components/access-report';
+import type { AccessReportProps } from '@/components/access-report';
 import { IncidentSelect } from '@/components/incident-fields';
 import InputError from '@/components/input-error';
 import ManagementPagination from '@/components/management-pagination';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,9 +17,9 @@ import {
     maintenances,
     reservations,
 } from '@/routes/admin/reports';
-import { exportMethod as exportIncidents } from '@/routes/admin/reports/incidents';
-import { exportMethod as exportMaintenances } from '@/routes/admin/reports/maintenances';
-import { exportMethod as exportReservations } from '@/routes/admin/reports/reservations';
+import { spreadsheet as spreadsheetIncidents } from '@/routes/admin/reports/incidents';
+import { spreadsheet as spreadsheetMaintenances } from '@/routes/admin/reports/maintenances';
+import { spreadsheet as spreadsheetReservations } from '@/routes/admin/reports/reservations';
 import type { Paged } from '@/types/maintenance';
 
 type Kind = 'reservations' | 'incidents' | 'maintenances';
@@ -38,13 +41,17 @@ const reports = {
     reservations: {
         label: 'Reservas',
         route: reservations,
-        csv: exportReservations,
+        spreadsheet: spreadsheetReservations,
     },
-    incidents: { label: 'Ocorrências', route: incidents, csv: exportIncidents },
+    incidents: {
+        label: 'Ocorrências',
+        route: incidents,
+        spreadsheet: spreadsheetIncidents,
+    },
     maintenances: {
         label: 'Manutenções',
         route: maintenances,
-        csv: exportMaintenances,
+        spreadsheet: spreadsheetMaintenances,
     },
 };
 const columns: Record<Kind, [string, string][]> = {
@@ -116,8 +123,64 @@ function money(value: string | null | undefined) {
 
     return `R$ ${integer.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${cents}`;
 }
-export default function Reports(props: Props) {
-    return <Report key={props.kind} {...props} />;
+export default function Reports(props: Props | AccessReportProps) {
+    const kind = 'kind' in props ? props.kind : 'accesses';
+
+    return (
+        <>
+            <Head
+                title={
+                    kind === 'accesses'
+                        ? 'Relatórios — Acessos'
+                        : 'Relatórios — ' + reports[kind].label
+                }
+            />
+            <div className="grid min-w-0 gap-6 p-4 sm:p-6">
+                <header>
+                    <h1 className="text-2xl font-semibold">
+                        Relatórios gerenciais
+                    </h1>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                        Consulte os registros e os resultados filtrados.
+                    </p>
+                </header>
+                <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
+                    <Button
+                        asChild
+                        variant={kind === 'accesses' ? 'default' : 'outline'}
+                    >
+                        <Link
+                            href={overview()}
+                            aria-current={
+                                kind === 'accesses' ? 'page' : undefined
+                            }
+                        >
+                            Acessos
+                        </Link>
+                    </Button>
+                    {Object.entries(reports).map(([key, report]) => (
+                        <Button
+                            key={key}
+                            asChild
+                            variant={key === kind ? 'default' : 'outline'}
+                        >
+                            <Link
+                                href={report.route()}
+                                aria-current={key === kind ? 'page' : undefined}
+                            >
+                                {report.label}
+                            </Link>
+                        </Button>
+                    ))}
+                </nav>
+                {'kind' in props ? (
+                    <Report key={props.kind} {...props} />
+                ) : (
+                    <AccessReport {...props} />
+                )}
+            </div>
+        </>
+    );
 }
 function Report({ kind, records, filters, options, metrics }: Props) {
     const current = reports[kind];
@@ -133,6 +196,7 @@ function Report({ kind, records, filters, options, metrics }: Props) {
 
     const form = useForm(initial);
     const [busy, setBusy] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [failure, setFailure] = useState('');
     const loading = busy || form.processing;
     const callbacks = {
@@ -161,258 +225,270 @@ function Report({ kind, records, filters, options, metrics }: Props) {
 
     return (
         <>
-            <Head title={`Relatórios — ${current.label}`} />
-            <div className="grid min-w-0 gap-6 p-4 sm:p-6">
-                <header>
-                    <h1 className="text-2xl font-semibold">
-                        Relatórios gerenciais
-                    </h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Consulte registros e exporte os resultados filtrados.
-                    </p>
-                </header>
-                <nav aria-label="Relatórios" className="flex flex-wrap gap-2">
-                    <Button asChild variant="outline">
-                        <Link href={overview()}>Acessos</Link>
-                    </Button>
-                    {Object.entries(reports).map(([key, report]) => (
-                        <Button
-                            key={key}
-                            asChild
-                            variant={key === kind ? 'default' : 'outline'}
-                        >
-                            <Link
-                                href={report.route()}
-                                aria-current={key === kind ? 'page' : undefined}
-                            >
-                                {report.label}
-                            </Link>
-                        </Button>
-                    ))}
-                </nav>
-                <form
-                    className="grid gap-4 rounded-xl border p-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        form.get(current.route.url(), {
-                            ...callbacks,
-                            onSuccess: () =>
-                                toast.success('Filtros aplicados.'),
-                        });
-                    }}
-                >
-                    <h2 className="font-semibold">
-                        Filtros de {current.label.toLowerCase()}
-                    </h2>
-                    <fieldset
-                        disabled={loading}
-                        className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-                    >
-                        {selects[kind].map(([key, label, source]) => (
-                            <IncidentSelect
-                                key={key}
-                                id={key}
-                                label={label}
-                                value={form.data[key]}
-                                options={options[source]}
-                                all={key !== 'date_reference'}
-                                onChange={(value) => form.setData(key, value)}
-                                error={form.errors[key]}
-                                disabled={loading}
-                            />
-                        ))}
-                        {(['date_from', 'date_to'] as const).map((key) => (
-                            <div key={key} className="grid gap-2">
-                                <Label htmlFor={key}>
-                                    {key === 'date_from'
-                                        ? 'Data inicial'
-                                        : 'Data final'}
-                                </Label>
-                                <Input
-                                    id={key}
-                                    type="date"
-                                    value={form.data[key]}
-                                    onChange={(event) =>
-                                        form.setData(key, event.target.value)
-                                    }
-                                />
-                                <InputError message={form.errors[key]} />
-                            </div>
-                        ))}
-                    </fieldset>
-                    <p className="text-sm text-muted-foreground">
-                        {kind === 'reservations'
-                            ? 'Período pelo início da reserva.'
-                            : kind === 'incidents'
-                              ? 'Período pela abertura da ocorrência.'
-                              : 'Período pela referência selecionada.'}{' '}
-                        As datas inicial e final estão incluídas. Horários no
-                        fuso do sistema (UTC).
-                    </p>
-                    <div className="flex flex-wrap gap-3">
-                        <Button disabled={loading}>
-                            {loading ? 'Consultando…' : 'Aplicar filtros'}
-                        </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            disabled={loading}
-                            onClick={() =>
-                                router.get(
-                                    current.route.url(),
-                                    {},
-                                    { ...callbacks, preserveState: false },
-                                )
-                            }
-                        >
-                            Limpar filtros
-                        </Button>
-                    </div>
-                    {failure && (
-                        <p role="alert" className="text-sm text-destructive">
-                            {failure}
+            <section
+                aria-label="Indicadores"
+                aria-busy={loading}
+                className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+            >
+                {[
+                    { label: 'Total', value: metrics.total },
+                    ...metrics.statuses.map((status) => ({
+                        label: status.label,
+                        value: status.count,
+                    })),
+                    ...(kind === 'maintenances'
+                        ? [
+                              {
+                                  label: 'Custo total',
+                                  value: money(metrics.cost_total),
+                              },
+                              {
+                                  label: 'Custo médio',
+                                  value:
+                                      metrics.cost_average == null
+                                          ? 'Não disponível'
+                                          : money(metrics.cost_average),
+                              },
+                          ]
+                        : []),
+                ].map((metric) => (
+                    <div key={metric.label} className="rounded-xl border p-4">
+                        <p className="text-sm text-muted-foreground">
+                            {metric.label}
                         </p>
-                    )}
-                </form>
-                <section
-                    aria-label="Indicadores"
-                    aria-busy={loading}
-                    className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-                >
-                    {[
-                        { label: 'Total', value: metrics.total },
-                        ...metrics.statuses.map((status) => ({
-                            label: status.label,
-                            value: status.count,
-                        })),
-                        ...(kind === 'maintenances'
-                            ? [
-                                  {
-                                      label: 'Custo total',
-                                      value: money(metrics.cost_total),
-                                  },
-                                  {
-                                      label: 'Custo médio',
-                                      value:
-                                          metrics.cost_average == null
-                                              ? 'Não disponível'
-                                              : money(metrics.cost_average),
-                                  },
-                              ]
-                            : []),
-                    ].map((metric) => (
-                        <div
-                            key={metric.label}
-                            className="rounded-xl border p-4"
+                        <p className="mt-2 text-xl font-semibold tabular-nums">
+                            {metric.value}
+                        </p>
+                    </div>
+                ))}
+            </section>
+            {kind === 'maintenances' && (
+                <p className="text-sm text-muted-foreground">
+                    Média calculada sobre {metrics.cost_count} registro(s) com
+                    custo informado, incluindo valores zero e excluindo custos
+                    não informados.
+                </p>
+            )}
+            <section className="grid min-w-0 gap-4" aria-busy={loading}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="font-semibold">
+                        {current.label} — {records.total} registro(s)
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <ReportFilterSheet
+                            title={current.label.toLowerCase()}
+                            activeCount={
+                                Object.entries(filters).filter(
+                                    ([key, value]) =>
+                                        value &&
+                                        !(
+                                            key === 'date_reference' &&
+                                            value === 'opening'
+                                        ),
+                                ).length
+                            }
+                            open={filtersOpen}
+                            onOpenChange={(open) => {
+                                if (open) {
+                                    form.setData(initial);
+                                    form.clearErrors();
+                                    setFailure('');
+                                }
+                                setFiltersOpen(open);
+                            }}
                         >
-                            <p className="text-sm text-muted-foreground">
-                                {metric.label}
-                            </p>
-                            <p className="mt-2 text-xl font-semibold tabular-nums">
-                                {metric.value}
-                            </p>
-                        </div>
-                    ))}
-                </section>
-                {kind === 'maintenances' && (
-                    <p className="text-sm text-muted-foreground">
-                        Média calculada sobre {metrics.cost_count} registro(s)
-                        com custo informado, incluindo valores zero e excluindo
-                        custos não informados.
-                    </p>
-                )}
-                <section className="grid min-w-0 gap-4" aria-busy={loading}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <h2 className="font-semibold">
-                            {current.label} — {records.total} registro(s)
-                        </h2>
-                        <Button asChild variant="outline">
-                            <a href={current.csv.url({ query: filters })}>
-                                <Download className="size-4" />
-                                Exportar CSV
+                            <form
+                                className="grid gap-4 px-4 pb-6"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    form.get(current.route.url(), {
+                                        ...callbacks,
+                                        onSuccess: () => {
+                                            setFiltersOpen(false);
+                                            toast.success('Filtros aplicados.');
+                                        },
+                                    });
+                                }}
+                            >
+                                <fieldset
+                                    disabled={loading}
+                                    className="grid min-w-0 gap-4"
+                                >
+                                    {selects[kind].map(
+                                        ([key, label, source]) => (
+                                            <IncidentSelect
+                                                key={key}
+                                                id={key}
+                                                label={label}
+                                                value={form.data[key]}
+                                                options={options[source]}
+                                                all={key !== 'date_reference'}
+                                                onChange={(value) =>
+                                                    form.setData(key, value)
+                                                }
+                                                error={form.errors[key]}
+                                                disabled={loading}
+                                            />
+                                        ),
+                                    )}
+                                    {(['date_from', 'date_to'] as const).map(
+                                        (key) => (
+                                            <div
+                                                key={key}
+                                                className="grid gap-2"
+                                            >
+                                                <Label htmlFor={key}>
+                                                    {key === 'date_from'
+                                                        ? 'Data inicial'
+                                                        : 'Data final'}
+                                                </Label>
+                                                <Input
+                                                    id={key}
+                                                    type="date"
+                                                    value={form.data[key]}
+                                                    onChange={(event) =>
+                                                        form.setData(
+                                                            key,
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={form.errors[key]}
+                                                />
+                                            </div>
+                                        ),
+                                    )}
+                                </fieldset>
+                                <p className="text-sm text-muted-foreground">
+                                    {kind === 'reservations'
+                                        ? 'Período pelo início da reserva.'
+                                        : kind === 'incidents'
+                                          ? 'Período pela abertura da ocorrência.'
+                                          : 'Período pela referência selecionada.'}{' '}
+                                    As datas inicial e final estão incluídas.
+                                    Horários no fuso do sistema (UTC).
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    <Button disabled={loading}>
+                                        {loading
+                                            ? 'Consultando…'
+                                            : 'Aplicar filtros'}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={loading}
+                                        onClick={() =>
+                                            router.get(
+                                                current.route.url(),
+                                                {},
+                                                {
+                                                    ...callbacks,
+                                                    preserveState: false,
+                                                },
+                                            )
+                                        }
+                                    >
+                                        Limpar filtros
+                                    </Button>
+                                </div>
+                                {failure && (
+                                    <p
+                                        role="alert"
+                                        className="text-sm text-destructive"
+                                    >
+                                        {failure}
+                                    </p>
+                                )}
+                            </form>
+                        </ReportFilterSheet>
+                        <Button asChild>
+                            <a
+                                href={current.spreadsheet.url({
+                                    query: filters,
+                                })}
+                            >
+                                <Download className="size-4" /> Exportar Excel
                             </a>
                         </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        O CSV contém todos os registros dos filtros aplicados à
-                        listagem. Altere os campos e aplique os filtros antes de
-                        exportar.
+                </div>
+                <p className="text-sm text-muted-foreground">
+                    A exportação contém todos os registros dos filtros aplicados
+                    à listagem. Altere os campos e aplique os filtros antes de
+                    exportar.
+                </p>
+                {loading && (
+                    <p role="status" className="text-sm text-muted-foreground">
+                        Atualizando resultados…
                     </p>
-                    {loading && (
-                        <p
-                            role="status"
-                            className="text-sm text-muted-foreground"
-                        >
-                            Atualizando resultados…
-                        </p>
-                    )}
-                    {records.data.length === 0 ? (
-                        <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                            Nenhum registro encontrado para os filtros
-                            selecionados.
-                        </p>
-                    ) : (
-                        <div
-                            className="max-w-full overflow-x-auto rounded-xl border"
-                            tabIndex={0}
-                            role="region"
-                            aria-label={`Tabela de ${current.label.toLowerCase()}`}
-                        >
-                            <table className="w-full text-left text-sm">
-                                <caption className="sr-only">
-                                    {current.label} filtradas, página{' '}
-                                    {records.current_page}
-                                </caption>
-                                <thead className="bg-muted/50">
-                                    <tr>
-                                        {columns[kind].map(([key, label]) => (
-                                            <th
+                )}
+                {records.data.length === 0 ? (
+                    <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+                        Nenhum registro encontrado para os filtros selecionados.
+                    </p>
+                ) : (
+                    <div
+                        className="max-w-full overflow-x-auto rounded-xl border"
+                        tabIndex={0}
+                        role="region"
+                        aria-label={`Tabela de ${current.label.toLowerCase()}`}
+                    >
+                        <table className="w-full text-left text-sm">
+                            <caption className="sr-only">
+                                {current.label} filtradas, página{' '}
+                                {records.current_page}
+                            </caption>
+                            <thead className="bg-muted/50">
+                                <tr>
+                                    {columns[kind].map(([key, label]) => (
+                                        <th
+                                            key={key}
+                                            scope="col"
+                                            className="px-4 py-3 font-medium whitespace-nowrap"
+                                        >
+                                            {label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {records.data.map((row) => (
+                                    <tr key={row.id} className="border-t">
+                                        {columns[kind].map(([key]) => (
+                                            <td
                                                 key={key}
-                                                scope="col"
-                                                className="px-4 py-3 font-medium whitespace-nowrap"
+                                                className="max-w-80 min-w-28 px-4 py-3 align-top wrap-break-word"
                                             >
-                                                {label}
-                                            </th>
+                                                {key === 'cost'
+                                                    ? money(
+                                                          row.cost as
+                                                              | string
+                                                              | null,
+                                                      )
+                                                    : (row[key] ?? '—')}
+                                            </td>
                                         ))}
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {records.data.map((row) => (
-                                        <tr key={row.id} className="border-t">
-                                            {columns[kind].map(([key]) => (
-                                                <td
-                                                    key={key}
-                                                    className="max-w-80 min-w-28 px-4 py-3 align-top wrap-break-word"
-                                                >
-                                                    {key === 'cost'
-                                                        ? money(
-                                                              row.cost as
-                                                                  | string
-                                                                  | null,
-                                                          )
-                                                        : (row[key] ?? '—')}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                    <ManagementPagination
-                        page={records.current_page}
-                        last={records.last_page}
-                        busy={loading}
-                        onChange={(page) =>
-                            router.get(
-                                current.route.url(),
-                                { ...filters, page },
-                                callbacks,
-                            )
-                        }
-                    />
-                </section>
-            </div>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+                <ManagementPagination
+                    page={records.current_page}
+                    last={records.last_page}
+                    busy={loading}
+                    onChange={(page) =>
+                        router.get(
+                            current.route.url(),
+                            { ...filters, page },
+                            callbacks,
+                        )
+                    }
+                />
+            </section>
         </>
     );
 }

@@ -35,6 +35,9 @@ services:
       dockerfile: Dockerfile
     container_name: cosphere_vite
     working_dir: /var/www/html
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "500"
     ports:
       - "5174:5174"
     volumes:

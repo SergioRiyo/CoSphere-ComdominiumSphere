@@ -14,6 +14,7 @@ import {
     ChartNoAxesCombined,
     Users,
     UsersRound,
+    Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -31,6 +32,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminFinancialIndex } from '@/routes/admin/financial';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as pollsIndex } from '@/routes/admin/polls';
@@ -41,6 +43,7 @@ import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
 import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as residentFinancialIndex } from '@/routes/morador/financial';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentPollsIndex } from '@/routes/morador/polls';
@@ -100,6 +103,11 @@ export function AppSidebar() {
                       icon: CalendarDays,
                   },
                   {
+                      title: 'Financeiro',
+                      href: adminFinancialIndex(),
+                      icon: Wallet,
+                  },
+                  {
                       title: 'Bloqueios de áreas',
                       href: commonAreaBlocksIndex(),
                       icon: CalendarDays,
@@ -152,6 +160,11 @@ export function AppSidebar() {
                       title: 'Minhas reservas',
                       href: residentReservationsIndex(),
                       icon: CalendarDays,
+                  },
+                  {
+                      title: 'Financeiro',
+                      href: residentFinancialIndex(),
+                      icon: Wallet,
                   },
                   {
                       title: 'Encomendas',

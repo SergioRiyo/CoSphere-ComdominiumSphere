@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ReportRequest;
 use App\Services\ReportCsvService;
 use App\Services\ReportQueryService;
+use App\Services\ReportSpreadsheetService;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -19,5 +20,10 @@ class AdminReportController extends Controller
     public function export(ReportRequest $request, ReportCsvService $csv): StreamedResponse
     {
         return $csv->download($request->user(), $request->report(), $request->validated());
+    }
+
+    public function spreadsheet(ReportRequest $request, ReportSpreadsheetService $spreadsheet): StreamedResponse
+    {
+        return $spreadsheet->download($request->user(), $request->report(), $request->validated());
     }
 }
