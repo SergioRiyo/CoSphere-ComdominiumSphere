@@ -21,8 +21,13 @@ class VisitorService
 {
     public function generateVisitorCode(): string
     {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
         do {
-            $code = 'csa_'.Str::random(32);
+            $code = '';
+            for ($index = 0; $index < 12; $index++) {
+                $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
         } while (VisitorAuthorization::where('access_code', $code)->exists());
 
         return $code;

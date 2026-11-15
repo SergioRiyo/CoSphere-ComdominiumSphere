@@ -35,7 +35,7 @@ use App\Http\Controllers\VisitorInvitationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
-Route::prefix('convites/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->middleware('throttle:visitor-invitation')->group(function () {
+Route::prefix('convites/{token}')->where(['token' => '[^/]{1,128}'])->middleware('throttle:visitor-invitation')->group(function () {
     Route::get('/', [VisitorInvitationController::class, 'show'])->name('visitor-invitations.show');
     Route::post('/', [VisitorInvitationController::class, 'complete'])->name('visitor-invitations.complete');
 });

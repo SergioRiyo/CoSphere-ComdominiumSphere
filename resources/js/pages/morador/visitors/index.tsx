@@ -1,27 +1,14 @@
 import { Head, Link, router, usePoll } from '@inertiajs/react';
-import {
-    CalendarDays,
-    Eye,
-    Plus,
-    Search,
-    SlidersHorizontal,
-    UserRoundSearch,
-    X,
-} from 'lucide-react';
+import { CalendarDays, Eye, Plus, Search, UserRoundSearch } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import VisitorAuthorizationFormDialog from '@/components/morador/visitor-authorization-form-dialog';
 import { InvitationLinkDialog } from '@/components/morador/visitor-invitation-dialog';
 import VisitorInvitationDialog from '@/components/morador/visitor-invitation-dialog';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -47,20 +34,22 @@ type VisitorsPageProps = {
     filters: VisitorAuthorizationFilters;
     statusOptions: VisitorAuthorizationStatusOption[];
     invitationUrl: string | null;
-    errors?: Partial<Record<keyof VisitorAuthorizationFilters, string>>;
 };
 
 export default function VisitorsPage({
     authorizations,
     filters,
     statusOptions,
-    errors = {},
     invitationUrl,
 }: VisitorsPageProps) {
     usePoll(60_000, { only: ['authorizations'] });
 
     const [draftFilters, setDraftFilters] = useState(filters);
     const [isLoading, setIsLoading] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [errors, setErrors] = useState<
+        Partial<Record<keyof VisitorAuthorizationFilters, string>>
+    >({});
     const [isAuthorizationDialogOpen, setIsAuthorizationDialogOpen] =
         useState(false);
     const [isInvitationDialogOpen, setIsInvitationDialogOpen] = useState(false);
@@ -70,6 +59,12 @@ export default function VisitorsPage({
         filters.date_from ||
         filters.date_to,
     );
+    const activeFilterCount = [
+        filters.search,
+        filters.status,
+        filters.date_from,
+        filters.date_to,
+    ].filter(Boolean).length;
 
     const visitWithFilters = (nextFilters: VisitorAuthorizationFilters) => {
         router.get(
@@ -82,8 +77,14 @@ export default function VisitorsPage({
             },
             {
                 preserveScroll: true,
+                preserveState: true,
                 replace: true,
                 onStart: () => setIsLoading(true),
+                onSuccess: () => {
+                    setErrors({});
+                    setFiltersOpen(false);
+                },
+                onError: (visitErrors) => setErrors(visitErrors),
                 onFinish: () => setIsLoading(false),
             },
         );
@@ -142,22 +143,26 @@ export default function VisitorsPage({
                     </div>
                 </header>
 
-                <Card className="border-primary/15 bg-gradient-to-br from-card to-muted/30">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <SlidersHorizontal className="size-4" />
-                            Pesquisa e filtros
-                        </CardTitle>
-                        <CardDescription>
-                            Busque por nome ou CPF e combine status e período.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-semibold">Autorizações e convites</h2>
+                    <ReportFilterSheet
+                        title="visitantes"
+                        activeCount={activeFilterCount}
+                        open={filtersOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                setDraftFilters(filters);
+                                setErrors({});
+                            }
+
+                            setFiltersOpen(open);
+                        }}
+                    >
                         <form
                             onSubmit={submitFilters}
-                            className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(16rem,1.4fr)_12rem_10rem_10rem_auto] xl:items-end"
+                            className="grid gap-4 px-4 pb-6"
                         >
-                            <div className="grid gap-2 lg:col-span-2 xl:col-span-1">
+                            <div className="grid gap-2">
                                 <Label htmlFor="visitor-search">
                                     Visitante
                                 </Label>
@@ -251,29 +256,21 @@ export default function VisitorsPage({
                             </div>
 
                             <div className="flex gap-2">
+                                <Button type="submit" disabled={isLoading}>
+                                    Aplicar filtros
+                                </Button>
                                 <Button
-                                    type="submit"
-                                    className="flex-1 xl:flex-none"
+                                    type="button"
+                                    variant="outline"
+                                    onClick={clearFilters}
                                     disabled={isLoading}
                                 >
-                                    Filtrar
+                                    Limpar filtros
                                 </Button>
-                                {hasFilters && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={clearFilters}
-                                        disabled={isLoading}
-                                        aria-label="Limpar filtros"
-                                    >
-                                        <X />
-                                    </Button>
-                                )}
                             </div>
                         </form>
-                    </CardContent>
-                </Card>
+                    </ReportFilterSheet>
+                </div>
 
                 <Card className="gap-0 overflow-hidden py-0">
                     {isLoading ? (

@@ -251,7 +251,7 @@ export default function VisitorValidationPage({
                                                     event.target.value,
                                                 )
                                             }
-                                            placeholder="Ex.: csa_..."
+                                            placeholder="Ex.: ABCD-2345-EFGH"
                                             required
                                             autoComplete="off"
                                             autoCapitalize="none"

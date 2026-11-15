@@ -51,6 +51,22 @@ services:
       setup:
         condition: service_completed_successfully
 
+  announcement-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cosphere_announcement_worker
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html:Z
+      - vendor:/var/www/html/vendor
+      - node_modules:/var/www/html/node_modules
+    command: php artisan queue:work database --queue=announcement-email --sleep=3 --tries=3 --backoff=60 --timeout=60
+    restart: unless-stopped
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+
 volumes:
   vendor:
   node_modules:

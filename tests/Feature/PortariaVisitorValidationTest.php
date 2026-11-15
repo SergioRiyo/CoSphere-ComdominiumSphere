@@ -201,6 +201,8 @@ class PortariaVisitorValidationTest extends TestCase
             'too long' => ['csa_'.str_repeat('A', 33)],
             'internal whitespace' => ['csa_'.str_repeat('A', 30).' B'],
             'punctuation' => ['csa_'.str_repeat('A', 31).'_'],
+            'short code with ambiguous characters' => ['ABCD1234EFGH'],
+            'short code with invalid separator' => ['ABCD/2345/EFGH'],
             'non ascii' => ['csa_'.str_repeat('A', 31).'é'],
             'oversized string' => [str_repeat('A', 10000)],
             'empty' => [''],
@@ -217,18 +219,20 @@ class PortariaVisitorValidationTest extends TestCase
         $authorization = VisitorAuthorization::factory()->active()->create(['access_code' => $code]);
         $qrPayload = app(VisitorQrCodeService::class)->payload($authorization);
 
-        $this->assertMatchesRegularExpression('/\Acsa_[A-Za-z0-9]{32}\z/', $code);
+        $this->assertMatchesRegularExpression('/\A[A-HJ-NP-Z2-9]{12}\z/', $code);
         $this->assertSame($code, $qrPayload);
+
+        $manualCode = strtolower(implode('-', str_split($code, 4)));
 
         $this->actingAs(User::factory()->porteiro()->create())
             ->postJson(route('portaria.visitor-authorizations.validate'), [
-                'access_code' => " \t{$qrPayload}\n ",
+                'access_code' => " \t{$manualCode}\n ",
             ])
             ->assertOk()
             ->assertJsonPath('allowed', true);
 
         $this->postJson(route('portaria.visitor-accesses.store'), [
-            'access_code' => " \t{$qrPayload}\n ",
+            'access_code' => $manualCode,
         ])->assertCreated();
 
         $this->assertSame($code, $authorization->refresh()->access_code);
