@@ -39,6 +39,46 @@ class LostFoundTest extends TestCase
         $this->actingAs(User::factory()->porteiro()->create())->get(route('morador.lost-found.photo', $item))->assertForbidden();
     }
 
+    public function test_admin_can_create_an_item_and_resident_can_consult_it(): void
+    {
+        $admin = User::factory()->admin()->create(['name' => 'Administrador']);
+        $resident = User::factory()->morador()->create();
+        $payload = [
+            'type' => 'found', 'description' => 'Chave no jardim', 'condition' => 'Boa',
+            'location' => 'Jardim', 'event_date' => today()->toDateString(),
+            'photo' => UploadedFile::fake()->image('chave.png'),
+        ];
+        $this->actingAs($admin)->post(route('admin.lost-found.store'), $payload)
+            ->assertRedirect(route('admin.lost-found.show', LostFoundItem::query()->sole()));
+        $item = LostFoundItem::query()->sole();
+        $this->assertSame($admin->id, $item->author_id);
+        $this->assertSame($admin->id, $item->history()->sole()->actor_id);
+        Storage::disk('local')->assertExists($item->photo_path);
+        $this->get(route('admin.lost-found.show', $item))->assertInertia(fn (Assert $page) => $page
+            ->where('item.author.name', 'Administrador')->where('item.description', 'Chave no jardim'));
+        $this->actingAs($resident)->get(route('morador.lost-found.show', $item))
+            ->assertInertia(fn (Assert $page) => $page->where('item.description', 'Chave no jardim')
+                ->missing('item.author')->missing('item.photo_path'));
+        $this->get(route('morador.lost-found.photo', $item))->assertOk();
+        $this->actingAs($admin)->post(route('admin.lost-found.store'), array_diff_key($payload, ['photo' => true]))
+            ->assertRedirect();
+        $this->assertDatabaseCount('lost_found_items', 2);
+    }
+
+    public function test_admin_creation_validates_fields_and_rejects_unauthorized_users(): void
+    {
+        $url = route('admin.lost-found.store');
+        $this->post($url, [])->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->porteiro()->create())->post($url, [])->assertForbidden();
+        $this->actingAs(User::factory()->morador()->create())->post($url, [])->assertForbidden();
+        $this->actingAs(User::factory()->admin()->inactive()->create())->post($url, [])->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->admin()->unverified()->create())->post($url, [])->assertRedirect(route('verification.notice'));
+        $this->actingAs(User::factory()->admin()->create())->post($url, [])->assertSessionHasErrors([
+            'type', 'description', 'condition', 'location', 'event_date',
+        ]);
+        $this->assertDatabaseCount('lost_found_items', 0);
+    }
+
     public function test_upload_validation_rejects_invalid_image_and_future_date(): void
     {
         $this->actingAs(User::factory()->morador()->create())->post(route('morador.lost-found.store'), [

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useInitials } from '@/hooks/use-initials';
 import { edit } from '@/routes/profile';
 import { send } from '@/routes/verification';
 import type { UnitSummary } from '@/types';
@@ -79,6 +80,7 @@ export default function Profile({
     unit,
 }: ProfileProps) {
     const { auth } = usePage().props;
+    const getInitials = useInitials();
 
     return (
         <>
@@ -92,155 +94,205 @@ export default function Profile({
                     description="Consulte seus dados cadastrais e mantenha suas informações de contato atualizadas."
                 />
 
-                <Card className="border-cosphere-line/80 shadow-cosphere-soft dark:border-border">
-                    <CardHeader>
-                        <h2 className="text-lg font-semibold text-cosphere-navy dark:text-foreground">
-                            Informações pessoais
-                        </h2>
-                        <CardDescription>
-                            Você pode alterar seu nome, e-mail e telefone.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Form
-                            {...ProfileController.update.form()}
-                            options={{ preserveScroll: true }}
-                            setDefaultsOnSuccess
-                            className="space-y-5"
-                        >
-                            {({ processing, errors }) => (
-                                <>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="name">Nome</Label>
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            defaultValue={profile.name}
-                                            required
-                                            autoComplete="name"
-                                            placeholder="Nome completo"
-                                        />
-                                        <InputError message={errors.name} />
-                                    </div>
+                <div className="flex flex-col gap-4 rounded-2xl border border-cosphere-line/80 bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:gap-5 dark:border-border">
+                    <div
+                        aria-hidden="true"
+                        className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-cosphere-blue/10 text-lg font-semibold text-cosphere-blue dark:bg-primary/15 dark:text-foreground"
+                    >
+                        {getInitials(profile.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-lg font-semibold">
+                            {profile.name}
+                        </p>
+                        <p className="text-sm break-all text-muted-foreground">
+                            {profile.email}
+                        </p>
+                    </div>
+                    <Badge variant="secondary" className="w-fit">
+                        {roleLabel}
+                    </Badge>
+                </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="email">E-mail</Label>
-                                        <Input
-                                            id="email"
-                                            type="email"
-                                            name="email"
-                                            defaultValue={profile.email}
-                                            required
-                                            autoComplete="email"
-                                            placeholder="seu.email@exemplo.com"
-                                        />
-                                        <InputError message={errors.email} />
-                                    </div>
+                <div className="grid items-start gap-6 xl:grid-cols-2">
+                    <Card className="border-cosphere-line/80 shadow-cosphere-soft dark:border-border">
+                        <CardHeader>
+                            <h2 className="text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                Informações pessoais
+                            </h2>
+                            <CardDescription>
+                                Você pode alterar seu nome, e-mail e telefone.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form
+                                {...ProfileController.update.form()}
+                                options={{ preserveScroll: true }}
+                                setDefaultsOnSuccess
+                                className="space-y-5"
+                            >
+                                {({
+                                    processing,
+                                    errors,
+                                    recentlySuccessful,
+                                }) => (
+                                    <>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="name">Nome</Label>
+                                            <Input
+                                                id="name"
+                                                name="name"
+                                                defaultValue={profile.name}
+                                                required
+                                                autoComplete="name"
+                                                placeholder="Nome completo"
+                                            />
+                                            <InputError message={errors.name} />
+                                        </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="phone">Telefone</Label>
-                                        <Input
-                                            id="phone"
-                                            type="tel"
-                                            name="phone"
-                                            defaultValue={profile.phone ?? ''}
-                                            autoComplete="tel"
-                                            placeholder="(00) 00000-0000"
-                                        />
-                                        <InputError message={errors.phone} />
-                                    </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="email">
+                                                E-mail
+                                            </Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                name="email"
+                                                defaultValue={profile.email}
+                                                required
+                                                autoComplete="email"
+                                                placeholder="seu.email@exemplo.com"
+                                            />
+                                            <InputError
+                                                message={errors.email}
+                                            />
+                                        </div>
 
-                                    {mustVerifyEmail &&
-                                        auth.user.email_verified_at ===
-                                            null && (
-                                            <div className="rounded-lg border border-cosphere-orange/30 bg-cosphere-orange/5 p-4 text-sm text-muted-foreground">
-                                                <p>
-                                                    Seu endereço de e-mail ainda
-                                                    não foi verificado.{' '}
-                                                    <Link
-                                                        href={send()}
-                                                        as="button"
-                                                        className="font-medium text-cosphere-blue underline underline-offset-4"
-                                                    >
-                                                        Reenviar e-mail de
-                                                        verificação
-                                                    </Link>
-                                                </p>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="phone">
+                                                Telefone
+                                            </Label>
+                                            <Input
+                                                id="phone"
+                                                type="tel"
+                                                name="phone"
+                                                defaultValue={
+                                                    profile.phone ?? ''
+                                                }
+                                                autoComplete="tel"
+                                                placeholder="(00) 00000-0000"
+                                            />
+                                            <InputError
+                                                message={errors.phone}
+                                            />
+                                        </div>
 
-                                                {status ===
-                                                    'verification-link-sent' && (
-                                                    <p className="mt-2 font-medium text-emerald-600 dark:text-emerald-400">
-                                                        Um novo link de
-                                                        verificação foi enviado.
+                                        {mustVerifyEmail &&
+                                            auth.user.email_verified_at ===
+                                                null && (
+                                                <div className="rounded-lg border border-cosphere-orange/30 bg-cosphere-orange/5 p-4 text-sm text-muted-foreground">
+                                                    <p>
+                                                        Seu endereço de e-mail
+                                                        ainda não foi
+                                                        verificado.{' '}
+                                                        <Link
+                                                            href={send()}
+                                                            as="button"
+                                                            className="font-medium text-cosphere-blue underline underline-offset-4"
+                                                        >
+                                                            Reenviar e-mail de
+                                                            verificação
+                                                        </Link>
                                                     </p>
-                                                )}
-                                            </div>
-                                        )}
 
-                                    <Button
-                                        disabled={processing}
-                                        data-test="update-profile-button"
-                                    >
-                                        Salvar alterações
-                                    </Button>
-                                </>
-                            )}
-                        </Form>
-                    </CardContent>
-                </Card>
+                                                    {status ===
+                                                        'verification-link-sent' && (
+                                                        <p className="mt-2 font-medium text-emerald-600 dark:text-emerald-400">
+                                                            Um novo link de
+                                                            verificação foi
+                                                            enviado.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
 
-                <Card className="border-cosphere-line/80 shadow-sm dark:border-border">
-                    <CardHeader>
-                        <h2 className="text-lg font-semibold text-cosphere-navy dark:text-foreground">
-                            Dados do cadastro
-                        </h2>
-                        <CardDescription>
-                            Estes dados são administrados pelo condomínio e não
-                            podem ser alterados nesta página.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <dl className="grid gap-3 sm:grid-cols-2">
-                            <ProfileDetail
-                                icon={IdCard}
-                                label="CPF"
-                                value={profile.cpf ?? 'Não informado'}
-                            />
-                            <ProfileDetail
-                                icon={ShieldCheck}
-                                label="Perfil"
-                                value={
-                                    <Badge variant="secondary">
-                                        {roleLabel}
-                                    </Badge>
-                                }
-                            />
-                            <ProfileDetail
-                                icon={CircleCheck}
-                                label="Status"
-                                value={
-                                    <Badge
-                                        variant="outline"
-                                        className={
-                                            profile.is_active
-                                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
-                                                : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300'
-                                        }
-                                    >
-                                        {profile.is_active
-                                            ? 'Ativo'
-                                            : 'Inativo'}
-                                    </Badge>
-                                }
-                            />
-                            <ProfileDetail
-                                icon={Building2}
-                                label="Unidade"
-                                value={formatUnit(unit)}
-                            />
-                        </dl>
-                    </CardContent>
-                </Card>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <Button
+                                                disabled={processing}
+                                                data-test="update-profile-button"
+                                            >
+                                                {processing
+                                                    ? 'Salvando…'
+                                                    : 'Salvar alterações'}
+                                            </Button>
+                                            {recentlySuccessful && (
+                                                <p
+                                                    role="status"
+                                                    className="text-sm text-emerald-700 dark:text-emerald-400"
+                                                >
+                                                    Alterações salvas.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </Form>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-cosphere-line/80 shadow-sm dark:border-border">
+                        <CardHeader>
+                            <h2 className="text-lg font-semibold text-cosphere-navy dark:text-foreground">
+                                Dados do cadastro
+                            </h2>
+                            <CardDescription>
+                                Estes dados são administrados pelo condomínio e
+                                não podem ser alterados nesta página.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <dl className="grid gap-3 sm:grid-cols-2">
+                                <ProfileDetail
+                                    icon={IdCard}
+                                    label="CPF"
+                                    value={profile.cpf ?? 'Não informado'}
+                                />
+                                <ProfileDetail
+                                    icon={ShieldCheck}
+                                    label="Perfil"
+                                    value={
+                                        <Badge variant="secondary">
+                                            {roleLabel}
+                                        </Badge>
+                                    }
+                                />
+                                <ProfileDetail
+                                    icon={CircleCheck}
+                                    label="Status"
+                                    value={
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                profile.is_active
+                                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300'
+                                                    : 'border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-300'
+                                            }
+                                        >
+                                            {profile.is_active
+                                                ? 'Ativo'
+                                                : 'Inativo'}
+                                        </Badge>
+                                    }
+                                />
+                                <ProfileDetail
+                                    icon={Building2}
+                                    label="Unidade"
+                                    value={formatUnit(unit)}
+                                />
+                            </dl>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         </>
     );

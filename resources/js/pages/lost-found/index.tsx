@@ -40,11 +40,7 @@ export default function LostFoundIndex({ items, filters }: Props) {
                             intermediar a devolução.
                         </p>
                     </div>
-                    {!admin && (
-                        <Button onClick={() => setOpen(true)}>
-                            Registrar item
-                        </Button>
-                    )}
+                    <Button onClick={() => setOpen(true)}>Registrar item</Button>
                 </header>
                 <form
                     className="flex flex-wrap items-end gap-3 rounded-xl border p-4"
@@ -189,14 +185,12 @@ export default function LostFoundIndex({ items, filters }: Props) {
                     )}
                 </nav>
             </div>
-            {!admin && (
-                <LostFoundForm
-                    key={String(open)}
-                    admin={false}
-                    open={open}
-                    onOpenChange={setOpen}
-                />
-            )}
+            <LostFoundForm
+                key={String(open)}
+                admin={admin}
+                open={open}
+                onOpenChange={setOpen}
+            />
         </>
     );
 }

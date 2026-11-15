@@ -20,6 +20,7 @@ import {
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import {
     Sidebar,
     SidebarContent,
@@ -38,7 +39,7 @@ import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
 import { index as adminLostFoundIndex } from '@/routes/admin/lost-found';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as pollsIndex } from '@/routes/admin/polls';
-import { reservations as reportsIndex } from '@/routes/admin/reports';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
@@ -62,6 +63,8 @@ import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
+    const { currentUrl } = useCurrentUrl();
+    const reportsPath = reportsIndex.url();
     const dashboardHref = {
         admin: adminDashboard(),
         morador: moradorDashboard(),
@@ -113,6 +116,9 @@ export function AppSidebar() {
                   {
                       title: 'Relatórios',
                       href: reportsIndex(),
+                      isActive:
+                          currentUrl === reportsPath ||
+                          currentUrl.startsWith(reportsPath + '/'),
                       icon: ChartNoAxesCombined,
                   },
                   {

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Announcement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 
@@ -19,6 +20,15 @@ class AnnouncementQueryService
     public function find(User $user, int $id): Announcement
     {
         return $this->visibleTo($user)->findOrFail($id);
+    }
+
+    /** @return Collection<int, Announcement> */
+    public function recentForResident(User $user): Collection
+    {
+        abort_unless($user->role === UserRole::Morador, 403);
+
+        return $this->visibleTo($user)->where('published_at', '<=', now())
+            ->orderByDesc('published_at')->orderByDesc('id')->limit(3)->get();
     }
 
     private function visibleTo(User $user): Builder

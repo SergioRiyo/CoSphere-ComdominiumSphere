@@ -2,9 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderStatus;
 use App\Enums\UserRole;
+use App\Models\Announcement;
+use App\Models\FinancialCharge;
 use App\Models\Incident;
 use App\Models\Notification;
+use App\Models\Order;
+use App\Models\Poll;
+use App\Models\PollOption;
+use App\Models\PollVote;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Models\User;
@@ -177,7 +184,10 @@ class DashboardTest extends TestCase
                 ->where('auth.user.email', 'joao@example.com')
                 ->where('auth.user.role', UserRole::Morador->value)
                 ->where('unit', null)
-                ->where('active_authorizations', 0));
+                ->where('active_authorizations', 0)
+                ->where('overview.orders_pending', null)
+                ->where('overview.open_amount_cents', null)
+                ->where('overview.open_charges_count', null));
     }
 
     public function test_resident_dashboard_counts_active_authorizations_for_their_unit(): void
@@ -205,6 +215,49 @@ class DashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('active_authorizations', 2)
                 ->missing('present_visitors'));
+    }
+
+    public function test_resident_overview_respects_unit_and_personal_visibility_and_statuses(): void
+    {
+        $resident = User::factory()->morador()->create();
+        $sameUnit = User::factory()->morador()->create(['unit_id' => $resident->unit_id]);
+        $other = User::factory()->morador()->create();
+        $next = Reservation::factory()->create(['user_id' => $resident->id, 'unit_id' => $resident->unit_id, 'starts_at' => now()->addDay(), 'ends_at' => now()->addDay()->addHour(), 'status' => 'pending']);
+        Reservation::factory()->create(['user_id' => $sameUnit->id, 'unit_id' => $resident->unit_id, 'starts_at' => now()->addHours(2), 'ends_at' => now()->addHours(3)]);
+        Reservation::factory()->create(['user_id' => $resident->id, 'unit_id' => $resident->unit_id, 'starts_at' => now()->addDays(2), 'ends_at' => now()->addDays(2)->addHour(), 'status' => 'cancelled']);
+        Incident::factory()->inProgress()->create(['resident_id' => $resident->id, 'unit_id' => $resident->unit_id]);
+        Incident::factory()->open()->create(['resident_id' => $sameUnit->id, 'unit_id' => $resident->unit_id]);
+        Incident::factory()->completed()->create(['resident_id' => $resident->id, 'unit_id' => $resident->unit_id]);
+        Order::factory()->create(['unit_id' => $resident->unit_id, 'resident_id' => $sameUnit->id, 'status' => OrderStatus::ReceivedAtGate]);
+        Order::factory()->create(['unit_id' => $other->unit_id, 'resident_id' => $other->id, 'status' => OrderStatus::ReceivedAtGate]);
+        FinancialCharge::factory()->create(['unit_id' => $resident->unit_id, 'amount_cents' => 12345, 'due_date' => today()->subDay()]);
+        FinancialCharge::factory()->create(['unit_id' => $resident->unit_id, 'status' => 'paid', 'paid_at' => today()]);
+        FinancialCharge::factory()->create(['unit_id' => $other->unit_id]);
+
+        $this->actingAs($resident)->get(route('morador.dashboard', ['unit_id' => $other->unit_id]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('overview.orders_pending', 1)->where('overview.reservations_count', 1)
+                ->where('overview.next_reservation.id', $next->id)->where('overview.incidents_open', 1)
+                ->where('overview.open_amount_cents', 12345)->where('overview.open_charges_count', 1));
+    }
+
+    public function test_resident_overview_shows_only_recent_published_announcements_and_open_polls(): void
+    {
+        $resident = User::factory()->morador()->create();
+        Announcement::factory()->published()->count(4)->create(['published_at' => now()->subDay()]);
+        Announcement::factory()->create(['title' => 'Rascunho']);
+        Announcement::factory()->published()->create(['published_at' => now()->addDay()]);
+        Poll::factory()->open()->count(4)->create(['starts_at' => now()->subHour()]);
+        Poll::factory()->closed()->create();
+        Poll::factory()->create(['published_at' => now(), 'starts_at' => now()->addDay()]);
+        $poll = Poll::factory()->open()->create(['starts_at' => now()]);
+        $option = PollOption::factory()->create(['poll_id' => $poll->id]);
+        PollVote::factory()->create(['poll_id' => $poll->id, 'poll_option_id' => $option->id, 'user_id' => $resident->id]);
+
+        $this->actingAs($resident)->get(route('morador.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page->has('overview.announcements', 3)
+                ->has('overview.polls', 3)->where('overview.polls.0.id', $poll->id)
+                ->where('overview.polls.0.has_voted', true)->missing('overview.polls.0.votes'));
     }
 
     public function test_a_doorman_can_access_the_portaria_dashboard(): void

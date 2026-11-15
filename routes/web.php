@@ -52,6 +52,7 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
         Route::get('lost-found', [LostFoundController::class, 'index'])->name('lost-found.index');
+        Route::post('lost-found', [LostFoundController::class, 'store'])->name('lost-found.store');
         Route::get('lost-found/{lostFoundItem}', [LostFoundController::class, 'show'])->whereNumber('lostFoundItem')->name('lost-found.show');
         Route::put('lost-found/{lostFoundItem}', [LostFoundController::class, 'update'])->whereNumber('lostFoundItem')->name('lost-found.update');
         Route::patch('lost-found/{lostFoundItem}/status', [LostFoundController::class, 'status'])->whereNumber('lostFoundItem')->name('lost-found.status');

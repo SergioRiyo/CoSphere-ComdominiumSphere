@@ -35,8 +35,7 @@ export default function ReportFilterSheet({
                 <SheetHeader>
                     <SheetTitle>Filtros de {title}</SheetTitle>
                     <SheetDescription>
-                        Selecione os critérios e aplique os filtros ao
-                        relatório.
+                        Selecione os critérios e aplique os filtros à listagem.
                     </SheetDescription>
                 </SheetHeader>
                 {children}

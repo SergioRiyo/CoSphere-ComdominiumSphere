@@ -1,5 +1,7 @@
 import { useForm } from '@inertiajs/react';
-import type { FormEvent } from 'react';
+import { ImagePlus, X } from 'lucide-react';
+import { useRef  } from 'react';
+import type {FormEvent} from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -8,8 +10,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { update as adminUpdate } from '@/routes/admin/lost-found';
-import { store, update as residentUpdate } from '@/routes/morador/lost-found';
+import {
+    store as adminStore,
+    update as adminUpdate,
+} from '@/routes/admin/lost-found';
+import {
+    store as residentStore,
+    update as residentUpdate,
+} from '@/routes/morador/lost-found';
 import type { LostFoundItem } from '@/types/lost-found';
 
 export default function LostFoundForm({
@@ -23,6 +31,7 @@ export default function LostFoundForm({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
+    const photoInputRef = useRef<HTMLInputElement>(null);
     const form = useForm({
         type: item?.type ?? 'lost',
         description: item?.description ?? '',
@@ -39,12 +48,19 @@ export default function LostFoundForm({
             ? admin
                 ? adminUpdate.url(item.id)
                 : residentUpdate.url(item.id)
-            : store.url();
+            : admin
+              ? adminStore.url()
+              : residentStore.url();
         form.post(url, {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 form.reset();
+
+                if (photoInputRef.current) {
+                    photoInputRef.current.value = '';
+                }
+
                 onOpenChange(false);
             },
         });
@@ -134,10 +150,12 @@ export default function LostFoundForm({
                             }
                         />
                     </label>
-                    <label className="grid gap-1 text-sm">
-                        Foto opcional (JPEG, PNG ou WebP, até 5 MB)
+                    <div className="grid gap-2 text-sm">
+                        <span>Foto opcional</span>
                         <input
+                            ref={photoInputRef}
                             type="file"
+                            className="hidden"
                             accept="image/jpeg,image/png,image/webp"
                             onChange={(event) =>
                                 form.setData(
@@ -146,7 +164,48 @@ export default function LostFoundForm({
                                 )
                             }
                         />
-                    </label>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => photoInputRef.current?.click()}
+                            >
+                                <ImagePlus aria-hidden="true" />
+                                {form.data.photo
+                                    ? 'Trocar foto'
+                                    : 'Adicionar foto'}
+                            </Button>
+                            {form.data.photo && (
+                                <>
+                                    <span
+                                        className="min-w-0 flex-1 truncate text-muted-foreground"
+                                        title={form.data.photo.name}
+                                    >
+                                        {form.data.photo.name}
+                                    </span>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        aria-label="Remover foto selecionada"
+                                        onClick={() => {
+                                            form.setData('photo', null);
+
+                                            if (photoInputRef.current) {
+                                                photoInputRef.current.value =
+                                                    '';
+                                            }
+                                        }}
+                                    >
+                                        <X aria-hidden="true" />
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            JPEG, PNG ou WebP, até 5 MB.
+                        </p>
+                    </div>
                     {item?.has_photo && (
                         <label className="flex items-center gap-2 text-sm">
                             <input

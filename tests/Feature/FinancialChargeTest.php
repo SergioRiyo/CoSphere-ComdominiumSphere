@@ -55,6 +55,21 @@ class FinancialChargeTest extends TestCase
         $this->get(route('admin.financial.index', ['date_to' => '2026-11-14']))->assertOk();
     }
 
+    public function test_financial_filters_combine_unit_status_and_inclusive_due_date_range(): void
+    {
+        $unit = Unit::factory()->create();
+        $charge = FinancialCharge::factory()->create(['unit_id' => $unit->id, 'due_date' => '2026-11-10']);
+        FinancialCharge::factory()->create(['unit_id' => $unit->id, 'due_date' => '2026-11-09']);
+        FinancialCharge::factory()->create(['due_date' => '2026-11-10']);
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('admin.financial.index', ['unit_id' => $unit->id, 'status' => 'overdue', 'date_from' => '2026-11-10', 'date_to' => '2026-11-10']))
+            ->assertInertia(fn (Assert $page) => $page->has('charges.data', 1)
+                ->where('charges.data.0.id', $charge->id)->where('filters.status', 'overdue')
+                ->where('filters.date_from', '2026-11-10')->where('filters.date_to', '2026-11-10'));
+        $this->getJson(route('admin.financial.index', ['date_from' => '2026-11-11', 'date_to' => '2026-11-10']))
+            ->assertUnprocessable()->assertJsonValidationErrors('date_to');
+    }
+
     public function test_admin_lifecycle_records_history_and_prevents_invalid_transitions(): void
     {
         $admin = User::factory()->admin()->create();
@@ -107,9 +122,17 @@ class FinancialChargeTest extends TestCase
     {
         User::factory()->admin()->create();
         $resident = User::factory()->morador()->create();
+        $otherResident = User::factory()->morador()->create();
+        $existing = FinancialCharge::factory()->create(['unit_id' => $resident->unit_id]);
         $this->seed(FinancialChargeSeeder::class);
         $this->seed(FinancialChargeSeeder::class);
-        $this->assertSame(2, FinancialCharge::where('unit_id', $resident->unit_id)->count());
-        $this->assertSame(2, FinancialChargeHistory::count());
+        $this->assertSame(17, FinancialCharge::count());
+        $this->assertSame(9, FinancialCharge::where('unit_id', $resident->unit_id)->count());
+        $this->assertSame(8, FinancialCharge::where('unit_id', $otherResident->unit_id)->count());
+        $this->assertModelExists($existing);
+        $this->assertSame(8, FinancialCharge::where('description', 'like', 'Simulação %')->where('status', 'open')->count());
+        $this->assertSame(4, FinancialCharge::where('status', 'paid')->count());
+        $this->assertSame(4, FinancialCharge::where('status', 'cancelled')->count());
+        $this->assertSame(24, FinancialChargeHistory::count());
     }
 }

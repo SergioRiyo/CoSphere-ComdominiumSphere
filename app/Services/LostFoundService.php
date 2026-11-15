@@ -78,7 +78,6 @@ class LostFoundService
     public function create(User $user, array $data): LostFoundItem
     {
         $this->authorizeUser($user);
-        abort_unless($user->role === UserRole::Morador, 403);
         $newPath = null;
         try {
             $item = DB::transaction(function () use ($user, $data, &$newPath): LostFoundItem {

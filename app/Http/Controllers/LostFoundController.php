@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Http\Requests\LostFoundIndexRequest;
 use App\Http\Requests\LostFoundItemRequest;
 use App\Http\Requests\LostFoundMessageRequest;
@@ -32,7 +33,7 @@ class LostFoundController extends Controller
     {
         $item = $service->create($request->user(), $request->validated());
 
-        return redirect()->route('morador.lost-found.show', $item);
+        return redirect()->route($request->user()->role === UserRole::Admin ? 'admin.lost-found.show' : 'morador.lost-found.show', $item);
     }
 
     public function update(LostFoundItemRequest $request, LostFoundItem $lostFoundItem, LostFoundService $service): RedirectResponse

@@ -7,6 +7,7 @@ use App\Models\Poll;
 use App\Models\PollOption;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 
@@ -31,6 +32,18 @@ class PollQueryService
         }
 
         return $query->orderByDesc('starts_at')->orderByDesc('id')->paginate(15)->appends(['state' => $state]);
+    }
+
+    /** @return Collection<int, Poll> */
+    public function recentOpenForResident(User $user): Collection
+    {
+        abort_unless($user->role === UserRole::Morador, 403);
+
+        return $this->visibleTo($user)->withExists([
+            'votes as has_voted' => fn (Builder $votes) => $votes->where('user_id', $user->id),
+        ])->whereNotNull('starts_at')->where('starts_at', '<=', now())
+            ->where(fn (Builder $dates) => $dates->whereNull('ends_at')->orWhere('ends_at', '>', now()))
+            ->orderByDesc('starts_at')->orderByDesc('id')->limit(3)->get();
     }
 
     public function find(User $user, int $id): Poll

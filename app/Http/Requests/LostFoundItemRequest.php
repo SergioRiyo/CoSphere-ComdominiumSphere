@@ -17,7 +17,7 @@ class LostFoundItemRequest extends FormRequest
             return false;
         }
         if (! $item) {
-            return $user->role === UserRole::Morador;
+            return in_array($user->role, [UserRole::Admin, UserRole::Morador], true);
         }
 
         return $item instanceof LostFoundItem && ($user->role === UserRole::Admin || ($user->role === UserRole::Morador && $item->author_id === $user->id && $item->status === 'open'));

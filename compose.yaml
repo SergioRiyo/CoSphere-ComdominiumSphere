@@ -46,6 +46,7 @@ services:
       - vendor:/var/www/html/vendor
       - node_modules:/var/www/html/node_modules
     command: npm run dev -- --host 0.0.0.0
+    restart: unless-stopped
     depends_on:
       setup:
         condition: service_completed_successfully
