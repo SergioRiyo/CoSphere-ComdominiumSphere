@@ -17,10 +17,10 @@ import {
     maintenances,
     reservations,
 } from '@/routes/admin/reports';
+import type { Paged } from '@/types/maintenance';
 import { spreadsheet as spreadsheetIncidents } from '@/routes/admin/reports/incidents';
 import { spreadsheet as spreadsheetMaintenances } from '@/routes/admin/reports/maintenances';
 import { spreadsheet as spreadsheetReservations } from '@/routes/admin/reports/reservations';
-import type { Paged } from '@/types/maintenance';
 
 type Kind = 'reservations' | 'incidents' | 'maintenances';
 type Option = { value: string; label: string };
@@ -294,6 +294,7 @@ function Report({ kind, records, filters, options, metrics }: Props) {
                                     form.clearErrors();
                                     setFailure('');
                                 }
+
                                 setFiltersOpen(open);
                             }}
                         >

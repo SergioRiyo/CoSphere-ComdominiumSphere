@@ -1,7 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { ImagePlus, X } from 'lucide-react';
-import { useRef  } from 'react';
-import type {FormEvent} from 'react';
+import { useRef } from 'react';
+import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -10,6 +10,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import type { LostFoundItem } from '@/types/lost-found';
 import {
     store as adminStore,
     update as adminUpdate,
@@ -18,7 +19,6 @@ import {
     store as residentStore,
     update as residentUpdate,
 } from '@/routes/morador/lost-found';
-import type { LostFoundItem } from '@/types/lost-found';
 
 export default function LostFoundForm({
     item,

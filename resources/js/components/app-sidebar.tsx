@@ -34,9 +34,7 @@ import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
-import { index as adminFinancialIndex } from '@/routes/admin/financial';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
-import { index as adminLostFoundIndex } from '@/routes/admin/lost-found';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
 import { index as pollsIndex } from '@/routes/admin/polls';
 import { index as reportsIndex } from '@/routes/admin/reports';
@@ -45,9 +43,7 @@ import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
-import { index as residentFinancialIndex } from '@/routes/morador/financial';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
-import { index as residentLostFoundIndex } from '@/routes/morador/lost-found';
 import { index as ordersIndex } from '@/routes/morador/orders';
 import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
@@ -59,6 +55,10 @@ import { index as visitorAccessHistoryIndex } from '@/routes/portaria/visitor-ac
 import { index as visitorAccessesIndex } from '@/routes/portaria/visitor-accesses';
 import { validation } from '@/routes/portaria/visitor-authorizations';
 import type { NavItem } from '@/types';
+import { index as adminFinancialIndex } from '@/routes/admin/financial';
+import { index as adminLostFoundIndex } from '@/routes/admin/lost-found';
+import { index as residentFinancialIndex } from '@/routes/morador/financial';
+import { index as residentLostFoundIndex } from '@/routes/morador/lost-found';
 
 export function AppSidebar() {
     const { auth } = usePage().props;

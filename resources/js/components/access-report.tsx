@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index } from '@/routes/admin/reports';
-import { spreadsheet } from '@/routes/admin/reports/accesses';
 import type {
     AccessReportItem,
     ReportFilters,
     ReportOptions,
     ReportPaginator,
 } from '@/types/report';
+import { spreadsheet } from '@/routes/admin/reports/accesses';
 
 export type AccessReportProps = {
     accesses: ReportPaginator<AccessReportItem>;
@@ -105,7 +105,9 @@ export default function AccessReport({
             preserveScroll: true,
             replace: true,
             onSuccess: () => {
-                if (closeOnSuccess) setFiltersOpen(false);
+                if (closeOnSuccess) {
+                    setFiltersOpen(false);
+                }
             },
             onStart: () => setBusy(true),
             onFinish: () => setBusy(false),
@@ -171,8 +173,10 @@ export default function AccessReport({
                             }
                             open={filtersOpen}
                             onOpenChange={(open) => {
-                                if (open)
+                                if (open) {
                                     setDraft({ ...emptyFilters, ...filters });
+                                }
+
                                 setFiltersOpen(open);
                             }}
                         >
