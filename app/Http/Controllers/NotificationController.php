@@ -14,7 +14,7 @@ class NotificationController extends Controller
 
     public function index(Request $request): Response
     {
-        return Inertia::render('morador/notifications/index', [
+        return Inertia::render('notifications/index', [
             'notifications' => $this->notificationService->paginateForUser($request->user()),
             'timezone' => config('app.timezone'),
         ]);

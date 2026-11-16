@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { IncidentSelect, incidentDate } from '@/components/incident-fields';
 import InputError from '@/components/input-error';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -27,6 +28,7 @@ export default function IncidentList({
     admin = false,
 }: IncidentListProps & { admin?: boolean }) {
     const [busy, setBusy] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const index = admin ? adminIndex : residentIndex;
     const show = admin ? adminShow : residentShow;
     const form = useForm({
@@ -86,8 +88,111 @@ export default function IncidentList({
             return;
         }
 
-        form.get(index.url(), visiting);
+        form.get(index.url(), {
+            ...visiting,
+            preserveState: true,
+            onSuccess: () => setFiltersOpen(false),
+        });
     }
+
+    const filterForm = (
+        <form
+            onSubmit={submit}
+            className={
+                admin
+                    ? 'grid gap-4 rounded-xl border p-4'
+                    : 'grid gap-4 px-4 pb-6'
+            }
+            aria-label="Filtros de solicitações"
+        >
+            <fieldset
+                disabled={busy}
+                className={
+                    admin
+                        ? 'grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4'
+                        : 'grid min-w-0 gap-4'
+                }
+            >
+                {fields.map((field) => (
+                    <IncidentSelect
+                        key={field.name}
+                        id={'filter-' + field.name}
+                        label={field.label}
+                        value={form.data[field.name]}
+                        options={field.options}
+                        onChange={(value) => form.setData(field.name, value)}
+                        error={form.errors[field.name]}
+                        all
+                        disabled={busy}
+                    />
+                ))}
+                <div className="grid gap-2">
+                    <Label htmlFor="incident-from">Data inicial</Label>
+                    <Input
+                        id="incident-from"
+                        type="date"
+                        value={form.data.date_from}
+                        onChange={(event) =>
+                            form.setData('date_from', event.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.date_from} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="incident-to">Data final</Label>
+                    <Input
+                        id="incident-to"
+                        type="date"
+                        value={form.data.date_to}
+                        onChange={(event) =>
+                            form.setData('date_to', event.target.value)
+                        }
+                    />
+                    <InputError message={form.errors.date_to} />
+                </div>
+            </fieldset>
+            <p className="text-sm text-muted-foreground">
+                Período pela data de cadastro, incluindo o dia inicial e o
+                final.
+            </p>
+            <div className="flex flex-wrap gap-2">
+                <Button disabled={busy} type="submit">
+                    {busy ? 'Buscando...' : 'Aplicar filtros'}
+                </Button>
+                <Button
+                    variant="outline"
+                    disabled={busy}
+                    type="button"
+                    onClick={() =>
+                        router.get(
+                            index.url(),
+                            {},
+                            {
+                                ...visiting,
+                                preserveState: true,
+                                onSuccess: () => {
+                                    form.setData({
+                                        type: '',
+                                        category: '',
+                                        status: '',
+                                        priority: '',
+                                        resident_id: '',
+                                        unit_id: '',
+                                        date_from: '',
+                                        date_to: '',
+                                    });
+                                    form.clearErrors();
+                                    setFiltersOpen(false);
+                                },
+                            },
+                        )
+                    }
+                >
+                    Limpar filtros
+                </Button>
+            </div>
+        </form>
+    );
 
     return (
         <>
@@ -115,81 +220,58 @@ export default function IncidentList({
                         uma solicitação.
                     </p>
                 )}
-                <form
-                    onSubmit={submit}
-                    className="grid gap-4 rounded-xl border p-4"
-                    aria-label="Filtros de solicitações"
-                >
-                    <fieldset
-                        disabled={busy}
-                        className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-                    >
-                        {fields.map((field) => (
-                            <IncidentSelect
-                                key={field.name}
-                                id={'filter-' + field.name}
-                                label={field.label}
-                                value={form.data[field.name]}
-                                options={field.options}
-                                onChange={(value) =>
-                                    form.setData(field.name, value)
-                                }
-                                error={form.errors[field.name]}
-                                all
-                                disabled={busy}
-                            />
-                        ))}
-                        <div className="grid gap-2">
-                            <Label htmlFor="incident-from">Data inicial</Label>
-                            <Input
-                                id="incident-from"
-                                type="date"
-                                value={form.data.date_from}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'date_from',
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                            <InputError message={form.errors.date_from} />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="incident-to">Data final</Label>
-                            <Input
-                                id="incident-to"
-                                type="date"
-                                value={form.data.date_to}
-                                onChange={(event) =>
-                                    form.setData('date_to', event.target.value)
-                                }
-                            />
-                            <InputError message={form.errors.date_to} />
-                        </div>
-                    </fieldset>
-                    <p className="text-sm text-muted-foreground">
-                        Período pela data de cadastro, incluindo o dia inicial e
-                        o final.
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        <Button disabled={busy} type="submit">
-                            {busy ? 'Buscando...' : 'Aplicar filtros'}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            disabled={busy}
-                            type="button"
-                            onClick={() =>
-                                router.get(index.url(), {}, visiting)
-                            }
+                {admin ? (
+                    filterForm
+                ) : (
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p
+                            className="text-sm text-muted-foreground"
+                            aria-live="polite"
                         >
-                            Limpar filtros
-                        </Button>
+                            {incidents.total} solicitação(ões) encontrada(s)
+                        </p>
+                        <ReportFilterSheet
+                            title="solicitações"
+                            activeCount={
+                                [
+                                    filters.type,
+                                    filters.category,
+                                    filters.status,
+                                    filters.date_from,
+                                    filters.date_to,
+                                ].filter(Boolean).length
+                            }
+                            open={filtersOpen}
+                            onOpenChange={(open) => {
+                                if (open) {
+                                    form.setData({
+                                        type: filters.type || '',
+                                        category: filters.category || '',
+                                        status: filters.status || '',
+                                        priority: filters.priority || '',
+                                        resident_id: filters.resident_id || '',
+                                        unit_id: filters.unit_id || '',
+                                        date_from: filters.date_from || '',
+                                        date_to: filters.date_to || '',
+                                    });
+                                    form.clearErrors();
+                                }
+
+                                setFiltersOpen(open);
+                            }}
+                        >
+                            {filterForm}
+                        </ReportFilterSheet>
                     </div>
-                </form>
-                <p className="text-sm text-muted-foreground" aria-live="polite">
-                    {incidents.total} solicitação(ões) encontrada(s)
-                </p>
+                )}
+                {admin && (
+                    <p
+                        className="text-sm text-muted-foreground"
+                        aria-live="polite"
+                    >
+                        {incidents.total} solicitação(ões) encontrada(s)
+                    </p>
+                )}
                 {incidents.data.length === 0 ? (
                     <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
                         {Object.values(filters).some(Boolean)

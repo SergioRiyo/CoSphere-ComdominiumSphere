@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\AdminDashboardService;
+use App\Services\ResidentDashboardService;
 use App\Services\VisitorDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -13,13 +14,15 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly AdminDashboardService $adminDashboardService,
+        private readonly ResidentDashboardService $residentDashboardService,
         private readonly VisitorDashboardService $visitorDashboardService,
     ) {}
 
-    public function admin(): Response
+    public function admin(Request $request): Response
     {
         return Inertia::render('admin/dashboard', [
             'metrics' => $this->adminDashboardService->metrics(),
+            'overview' => $this->adminDashboardService->overview($request->user()),
         ]);
     }
 
@@ -32,13 +35,17 @@ class DashboardController extends Controller
             'unit' => $user->unit()->first(['id', 'block', 'number', 'type', 'complement']),
             'active_authorizations' => $this->visitorDashboardService
                 ->activeAuthorizationsForResident($user),
+            'overview' => $this->residentDashboardService->overview($user),
+            'timezone' => config('app.timezone'),
         ]);
     }
 
     public function porteiro(): Response
     {
         return Inertia::render('portaria/dashboard', [
-            'present_visitors' => $this->visitorDashboardService->presentVisitors(),
+            'present_visitors' => fn () => $this->visitorDashboardService->presentVisitors(),
+            'overview' => fn () => $this->visitorDashboardService->portariaOverview(),
+            'timezone' => config('app.timezone'),
         ]);
     }
 }

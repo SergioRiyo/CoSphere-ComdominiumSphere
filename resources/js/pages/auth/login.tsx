@@ -24,16 +24,16 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title="Entrar" />
 
-            <main className="dark h-svh overflow-hidden bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:grid-rows-[minmax(0,1fr)] lg:p-3 xl:p-4">
-                <div className="hidden min-h-0 overflow-hidden lg:block">
+            <main className="min-h-svh bg-cosphere-deep lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(27rem,0.9fr)] lg:p-3 xl:p-4">
+                <div className="hidden lg:block">
                     <AuthLoginShowcase />
                 </div>
 
-                <section className="relative flex h-svh min-h-0 items-center bg-cosphere-surface px-5 py-3 sm:px-6 lg:h-auto lg:rounded-[1.75rem] lg:px-8 xl:px-12">
+                <section className="relative flex min-h-svh items-center bg-cosphere-surface px-5 py-6 sm:px-6 lg:min-h-0 lg:rounded-[1.75rem] lg:px-8 xl:px-12">
                     <div className="mx-auto w-full max-w-sm">
                         <Link
                             href={home()}
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-cosphere-muted transition-colors hover:text-cosphere-navy focus-visible:ring-2 focus-visible:ring-cosphere-blue focus-visible:ring-offset-2 focus-visible:outline-none lg:absolute lg:top-16 lg:left-1/2 lg:w-full lg:max-w-sm lg:-translate-x-1/2 dark:hover:text-foreground"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-cosphere-muted transition-colors hover:text-cosphere-navy focus-visible:ring-2 focus-visible:ring-cosphere-blue focus-visible:ring-offset-2 focus-visible:outline-none dark:hover:text-foreground"
                         >
                             <ArrowLeft className="size-4" aria-hidden="true" />
                             Início
@@ -48,7 +48,7 @@ export default function Login({ status, canResetPassword }: Props) {
                                 <CoSphereLogo
                                     size="lg"
                                     withTagline
-                                    className="size-72"
+                                    className="size-72 [@media(max-height:700px)]:size-36"
                                 />
                             </Link>
                             <h1 className="mt-2 text-xl font-semibold tracking-tight text-cosphere-navy dark:text-foreground">

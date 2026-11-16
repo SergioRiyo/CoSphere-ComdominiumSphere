@@ -27,7 +27,7 @@ const highlights = [
 
 export default function AuthLoginShowcase() {
     return (
-        <aside className="flex h-full min-h-0 flex-col overflow-hidden rounded-[1.75rem] border border-white/10 bg-cosphere-deep p-5 text-white xl:p-6">
+        <aside className="flex h-full flex-col rounded-[1.75rem] border border-white/10 bg-cosphere-deep p-5 text-white xl:p-6">
             <div>
                 <p className="text-xs font-semibold tracking-[0.28em] text-cosphere-blue uppercase">
                     Gestão inteligente
@@ -54,11 +54,11 @@ export default function AuthLoginShowcase() {
                 </p>
             </div>
 
-            <div className="relative mx-auto mt-5 h-80 w-full max-w-4xl shrink-0 overflow-hidden rounded-2xl border border-white/10 lg:h-96 xl:h-[26rem]">
+            <div className="relative mx-auto mt-5 min-h-[clamp(10rem,30svh,26rem)] w-full max-w-4xl flex-1 overflow-hidden rounded-2xl border border-white/10">
                 <img
                     src={condominioNoite}
                     alt="Condomínio residencial iluminado ao anoitecer"
-                    className="size-full object-cover"
+                    className="absolute inset-0 size-full object-cover"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-cosphere-deep/35" />
                 <span className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-cosphere-deep/75 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">

@@ -21,8 +21,13 @@ class VisitorService
 {
     public function generateVisitorCode(): string
     {
+        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
         do {
-            $code = 'csa_'.Str::random(32);
+            $code = '';
+            for ($index = 0; $index < 12; $index++) {
+                $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+            }
         } while (VisitorAuthorization::where('access_code', $code)->exists());
 
         return $code;
@@ -204,7 +209,7 @@ class VisitorService
 
     public function validateAuthorizationByCode(string $accessCode): VisitorAuthorization
     {
-        $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();
+        $authorization = $this->findAuthorizationByCode($accessCode);
 
         if (! $authorization) {
             throw new DomainException('A autorização não foi encontrada.');
@@ -230,9 +235,7 @@ class VisitorService
      */
     public function validateAccessCode(string $accessCode): array
     {
-        $authorization = VisitorAuthorization::query()
-            ->where('access_code', $accessCode)
-            ->first();
+        $authorization = $this->findAuthorizationByCode($accessCode);
 
         if (! $authorization) {
             return $this->deniedValidationResult(
@@ -285,7 +288,7 @@ class VisitorService
         ?string $observations = null
     ): VisitorAccess {
         $doorman = $this->activeDoorman($doormanId);
-        $authorization = VisitorAuthorization::where('access_code', $accessCode)->first();
+        $authorization = $this->findAuthorizationByCode($accessCode);
 
         if (! $authorization) {
             throw new DomainException('Código de acesso inválido.');
@@ -334,6 +337,13 @@ class VisitorService
 
             return $access;
         });
+    }
+
+    private function findAuthorizationByCode(string $accessCode): ?VisitorAuthorization
+    {
+        $column = strlen($accessCode) === 13 && str_starts_with($accessCode, 'M') ? 'manual_code' : 'access_code';
+
+        return VisitorAuthorization::query()->where($column, $accessCode)->first();
     }
 
     public function registerExit(

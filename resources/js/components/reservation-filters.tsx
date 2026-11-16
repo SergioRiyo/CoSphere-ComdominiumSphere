@@ -11,8 +11,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { index as adminIndex } from '@/routes/admin/reservations';
-import { index as residentIndex } from '@/routes/morador/reservations';
+import { manage as adminIndex } from '@/routes/admin/reservations';
+import { manage as residentIndex } from '@/routes/morador/reservations';
 import type {
     ReservationFilters,
     ReservationStatus,

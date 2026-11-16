@@ -23,6 +23,15 @@ class AdminReservationController extends Controller
         ]);
     }
 
+    public function manage(IndexReservationRequest $request, ReservationQueryService $service): Response
+    {
+        return Inertia::render('admin/reservation-management', [
+            'reservations' => $service->paginate($request->user(), $request->validated()),
+            'filters' => $request->safe()->only(['status', 'date_from', 'date_to']),
+            'statuses' => $service->statuses(),
+        ]);
+    }
+
     public function show(Request $request, int $reservation, ReservationQueryService $service): Response
     {
         return Inertia::render('admin/reservation-details', ['reservation' => $service->details($request->user(), $reservation)]);

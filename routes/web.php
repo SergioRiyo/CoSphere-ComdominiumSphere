@@ -1,13 +1,18 @@
 <?php
 
 use App\Http\Controllers\AdminIncidentController;
+use App\Http\Controllers\AdminPollController;
+use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminReservationController;
+use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\CommonAreaBlockController;
 use App\Http\Controllers\CommonAreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DashboardRedirectController;
+use App\Http\Controllers\FinancialChargeController;
 use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
+use App\Http\Controllers\LostFoundController;
 use App\Http\Controllers\MaintenanceRequestController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortariaOrderController;
@@ -17,9 +22,12 @@ use App\Http\Controllers\PortariaVisitorAccessHistoryController;
 use App\Http\Controllers\PortariaVisitorEntryController;
 use App\Http\Controllers\PortariaVisitorValidationController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReservationCalendarController;
 use App\Http\Controllers\ReservationController;
+use App\Http\Controllers\ResidentAnnouncementController;
 use App\Http\Controllers\ResidentCommonAreaController;
 use App\Http\Controllers\ResidentOrderController;
+use App\Http\Controllers\ResidentPollController;
 use App\Http\Controllers\ServiceProviderController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisitorAuthorizationController;
@@ -27,7 +35,7 @@ use App\Http\Controllers\VisitorInvitationController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
-Route::prefix('convites/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->middleware('throttle:visitor-invitation')->group(function () {
+Route::prefix('convites/{token}')->where(['token' => '[^/]{1,128}'])->middleware('throttle:visitor-invitation')->group(function () {
     Route::get('/', [VisitorInvitationController::class, 'show'])->name('visitor-invitations.show');
     Route::post('/', [VisitorInvitationController::class, 'complete'])->name('visitor-invitations.complete');
 });
@@ -36,8 +44,43 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     Route::get('incident-attachments/{incidentAttachment}', IncidentAttachmentController::class)
         ->whereNumber('incidentAttachment')->name('incident-attachments.download');
     Route::get('dashboard', DashboardRedirectController::class)->name('dashboard');
+    Route::middleware('role:admin,morador')->group(function () {
+        Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::patch('notifications/{notification}/read', [NotificationController::class, 'read'])
+            ->whereNumber('notification')->name('notifications.read');
+    });
 
     Route::prefix('admin')->name('admin.')->middleware('role:admin')->group(function () {
+        Route::get('lost-found', [LostFoundController::class, 'index'])->name('lost-found.index');
+        Route::post('lost-found', [LostFoundController::class, 'store'])->name('lost-found.store');
+        Route::get('lost-found/{lostFoundItem}', [LostFoundController::class, 'show'])->whereNumber('lostFoundItem')->name('lost-found.show');
+        Route::put('lost-found/{lostFoundItem}', [LostFoundController::class, 'update'])->whereNumber('lostFoundItem')->name('lost-found.update');
+        Route::patch('lost-found/{lostFoundItem}/status', [LostFoundController::class, 'status'])->whereNumber('lostFoundItem')->name('lost-found.status');
+        Route::get('lost-found/{lostFoundItem}/photo', [LostFoundController::class, 'photo'])->whereNumber('lostFoundItem')->name('lost-found.photo');
+        Route::post('lost-found/{lostFoundItem}/conversations/{lostFoundConversation}', [LostFoundController::class, 'reply'])->whereNumber(['lostFoundItem', 'lostFoundConversation'])->name('lost-found.reply');
+        Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
+        Route::post('financial', [FinancialChargeController::class, 'store'])->name('financial.store');
+        Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
+        Route::put('financial/{financialCharge}', [FinancialChargeController::class, 'update'])->whereNumber('financialCharge')->name('financial.update');
+        Route::patch('financial/{financialCharge}/status', [FinancialChargeController::class, 'change'])->whereNumber('financialCharge')->name('financial.change');
+        foreach (['reservations', 'incidents', 'maintenances'] as $report) {
+            Route::get('reports/'.$report, [AdminReportController::class, 'index'])->defaults('report', $report)->name('reports.'.$report);
+            Route::get('reports/'.$report.'/csv', [AdminReportController::class, 'export'])->defaults('report', $report)->name('reports.'.$report.'.export');
+            Route::get('reports/'.$report.'/xlsx', [AdminReportController::class, 'spreadsheet'])->defaults('report', $report)->name('reports.'.$report.'.spreadsheet');
+        }
+        Route::get('polls', [AdminPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/create', [AdminPollController::class, 'create'])->name('polls.create');
+        Route::get('polls/{poll}', [AdminPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls', [AdminPollController::class, 'store'])->name('polls.store');
+        Route::patch('polls/{poll}', [AdminPollController::class, 'update'])->whereNumber('poll')->name('polls.update');
+        Route::patch('polls/{poll}/publish', [AdminPollController::class, 'publish'])->whereNumber('poll')->name('polls.publish');
+        Route::patch('polls/{poll}/close', [AdminPollController::class, 'close'])->whereNumber('poll')->name('polls.close');
+        Route::get('announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+        Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
+        Route::get('announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
+        Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+        Route::patch('announcements/{announcement}', [AnnouncementController::class, 'update'])->whereNumber('announcement')->name('announcements.update');
+        Route::patch('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->whereNumber('announcement')->name('announcements.publish');
         Route::resource('service-providers', ServiceProviderController::class)->only(['index', 'create', 'store', 'show', 'update'])->withTrashed(['show'])->whereNumber('service_provider');
         Route::patch('service-providers/{service_provider}/archive', [ServiceProviderController::class, 'archive'])->whereNumber('service_provider')->name('service-providers.archive');
         Route::resource('maintenances', MaintenanceRequestController::class)->parameters(['maintenances' => 'maintenance'])->only(['index', 'create', 'store', 'show', 'update'])->whereNumber('maintenance');
@@ -48,7 +91,11 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::post('incidents/{incident}/maintenance', [AdminIncidentController::class, 'maintenance'])->whereNumber('incident')->name('incidents.maintenance');
         Route::get('dashboard', [DashboardController::class, 'admin'])->name('dashboard');
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/accesses/csv', [ReportController::class, 'export'])->name('reports.accesses.export');
+        Route::get('reports/accesses/xlsx', [ReportController::class, 'spreadsheet'])->name('reports.accesses.spreadsheet');
         Route::get('reservations', [AdminReservationController::class, 'index'])->name('reservations.index');
+        Route::get('reservations/manage', [AdminReservationController::class, 'manage'])->name('reservations.manage');
+        Route::get('reservations-calendar', ReservationCalendarController::class)->name('reservations.calendar');
         Route::get('reservations/{reservation}', [AdminReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/approve', [AdminReservationController::class, 'approve'])->whereNumber('reservation')->name('reservations.approve');
         Route::patch('reservations/{reservation}/reject', [AdminReservationController::class, 'reject'])->whereNumber('reservation')->name('reservations.reject');
@@ -67,6 +114,22 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
     });
 
     Route::prefix('morador')->name('morador.')->middleware('role:morador')->group(function () {
+        Route::get('lost-found', [LostFoundController::class, 'index'])->name('lost-found.index');
+        Route::post('lost-found', [LostFoundController::class, 'store'])->name('lost-found.store');
+        Route::get('lost-found/{lostFoundItem}', [LostFoundController::class, 'show'])->whereNumber('lostFoundItem')->name('lost-found.show');
+        Route::put('lost-found/{lostFoundItem}', [LostFoundController::class, 'update'])->whereNumber('lostFoundItem')->name('lost-found.update');
+        Route::patch('lost-found/{lostFoundItem}/status', [LostFoundController::class, 'status'])->whereNumber('lostFoundItem')->name('lost-found.status');
+        Route::get('lost-found/{lostFoundItem}/photo', [LostFoundController::class, 'photo'])->whereNumber('lostFoundItem')->name('lost-found.photo');
+        Route::post('lost-found/{lostFoundItem}/messages', [LostFoundController::class, 'message'])->whereNumber('lostFoundItem')->name('lost-found.message');
+        Route::post('lost-found/{lostFoundItem}/conversations/{lostFoundConversation}', [LostFoundController::class, 'reply'])->whereNumber(['lostFoundItem', 'lostFoundConversation'])->name('lost-found.reply');
+        Route::get('financial', [FinancialChargeController::class, 'index'])->name('financial.index');
+        Route::get('financial/{financialCharge}', [FinancialChargeController::class, 'show'])->whereNumber('financialCharge')->name('financial.show');
+        Route::get('financial/{financialCharge}/boleto', [FinancialChargeController::class, 'boleto'])->whereNumber('financialCharge')->name('financial.boleto');
+        Route::get('polls', [ResidentPollController::class, 'index'])->name('polls.index');
+        Route::get('polls/{poll}', [ResidentPollController::class, 'show'])->whereNumber('poll')->name('polls.show');
+        Route::post('polls/{poll}/vote', [ResidentPollController::class, 'vote'])->whereNumber('poll')->name('polls.vote');
+        Route::get('announcements', [ResidentAnnouncementController::class, 'index'])->name('announcements.index');
+        Route::get('announcements/{announcement}', [ResidentAnnouncementController::class, 'show'])->whereNumber('announcement')->name('announcements.show');
         Route::resource('incidents', IncidentController::class)->only(['index', 'create', 'store', 'show'])->whereNumber('incident');
         Route::resource('orders', ResidentOrderController::class)->only(['index', 'store', 'show'])->whereNumber('order');
         Route::patch('orders/{order}/pickup', [ResidentOrderController::class, 'pickup'])->name('orders.pickup');
@@ -77,6 +140,8 @@ Route::middleware(['auth', 'active', 'verified'])->group(function () {
         Route::get('dashboard', [DashboardController::class, 'morador'])->name('dashboard');
         Route::post('reservations', [ReservationController::class, 'store'])->name('reservations.store');
         Route::get('reservations', [ReservationController::class, 'index'])->name('reservations.index');
+        Route::get('reservations/manage', [ReservationController::class, 'manage'])->name('reservations.manage');
+        Route::get('reservations-calendar', ReservationCalendarController::class)->name('reservations.calendar');
         Route::get('reservations/{reservation}', [ReservationController::class, 'show'])->whereNumber('reservation')->name('reservations.show');
         Route::patch('reservations/{reservation}/cancel', [ReservationController::class, 'cancel'])->whereNumber('reservation')->name('reservations.cancel');
         Route::get('common-areas', [ResidentCommonAreaController::class, 'index'])->name('common-areas.index');

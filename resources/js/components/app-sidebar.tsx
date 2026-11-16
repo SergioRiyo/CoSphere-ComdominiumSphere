@@ -1,17 +1,21 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
-    Bell,
+    Headset,
     Building2,
     CalendarDays,
     ClipboardCheck,
+    ChartNoAxesColumn,
     ContactRound,
     FileText,
     History,
     LayoutGrid,
+    Megaphone,
     Package,
     ChartNoAxesCombined,
     Users,
     UsersRound,
+    Wallet,
+    Search,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -25,20 +29,27 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import { dashboard as adminDashboard } from '@/routes/admin';
+import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
 import { index as commonAreasIndex } from '@/routes/admin/common-areas';
+import { index as adminFinancialIndex } from '@/routes/admin/financial';
 import { index as adminIncidentsIndex } from '@/routes/admin/incidents';
+import { index as adminLostFoundIndex } from '@/routes/admin/lost-found';
 import { index as maintenancesIndex } from '@/routes/admin/maintenances';
+import { index as pollsIndex } from '@/routes/admin/polls';
 import { index as reportsIndex } from '@/routes/admin/reports';
 import { index as adminReservationsIndex } from '@/routes/admin/reservations';
 import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
-import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
+import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
+import { index as residentFinancialIndex } from '@/routes/morador/financial';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
-import { index as notificationsIndex } from '@/routes/morador/notifications';
+import { index as residentLostFoundIndex } from '@/routes/morador/lost-found';
 import { index as ordersIndex } from '@/routes/morador/orders';
+import { index as residentPollsIndex } from '@/routes/morador/polls';
 import { index as residentReservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import { dashboard as portariaDashboard } from '@/routes/portaria';
@@ -51,6 +62,8 @@ import type { NavItem } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage().props;
+    const { currentUrl } = useCurrentUrl();
+    const reportsPath = reportsIndex.url();
     const dashboardHref = {
         admin: adminDashboard(),
         morador: moradorDashboard(),
@@ -102,12 +115,45 @@ export function AppSidebar() {
                   {
                       title: 'Relatórios',
                       href: reportsIndex(),
+                      isActive:
+                          currentUrl === reportsPath ||
+                          currentUrl.startsWith(reportsPath + '/'),
                       icon: ChartNoAxesCombined,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: announcementsIndex(),
+                      icon: Megaphone,
+                  },
+                  {
+                      title: 'Enquetes',
+                      href: pollsIndex(),
+                      icon: ChartNoAxesColumn,
+                  },
+                  {
+                      title: 'Financeiro',
+                      href: adminFinancialIndex(),
+                      icon: Wallet,
+                  },
+                  {
+                      title: 'Achados e perdidos',
+                      href: adminLostFoundIndex(),
+                      icon: Search,
                   },
               ]
             : []),
         ...(auth.user.role === 'morador'
             ? [
+                  {
+                      title: 'Enquetes',
+                      href: residentPollsIndex(),
+                      icon: ChartNoAxesColumn,
+                  },
+                  {
+                      title: 'Comunicados',
+                      href: residentAnnouncementsIndex(),
+                      icon: Megaphone,
+                  },
                   {
                       title: 'Visitantes',
                       href: visitorsIndex(),
@@ -119,24 +165,24 @@ export function AppSidebar() {
                       icon: FileText,
                   },
                   {
-                      title: 'Áreas comuns',
-                      href: residentCommonAreasIndex(),
-                      icon: Building2,
-                  },
-                  {
-                      title: 'Minhas reservas',
+                      title: 'Reservas',
                       href: residentReservationsIndex(),
                       icon: CalendarDays,
-                  },
-                  {
-                      title: 'Notificações',
-                      href: notificationsIndex(),
-                      icon: Bell,
                   },
                   {
                       title: 'Encomendas',
                       href: ordersIndex(),
                       icon: Package,
+                  },
+                  {
+                      title: 'Financeiro',
+                      href: residentFinancialIndex(),
+                      icon: Wallet,
+                  },
+                  {
+                      title: 'Achados e perdidos',
+                      href: residentLostFoundIndex(),
+                      icon: Search,
                   },
               ]
             : []),
@@ -194,6 +240,19 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            tooltip="Suporte: (67) 9 9909-1520"
+                        >
+                            <a href="tel:+5567999091520">
+                                <Headset />
+                                <span>Suporte · (67) 9 9909-1520</span>
+                            </a>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

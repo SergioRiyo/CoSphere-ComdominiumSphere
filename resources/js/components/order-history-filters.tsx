@@ -11,11 +11,15 @@ export function OrderHistoryFilterForm({
     filters,
     statusOptions,
     unitOptions,
+    inSheet = false,
+    onApplied,
 }: {
     action: string;
     filters: OrderHistoryFilters;
     statusOptions: { value: string; label: string }[];
     unitOptions?: { id: number; block: string | null; number: string }[];
+    inSheet?: boolean;
+    onApplied?: () => void;
 }) {
     const [error, setError] = useState<string | null>(null);
     const fail = () => {
@@ -29,14 +33,27 @@ export function OrderHistoryFilterForm({
             key={JSON.stringify(filters)}
             action={action}
             method="get"
-            options={{ preserveScroll: true }}
+            options={{ preserveScroll: true, preserveState: true }}
             onBefore={() => setError(null)}
+            onSuccess={onApplied}
             onHttpException={fail}
             onNetworkError={fail}
         >
             {({ errors, processing }) => (
-                <div className="flex flex-col gap-4 rounded-lg border p-4">
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div
+                    className={
+                        inSheet
+                            ? 'flex flex-col gap-4 px-4 pb-4'
+                            : 'flex flex-col gap-4 rounded-lg border p-4'
+                    }
+                >
+                    <div
+                        className={
+                            inSheet
+                                ? 'grid gap-4'
+                                : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4'
+                        }
+                    >
                         {unitOptions && (
                             <div className="grid gap-2">
                                 <Label htmlFor="history-unit">Unidade</Label>
@@ -123,7 +140,7 @@ export function OrderHistoryFilterForm({
                         </p>
                     )}
                     <div className="flex gap-2">
-                        <Button disabled={processing}>Filtrar</Button>
+                        <Button disabled={processing}>Aplicar filtros</Button>
                         <Button
                             type="button"
                             variant="outline"
@@ -134,6 +151,8 @@ export function OrderHistoryFilterForm({
                                     {},
                                     {
                                         preserveScroll: true,
+                                        preserveState: true,
+                                        onSuccess: onApplied,
                                         onHttpException: fail,
                                         onNetworkError: fail,
                                     },

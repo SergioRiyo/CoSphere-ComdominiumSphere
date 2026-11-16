@@ -7,6 +7,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAuthorization;
+use App\Services\VisitorQrCodeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -38,8 +39,15 @@ class ResidentVisitorQrCodeTest extends TestCase
         $manualCodeResponse = $this->actingAs($resident)
             ->get(route('morador.visitors.access-code', $authorization))
             ->assertOk()
-            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
-            ->assertSee($authorization->access_code);
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8');
+
+        $manualCode = $manualCodeResponse->getContent();
+        $this->assertMatchesRegularExpression('/\AM[A-HJ-NP-Z2-9]{12}\z/', $manualCode);
+        $this->assertSame($manualCode, $authorization->fresh()->manual_code);
+        $this->assertSame($authorization->access_code, app(VisitorQrCodeService::class)->payload($authorization->fresh()));
+        $this->assertNotSame($authorization->access_code, $manualCode);
+        $this->actingAs($resident)->get(route('morador.visitors.access-code', $authorization))
+            ->assertOk()->assertSeeText($manualCode);
 
         $this->assertPrivateNoStore($manualCodeResponse);
     }
@@ -57,6 +65,25 @@ class ResidentVisitorQrCodeTest extends TestCase
             ->assertHeader('Content-Disposition', 'attachment; filename="visitor-authorization-'.$authorization->id.'.svg"');
     }
 
+    public function test_short_manual_code_is_available_to_co_residents_only_in_its_own_unit(): void
+    {
+        [$resident, $authorization] = $this->createAuthorization();
+        $authorization->forceFill(['access_code' => 'ABCD2345EFGH'])->save();
+        $coResident = User::factory()->morador()->create(['unit_id' => $resident->unit_id]);
+        $otherResident = User::factory()->morador()->create();
+
+        $response = $this->actingAs($coResident)
+            ->get(route('morador.visitors.access-code', $authorization))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertSeeText('ABCD2345EFGH');
+
+        $this->assertPrivateNoStore($response);
+        $this->actingAs($otherResident)
+            ->get(route('morador.visitors.access-code', $authorization))
+            ->assertForbidden();
+    }
+
     public function test_resident_can_retrieve_qr_for_a_future_active_authorization(): void
     {
         [$resident, $authorization] = $this->createAuthorization();
@@ -72,7 +99,7 @@ class ResidentVisitorQrCodeTest extends TestCase
         $this->actingAs($resident)
             ->get(route('morador.visitors.access-code', $authorization))
             ->assertOk()
-            ->assertSee($authorization->access_code);
+            ->assertSeeText(app(VisitorQrCodeService::class)->manualCode($authorization));
     }
 
     public function test_resident_from_another_unit_cannot_retrieve_qr_or_manual_code(): void

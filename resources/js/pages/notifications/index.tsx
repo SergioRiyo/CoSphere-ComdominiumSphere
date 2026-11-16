@@ -1,18 +1,26 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Bell, Check } from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { dashboard } from '@/routes/morador';
-import { index, read } from '@/routes/morador/notifications';
+import { dashboard } from '@/routes';
+import { show as showAnnouncement } from '@/routes/morador/announcements';
+import { index, read } from '@/routes/notifications';
 
 type Notification = {
     id: number;
     title: string;
     message: string;
-    type: string;
+    type:
+        | 'reservation'
+        | 'visitor'
+        | 'package'
+        | 'occurrence'
+        | 'system'
+        | 'announcement';
     type_label: string;
+    announcement_id: number | null;
     sent_at: string | null;
     is_read: boolean;
 };
@@ -31,6 +39,7 @@ export default function NotificationsPage({
     notifications,
     timezone,
 }: NotificationsPageProps) {
+    const { auth } = usePage().props;
     const [busy, setBusy] = useState(false);
     const [readingId, setReadingId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -88,7 +97,7 @@ export default function NotificationsPage({
         <>
             <Head title="Notificações" />
             <div
-                className="flex flex-1 flex-col gap-6 p-4 sm:p-6"
+                className="flex min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6"
                 aria-busy={busy}
             >
                 <header className="flex flex-col gap-2">
@@ -131,19 +140,19 @@ export default function NotificationsPage({
                     </Card>
                 ) : (
                     <ul
-                        className="flex flex-col gap-4"
+                        className="flex min-w-0 flex-col gap-4"
                         aria-label="Suas notificações"
                     >
                         {notifications.data.map((notification) => (
-                            <li key={notification.id}>
+                            <li key={notification.id} className="min-w-0">
                                 <Card
                                     className={
                                         notification.is_read
-                                            ? ''
-                                            : 'border-primary/40 bg-primary/5'
+                                            ? 'min-w-0'
+                                            : 'min-w-0 border-primary/40 bg-primary/5'
                                     }
                                 >
-                                    <CardHeader className="gap-3">
+                                    <CardHeader className="min-w-0 gap-3">
                                         <div className="flex flex-wrap items-center gap-2">
                                             <Badge variant="outline">
                                                 {notification.type_label}
@@ -187,10 +196,28 @@ export default function NotificationsPage({
                                             </span>
                                         )}
                                     </CardHeader>
-                                    <CardContent className="flex flex-col items-start gap-4">
-                                        <p className="text-sm break-words whitespace-pre-wrap">
+                                    <CardContent className="flex min-w-0 flex-col items-start gap-4">
+                                        <p className="w-full text-sm break-words whitespace-pre-wrap">
                                             {notification.message}
                                         </p>
+                                        {auth.user.role === 'morador' &&
+                                            notification.type ===
+                                                'announcement' &&
+                                            notification.announcement_id !==
+                                                null && (
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                >
+                                                    <Link
+                                                        href={showAnnouncement(
+                                                            notification.announcement_id,
+                                                        )}
+                                                    >
+                                                        Ver comunicado
+                                                    </Link>
+                                                </Button>
+                                            )}
                                         {!notification.is_read && (
                                             <Button
                                                 variant="outline"

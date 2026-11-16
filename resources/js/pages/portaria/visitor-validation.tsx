@@ -8,6 +8,7 @@ import {
     KeyRound,
     LogIn,
     MapPin,
+    RotateCcw,
     ShieldCheck,
     UserRound,
 } from 'lucide-react';
@@ -65,6 +66,7 @@ export default function VisitorValidationPage({
     });
     const [manualAccessCode, setManualAccessCode] = useState('');
     const pendingAccessCodeRef = useRef<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [result, setResult] = useState<PortariaValidationResult | null>(null);
     const [entryResult, setEntryResult] = useState<PortariaEntryResult | null>(
         null,
@@ -91,6 +93,11 @@ export default function VisitorValidationPage({
         setResult(null);
         setEntryResult(null);
         setRequestError(null);
+    };
+
+    const resetValidation = () => {
+        handleCodeChange('');
+        inputRef.current?.focus();
     };
 
     const validateAccessCode = async (accessCode: string) => {
@@ -217,6 +224,39 @@ export default function VisitorValidationPage({
                         </p>
                     </header>
 
+                    <ol
+                        aria-label="Etapas do atendimento"
+                        className="grid gap-3 sm:grid-cols-2"
+                    >
+                        <li className="flex items-center gap-3 rounded-xl border bg-card p-4 text-sm shadow-sm">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
+                                1
+                            </span>
+                            <span>
+                                <strong className="block">
+                                    Consultar autorização
+                                </strong>
+                                <span className="text-muted-foreground">
+                                    Leia o QR Code ou digite o código.
+                                </span>
+                            </span>
+                        </li>
+                        <li className="flex items-center gap-3 rounded-xl border bg-card p-4 text-sm shadow-sm">
+                            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
+                                2
+                            </span>
+                            <span>
+                                <strong className="block">
+                                    Conferir e registrar
+                                </strong>
+                                <span className="text-muted-foreground">
+                                    Revise os dados antes de registrar a
+                                    entrada.
+                                </span>
+                            </span>
+                        </li>
+                    </ol>
+
                     <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
                         <Card className="min-w-0 border-cosphere-line/80 shadow-cosphere-soft dark:border-border">
                             <CardHeader>
@@ -225,7 +265,7 @@ export default function VisitorValidationPage({
                                         className="size-5 text-cosphere-orange"
                                         aria-hidden="true"
                                     />
-                                    Código de acesso
+                                    Consultar visitante
                                 </CardTitle>
                                 <CardDescription>
                                     Digite o código completo ou leia o QR Code
@@ -243,6 +283,7 @@ export default function VisitorValidationPage({
                                             Código apresentado
                                         </Label>
                                         <Input
+                                            ref={inputRef}
                                             id="access-code"
                                             name="access_code"
                                             value={manualAccessCode}
@@ -251,7 +292,7 @@ export default function VisitorValidationPage({
                                                     event.target.value,
                                                 )
                                             }
-                                            placeholder="Ex.: csa_..."
+                                            placeholder="Ex.: ABCD-2345-EFGH"
                                             required
                                             autoComplete="off"
                                             autoCapitalize="none"
@@ -284,7 +325,7 @@ export default function VisitorValidationPage({
                                         ) : (
                                             <>
                                                 <ShieldCheck />
-                                                Validar autorização
+                                                Consultar autorização
                                             </>
                                         )}
                                     </Button>
@@ -321,8 +362,9 @@ export default function VisitorValidationPage({
                                 </p>
 
                                 <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-                                    A câmera exige HTTPS em ambiente publicado.
-                                    O código manual continuará disponível.
+                                    Se a câmera não estiver disponível, digite o
+                                    código acima. A câmera exige HTTPS em
+                                    ambiente publicado ou localhost.
                                 </p>
                             </CardContent>
                         </Card>
@@ -359,7 +401,6 @@ export default function VisitorValidationPage({
                             ) : result?.allowed ? (
                                 <AllowedResult
                                     authorization={result.authorization}
-                                    message={result.message}
                                     timezone={timezone}
                                     onRegisterEntry={registerEntry}
                                     entryProcessing={entryProcessing}
@@ -368,6 +409,20 @@ export default function VisitorValidationPage({
                                 <DeniedResult message={result.message} />
                             ) : (
                                 <InitialResult />
+                            )}
+                            {(result ||
+                                entryResult ||
+                                requestError ||
+                                accessCodeError) && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="mt-4 w-full sm:w-auto"
+                                    onClick={resetValidation}
+                                    disabled={isProcessing}
+                                >
+                                    <RotateCcw /> Validar outro visitante
+                                </Button>
                             )}
                         </section>
                     </div>
@@ -384,7 +439,7 @@ function InitialResult() {
                 <span className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary">
                     <ShieldCheck className="size-5" aria-hidden="true" />
                 </span>
-                <CardTitle>Aguardando validação</CardTitle>
+                <CardTitle>Aguardando consulta</CardTitle>
                 <CardDescription className="leading-relaxed">
                     O resultado aparecerá aqui com as informações necessárias
                     para conferência.
@@ -396,13 +451,11 @@ function InitialResult() {
 
 function AllowedResult({
     authorization,
-    message,
     timezone,
     onRegisterEntry,
     entryProcessing,
 }: {
     authorization: PortariaValidatedAuthorization;
-    message: string;
     timezone: string;
     onRegisterEntry: () => void;
     entryProcessing: boolean;
@@ -420,10 +473,11 @@ function AllowedResult({
                 </div>
                 <div className="grid gap-1">
                     <CardTitle className="text-xl text-emerald-950 dark:text-emerald-100">
-                        ACESSO LIBERADO
+                        Autorização válida
                     </CardTitle>
                     <CardDescription className="text-emerald-800 dark:text-emerald-200">
-                        {message}
+                        Confira os dados e registre a entrada para concluir o
+                        atendimento.
                     </CardDescription>
                 </div>
             </CardHeader>
@@ -462,8 +516,8 @@ function AllowedResult({
 
                 <div className="mt-6 grid gap-3 border-t border-emerald-500/20 pt-6">
                     <p className="text-sm leading-relaxed text-emerald-900 dark:text-emerald-100">
-                        Confira os dados acima antes de liberar fisicamente o
-                        acesso do visitante.
+                        A consulta não registra a entrada. Confira os dados e
+                        clique em Registrar entrada antes de liberar o acesso.
                     </p>
                     <Button
                         type="button"

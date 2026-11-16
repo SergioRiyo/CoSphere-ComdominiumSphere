@@ -29,9 +29,14 @@ export default function CoSphereLogo({
             aria-label="CoSphere — Gestão Condominial"
         >
             <img
+                src="/images/logo-light.png"
+                alt="CoSphere — Gestão Condominial"
+                className="size-full object-contain dark:hidden"
+            />
+            <img
                 src="/images/logo.png"
                 alt="CoSphere — Gestão Condominial"
-                className="size-full object-contain"
+                className="hidden size-full object-contain dark:block"
             />
         </span>
     );

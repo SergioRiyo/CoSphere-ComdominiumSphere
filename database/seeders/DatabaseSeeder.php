@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             VisitorAccessSeeder::class,
             OrderSeeder::class,
             OccurrenceAndMaintenanceSeeder::class,
+            FinancialChargeSeeder::class,
             NotificationSeeder::class,
         ]);
     }

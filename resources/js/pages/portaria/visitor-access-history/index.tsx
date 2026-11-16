@@ -5,22 +5,15 @@ import {
     DoorOpen,
     Search,
     ShieldCheck,
-    SlidersHorizontal,
     UserRoundSearch,
-    X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -62,6 +55,8 @@ export default function VisitorAccessHistoryPage({
 }: VisitorAccessHistoryPageProps) {
     const [draftFilters, setDraftFilters] = useState(filters);
     const [isLoading, setIsLoading] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [requestError, setRequestError] = useState<string | null>(null);
     const hasFilters = Boolean(
         filters.search ||
         filters.unit_id ||
@@ -84,9 +79,28 @@ export default function VisitorAccessHistoryPage({
             },
             {
                 preserveScroll: true,
+                preserveState: true,
                 replace: true,
-                onStart: () => setIsLoading(true),
+                onStart: () => {
+                    setIsLoading(true);
+                    setRequestError(null);
+                },
                 onFinish: () => setIsLoading(false),
+                onSuccess: () => setFiltersOpen(false),
+                onHttpException: () => {
+                    setRequestError(
+                        'Não foi possível aplicar os filtros. Tente novamente.',
+                    );
+
+                    return false;
+                },
+                onNetworkError: () => {
+                    setRequestError(
+                        'Não foi possível conectar ao servidor. Tente novamente.',
+                    );
+
+                    return false;
+                },
             },
         );
     };
@@ -131,22 +145,33 @@ export default function VisitorAccessHistoryPage({
                     </p>
                 </header>
 
-                <Card className="border-primary/15 bg-gradient-to-br from-card to-muted/30">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <SlidersHorizontal className="size-4" />
-                            Pesquisa e filtros
-                        </CardTitle>
-                        <CardDescription>
-                            Combine visitante, unidade, situação e período.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                <div className="flex justify-end">
+                    <ReportFilterSheet
+                        title="histórico de acessos"
+                        activeCount={
+                            [
+                                filters.search,
+                                filters.unit_id,
+                                filters.situation,
+                                filters.date_from,
+                                filters.date_to,
+                            ].filter(Boolean).length
+                        }
+                        open={filtersOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                setDraftFilters(filters);
+                                setRequestError(null);
+                            }
+
+                            setFiltersOpen(open);
+                        }}
+                    >
                         <form
                             onSubmit={submitFilters}
-                            className="grid gap-4 lg:grid-cols-2 xl:grid-cols-[minmax(14rem,1.4fr)_12rem_11rem_10rem_10rem_auto] xl:items-end"
+                            className="grid gap-4 px-4 pb-4"
                         >
-                            <div className="grid gap-2 lg:col-span-2 xl:col-span-1">
+                            <div className="grid gap-2">
                                 <Label htmlFor="access-history-search">
                                     Visitante
                                 </Label>
@@ -288,30 +313,30 @@ export default function VisitorAccessHistoryPage({
                                 <InputError message={errors.date_to} />
                             </div>
 
+                            {requestError && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {requestError}
+                                </p>
+                            )}
                             <div className="flex gap-2">
+                                <Button type="submit" disabled={isLoading}>
+                                    Aplicar filtros
+                                </Button>
                                 <Button
-                                    type="submit"
-                                    className="flex-1 xl:flex-none"
+                                    type="button"
+                                    variant="outline"
+                                    onClick={clearFilters}
                                     disabled={isLoading}
                                 >
-                                    Filtrar
+                                    Limpar filtros
                                 </Button>
-                                {hasFilters && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={clearFilters}
-                                        disabled={isLoading}
-                                        aria-label="Limpar filtros"
-                                    >
-                                        <X />
-                                    </Button>
-                                )}
                             </div>
                         </form>
-                    </CardContent>
-                </Card>
+                    </ReportFilterSheet>
+                </div>
 
                 <Card className="gap-0 overflow-hidden py-0">
                     {isLoading ? (

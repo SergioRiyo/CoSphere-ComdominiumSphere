@@ -26,7 +26,9 @@ class VisitorInvitationController extends Controller
 
     public function show(Request $request, string $token): HttpResponse
     {
-        $this->available($token);
+        if (! $this->available($token)) {
+            return $this->unavailable($request);
+        }
 
         return $this->withoutCache(
             Inertia::render('visitor-invitations/show', ['token' => $token])->toResponse($request),
@@ -38,21 +40,32 @@ class VisitorInvitationController extends Controller
         try {
             $authorization = $this->visitorService->completeInvitation($token, $request->validated());
         } catch (DomainException) {
-            abort(404);
+            return $this->unavailable($request);
         }
 
         return $this->withoutCache(
-            Inertia::render('visitor-invitations/completed', ['qr_svg' => $this->visitorQrCodeService->svg($authorization)])
+            Inertia::render('visitor-invitations/completed', [
+                'qr_svg' => $this->visitorQrCodeService->svg($authorization),
+                'access_code' => $this->visitorQrCodeService->manualCode($authorization),
+            ])
                 ->toResponse($request),
         );
     }
 
-    private function available(string $token): void
+    public function unavailable(Request $request): HttpResponse
+    {
+        $response = Inertia::render('visitor-invitations/unavailable')->toResponse($request);
+        $response->setStatusCode(404);
+
+        return $this->withoutCache($response);
+    }
+
+    private function available(string $token): bool
     {
         $a = VisitorAuthorization::where('invitation_token_hash', hash('sha256', $token))->first();
-        if (! $a || $a->status->value !== 'pending_data' || $a->invitation_used_at || ! $a->invitation_expires_at?->isFuture() || ! $a->start_date->isFuture()) {
-            abort(404);
-        }
+
+        return $a !== null && $a->status->value === 'pending_data' && ! $a->invitation_used_at
+            && $a->invitation_expires_at?->isFuture() && $a->start_date->isFuture();
     }
 
     private function withoutCache(HttpResponse $response): HttpResponse

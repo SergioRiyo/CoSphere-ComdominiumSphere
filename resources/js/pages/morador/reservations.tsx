@@ -1,15 +1,14 @@
-import ReservationList from '@/components/reservation-list';
+import ReservationCalendar from '@/components/reservation-calendar';
 import { dashboard } from '@/routes/morador';
 import { index } from '@/routes/morador/reservations';
-import type { ReservationListProps } from '@/types/reservation';
 
-export default function ReservationsPage(props: ReservationListProps) {
-    return <ReservationList {...props} />;
+export default function ReservationsPage() {
+    return <ReservationCalendar />;
 }
 
 ReservationsPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Minhas reservas', href: index() },
+        { title: 'Reservas', href: index() },
     ],
 };

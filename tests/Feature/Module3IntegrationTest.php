@@ -36,7 +36,9 @@ class Module3IntegrationTest extends TestCase
         $admin = User::factory()->admin()->create();
         $area = CommonArea::factory()->create(['requires_approval' => $manual]);
         $this->actingAs($resident)->get(route('morador.common-areas.index'))
-            ->assertInertia(fn (Assert $page) => $page->component('morador/common-areas')->where('areas.0.id', $area->id));
+            ->assertRedirect(route('morador.reservations.index'));
+        $this->get(route('morador.reservations.index'))
+            ->assertInertia(fn (Assert $page) => $page->component('morador/reservations'));
         $this->calendar($area)->assertJsonPath('occupied_periods', []);
         $this->postJson(route('morador.reservations.store'), $this->period($area))->assertCreated();
         $reservation = Reservation::sole();
@@ -71,7 +73,7 @@ class Module3IntegrationTest extends TestCase
         $this->get(route('morador.reservations.show', $reservation))->assertInertia(fn (Assert $page) => $page
             ->component('morador/reservation-details')->where('reservation.status', 'cancelled')->has('reservation.history', $manual ? 3 : 2));
         $this->get(route('morador.notifications.index'))->assertInertia(fn (Assert $page) => $page
-            ->component('morador/notifications/index')->has('notifications.data', $manual ? 2 : 1));
+            ->component('notifications/index')->has('notifications.data', $manual ? 2 : 1));
         foreach (Notification::all() as $notification) {
             $this->assertSame($resident->id, $notification->recipient_id);
             $this->assertSame(NotificationType::Reservation, $notification->type);

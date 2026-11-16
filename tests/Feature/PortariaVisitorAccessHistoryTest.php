@@ -196,6 +196,15 @@ class PortariaVisitorAccessHistoryTest extends TestCase
                 ->where('filters.situation', 'finished')
                 ->where('filters.date_from', '2026-08-20')
                 ->where('filters.date_to', '2026-08-20'));
+
+        $this->get(route('portaria.visitor-access-history.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('accesses.data', 4)
+                ->where('filters.search', '')
+                ->where('filters.unit_id', null)
+                ->where('filters.situation', '')
+                ->where('filters.date_from', '')
+                ->where('filters.date_to', ''));
     }
 
     public function test_date_filter_includes_persisted_denials_using_their_recorded_time(): void

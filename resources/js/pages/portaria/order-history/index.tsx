@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { OrderHistoryDetails } from '@/components/order-history-details';
 import { OrderHistoryFilterForm } from '@/components/order-history-filters';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { dashboard } from '@/routes/portaria';
@@ -27,6 +28,7 @@ export default function OrderHistoryPage({
     timezone: string;
 }) {
     const [error, setError] = useState<string | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const fail = () => {
         setError('Não foi possível carregar a página. Tente novamente.');
 
@@ -38,15 +40,34 @@ export default function OrderHistoryPage({
         <>
             <Head title="Histórico de encomendas" />
             <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
-                <h1 className="text-3xl font-semibold">
-                    Histórico de encomendas
-                </h1>
-                <OrderHistoryFilterForm
-                    action={index.url()}
-                    filters={filters}
-                    statusOptions={statusOptions}
-                    unitOptions={unitOptions}
-                />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h1 className="text-3xl font-semibold">
+                        Histórico de encomendas
+                    </h1>
+                    <ReportFilterSheet
+                        title="histórico de encomendas"
+                        activeCount={
+                            [
+                                filters.unit_id,
+                                filters.status,
+                                filters.date_from,
+                                filters.date_to,
+                                filters.search,
+                            ].filter(Boolean).length
+                        }
+                        open={filtersOpen}
+                        onOpenChange={setFiltersOpen}
+                    >
+                        <OrderHistoryFilterForm
+                            action={index.url()}
+                            filters={filters}
+                            statusOptions={statusOptions}
+                            unitOptions={unitOptions}
+                            inSheet
+                            onApplied={() => setFiltersOpen(false)}
+                        />
+                    </ReportFilterSheet>
+                </div>
                 {error && (
                     <p role="alert" className="text-sm text-destructive">
                         {error}

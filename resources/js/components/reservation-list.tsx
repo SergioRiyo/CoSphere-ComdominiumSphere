@@ -20,13 +20,13 @@ import {
     approve,
     reject,
     cancel as adminCancel,
-    index as adminIndex,
+    manage as adminIndex,
     show as adminShow,
 } from '@/routes/admin/reservations';
 import { index as areasIndex } from '@/routes/morador/common-areas';
 import {
     cancel as residentCancel,
-    index as residentIndex,
+    manage as residentIndex,
     show as residentShow,
 } from '@/routes/morador/reservations';
 import type {
