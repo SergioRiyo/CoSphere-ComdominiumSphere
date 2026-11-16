@@ -40,7 +40,9 @@ export default function LostFoundIndex({ items, filters }: Props) {
                             intermediar a devolução.
                         </p>
                     </div>
-                    <Button onClick={() => setOpen(true)}>Registrar item</Button>
+                    <Button onClick={() => setOpen(true)}>
+                        Registrar item
+                    </Button>
                 </header>
                 <form
                     className="flex flex-wrap items-end gap-3 rounded-xl border p-4"

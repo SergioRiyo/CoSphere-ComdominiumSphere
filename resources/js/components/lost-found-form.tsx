@@ -1,7 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { ImagePlus, X } from 'lucide-react';
-import { useRef  } from 'react';
-import type {FormEvent} from 'react';
+import { useRef } from 'react';
+import type { FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,

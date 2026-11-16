@@ -294,6 +294,7 @@ function Report({ kind, records, filters, options, metrics }: Props) {
                                     form.clearErrors();
                                     setFailure('');
                                 }
+
                                 setFiltersOpen(open);
                             }}
                         >

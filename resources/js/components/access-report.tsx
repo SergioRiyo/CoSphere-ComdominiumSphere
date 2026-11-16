@@ -105,7 +105,9 @@ export default function AccessReport({
             preserveScroll: true,
             replace: true,
             onSuccess: () => {
-                if (closeOnSuccess) setFiltersOpen(false);
+                if (closeOnSuccess) {
+                    setFiltersOpen(false);
+                }
             },
             onStart: () => setBusy(true),
             onFinish: () => setBusy(false),
@@ -171,8 +173,10 @@ export default function AccessReport({
                             }
                             open={filtersOpen}
                             onOpenChange={(open) => {
-                                if (open)
+                                if (open) {
                                     setDraft({ ...emptyFilters, ...filters });
+                                }
+
                                 setFiltersOpen(open);
                             }}
                         >
