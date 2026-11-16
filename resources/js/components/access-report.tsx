@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { index } from '@/routes/admin/reports';
+import { spreadsheet } from '@/routes/admin/reports/accesses';
 import type {
     AccessReportItem,
     ReportFilters,
     ReportOptions,
     ReportPaginator,
 } from '@/types/report';
-import { spreadsheet } from '@/routes/admin/reports/accesses';
 
 export type AccessReportProps = {
     accesses: ReportPaginator<AccessReportItem>;

@@ -26,6 +26,7 @@ import {
     index as announcementsIndex,
     show as announcementShow,
 } from '@/routes/morador/announcements';
+import { index as financialIndex } from '@/routes/morador/financial';
 import {
     index as incidentsIndex,
     create as incidentCreate,
@@ -36,7 +37,6 @@ import { index as reservationsIndex } from '@/routes/morador/reservations';
 import { index as visitorsIndex } from '@/routes/morador/visitors';
 import type { UnitSummary } from '@/types';
 import { formatAnnouncementDate } from '@/types/announcement';
-import { index as financialIndex } from '@/routes/morador/financial';
 
 type Overview = {
     orders_pending: number | null;

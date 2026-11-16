@@ -122,9 +122,10 @@ php artisan test -c phpunit.m5-pgsql.xml
 Essas suítes executam `migrate:fresh` e não devem apontar para bancos de
 desenvolvimento, compartilhados ou de produção.
 
-Validações de frontend:
+Validações de frontend (gere as rotas Wayfinder antes de executar o lint, como no CI):
 
 ```bash
+php artisan wayfinder:generate --with-form --no-interaction
 npm run types:check
 npm run lint:check
 npm run format:check

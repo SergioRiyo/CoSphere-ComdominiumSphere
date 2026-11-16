@@ -3,12 +3,6 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import LostFoundForm from '@/components/lost-found-form';
 import { Button } from '@/components/ui/button';
-import { dateText, statusLabels } from '@/types/lost-found';
-import type {
-    Conversation,
-    LostFoundDetails,
-    LostFoundItem,
-} from '@/types/lost-found';
 import {
     index as adminIndex,
     photo as adminPhoto,
@@ -22,6 +16,12 @@ import {
     message,
     reply as residentReply,
 } from '@/routes/morador/lost-found';
+import { dateText, statusLabels } from '@/types/lost-found';
+import type {
+    Conversation,
+    LostFoundDetails,
+    LostFoundItem,
+} from '@/types/lost-found';
 
 export default function LostFoundShow({ item }: { item: LostFoundDetails }) {
     const admin = usePage().props.auth.user.role === 'admin';

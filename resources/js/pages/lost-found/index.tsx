@@ -2,8 +2,6 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import LostFoundForm from '@/components/lost-found-form';
 import { Button } from '@/components/ui/button';
-import { dateText, statusLabels } from '@/types/lost-found';
-import type { LostFoundItem } from '@/types/lost-found';
 import {
     index as adminIndex,
     show as adminShow,
@@ -14,6 +12,8 @@ import {
     show as residentShow,
     photo as residentPhoto,
 } from '@/routes/morador/lost-found';
+import { dateText, statusLabels } from '@/types/lost-found';
+import type { LostFoundItem } from '@/types/lost-found';
 
 type Props = {
     items: { data: LostFoundItem[]; current_page: number; last_page: number };
