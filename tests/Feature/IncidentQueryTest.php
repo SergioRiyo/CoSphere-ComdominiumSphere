@@ -48,6 +48,8 @@ class IncidentQueryTest extends TestCase
             }));
         $this->get(route('morador.incidents.index', $filters + ['page' => 2]))->assertInertia(fn (Assert $page) => $page
             ->where('incidents.total', 20)->has('incidents.data', 5)->where('incidents.current_page', 2));
+        $this->get(route('morador.incidents.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('incidents.total', 24)->where('filters', [])->where('incidents.current_page', 1));
     }
 
     #[DataProvider('filterFields')]

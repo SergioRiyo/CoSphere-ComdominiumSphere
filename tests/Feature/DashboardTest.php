@@ -296,6 +296,29 @@ class DashboardTest extends TestCase
                 ->missing('active_authorizations'));
     }
 
+    public function test_portaria_dashboard_shows_order_counts_and_limited_recent_activity(): void
+    {
+        Order::factory()->count(2)->create(['status' => OrderStatus::WaitingDelivery]);
+        Order::factory()->count(3)->create(['status' => OrderStatus::ReceivedAtGate]);
+        Order::factory()->create(['status' => OrderStatus::PickedUp]);
+        VisitorAccess::factory()->open()->count(5)->create();
+        $rejected = VisitorAccess::factory()->rejected()->create();
+
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->get(route('portaria.dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('present_visitors', 5)
+                ->where('overview.waiting_orders', 2)
+                ->where('overview.pickup_orders', 3)
+                ->has('overview.recent_orders', 5)
+                ->has('overview.recent_accesses', 5)
+                ->where('overview.recent_accesses.0.id', $rejected->id)
+                ->where('overview.recent_accesses.0.status', 'Entrada negada')
+                ->missing('overview.recent_accesses.0.cpf')
+                ->missing('overview.recent_accesses.0.observations')
+                ->missing('overview.recent_orders.0.tracking_code'));
+    }
+
     public function test_inertia_shares_the_authenticated_user_role(): void
     {
         $dashboards = [

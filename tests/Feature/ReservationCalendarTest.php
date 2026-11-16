@@ -7,6 +7,7 @@ use App\Models\CommonArea;
 use App\Models\CommonAreaBlock;
 use App\Models\Reservation;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -14,6 +15,36 @@ use Tests\TestCase;
 class ReservationCalendarTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_calendar_exposes_precise_intervals_and_area_rules_for_reserving(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-25 07:00:00'));
+        $resident = User::factory()->morador()->create();
+        $area = CommonArea::factory()->create([
+            'available_from' => '08:00:00', 'available_until' => '10:00:00',
+            'description' => 'Quadra coberta', 'rules' => 'Use tênis adequado',
+        ]);
+        Reservation::factory()->create([
+            'common_area_id' => $area->id, 'starts_at' => '2026-09-25 08:00:00',
+            'ends_at' => '2026-09-25 09:15:25', 'status' => ReservationStatus::Approved,
+        ]);
+        CommonAreaBlock::factory()->create([
+            'common_area_id' => $area->id, 'starts_at' => '2026-09-25 09:20:10',
+            'ends_at' => '2026-09-25 10:00:00',
+        ]);
+
+        $this->actingAs($resident)->getJson(route('morador.reservations.calendar', [
+            'from' => '2026-09-25', 'to' => '2026-09-25', 'area' => $area->id,
+        ]))->assertOk()->assertJsonPath('areas.0.description', 'Quadra coberta')
+            ->assertJsonPath('areas.0.rules', 'Use tênis adequado')
+            ->assertJsonPath('reservations.0.end', '2026-09-25 09:15:25')
+            ->assertJsonPath('blocks.0.start', '2026-09-25 09:20:10');
+
+        $this->postJson(route('morador.reservations.store'), [
+            'common_area_id' => $area->id, 'starts_at' => '2026-09-25 09:15:26',
+            'ends_at' => '2026-09-25 09:19:59',
+        ])->assertCreated();
+    }
 
     public function test_resident_sees_occupied_periods_without_other_residents_details(): void
     {

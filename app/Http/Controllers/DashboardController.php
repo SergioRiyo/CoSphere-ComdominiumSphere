@@ -43,7 +43,9 @@ class DashboardController extends Controller
     public function porteiro(): Response
     {
         return Inertia::render('portaria/dashboard', [
-            'present_visitors' => $this->visitorDashboardService->presentVisitors(),
+            'present_visitors' => fn () => $this->visitorDashboardService->presentVisitors(),
+            'overview' => fn () => $this->visitorDashboardService->portariaOverview(),
+            'timezone' => config('app.timezone'),
         ]);
     }
 }

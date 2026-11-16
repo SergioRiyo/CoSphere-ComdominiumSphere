@@ -19,7 +19,7 @@ class ValidateVisitorAuthorizationRequest extends FormRequest
 
         if (is_string($accessCode)) {
             $accessCode = trim($accessCode);
-            if (preg_match('/\A[A-HJ-NP-Za-hj-np-z2-9]{4}(?:[- ]?[A-HJ-NP-Za-hj-np-z2-9]{4}){2}\z/', $accessCode)) {
+            if (preg_match('/\A[A-HJ-NP-Za-hj-np-z2-9]{4}(?:[- ]?[A-HJ-NP-Za-hj-np-z2-9]{4}){2}[A-HJ-NP-Za-hj-np-z2-9]?\z/', $accessCode)) {
                 $accessCode = strtoupper(str_replace(['-', ' '], '', $accessCode));
             }
 
@@ -35,7 +35,7 @@ class ValidateVisitorAuthorizationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'access_code' => ['bail', 'required', 'string', 'regex:/\A(?:csa_[A-Za-z0-9]{32}|[A-HJ-NP-Z2-9]{12})\z/'],
+            'access_code' => ['bail', 'required', 'string', 'regex:/\A(?:csa_[A-Za-z0-9]{32}|[A-HJ-NP-Z2-9]{12}|M[A-HJ-NP-Z2-9]{12})\z/'],
         ];
     }
 

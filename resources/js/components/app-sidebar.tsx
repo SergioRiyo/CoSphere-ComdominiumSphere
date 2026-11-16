@@ -20,7 +20,6 @@ import {
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
-import { useCurrentUrl } from '@/hooks/use-current-url';
 import {
     Sidebar,
     SidebarContent,
@@ -30,6 +29,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useCurrentUrl } from '@/hooks/use-current-url';
 import { dashboard as adminDashboard } from '@/routes/admin';
 import { index as announcementsIndex } from '@/routes/admin/announcements';
 import { index as commonAreaBlocksIndex } from '@/routes/admin/common-area-blocks';
@@ -45,7 +45,6 @@ import { index as providersIndex } from '@/routes/admin/service-providers';
 import { index as usersIndex } from '@/routes/admin/users';
 import { dashboard as moradorDashboard } from '@/routes/morador';
 import { index as residentAnnouncementsIndex } from '@/routes/morador/announcements';
-import { index as residentCommonAreasIndex } from '@/routes/morador/common-areas';
 import { index as residentFinancialIndex } from '@/routes/morador/financial';
 import { index as residentIncidentsIndex } from '@/routes/morador/incidents';
 import { index as residentLostFoundIndex } from '@/routes/morador/lost-found';
@@ -166,12 +165,7 @@ export function AppSidebar() {
                       icon: FileText,
                   },
                   {
-                      title: 'Áreas comuns',
-                      href: residentCommonAreasIndex(),
-                      icon: Building2,
-                  },
-                  {
-                      title: 'Minhas reservas',
+                      title: 'Reservas',
                       href: residentReservationsIndex(),
                       icon: CalendarDays,
                   },

@@ -36,7 +36,9 @@ class Module3IntegrationTest extends TestCase
         $admin = User::factory()->admin()->create();
         $area = CommonArea::factory()->create(['requires_approval' => $manual]);
         $this->actingAs($resident)->get(route('morador.common-areas.index'))
-            ->assertInertia(fn (Assert $page) => $page->component('morador/common-areas')->where('areas.0.id', $area->id));
+            ->assertRedirect(route('morador.reservations.index'));
+        $this->get(route('morador.reservations.index'))
+            ->assertInertia(fn (Assert $page) => $page->component('morador/reservations'));
         $this->calendar($area)->assertJsonPath('occupied_periods', []);
         $this->postJson(route('morador.reservations.store'), $this->period($area))->assertCreated();
         $reservation = Reservation::sole();

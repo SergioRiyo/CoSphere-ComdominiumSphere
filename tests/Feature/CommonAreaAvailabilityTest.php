@@ -10,7 +10,6 @@ use App\Services\ReservationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
-use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -24,16 +23,17 @@ class CommonAreaAvailabilityTest extends TestCase
         $this->travelTo(Carbon::parse('2026-09-25 07:00:00'));
     }
 
-    public function test_only_active_areas_are_listed_and_empty_state_is_supported(): void
+    public function test_old_area_page_redirects_to_the_reservation_calendar(): void
     {
         $this->actingAs(User::factory()->morador()->create());
-        $this->get(route('morador.common-areas.index'))->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('morador/common-areas')->has('areas', 0));
+        $this->get(route('morador.common-areas.index'))->assertRedirect(route('morador.reservations.index'));
+        $calendar = ['from' => '2026-09-25', 'to' => '2026-09-25'];
+        $this->getJson(route('morador.reservations.calendar', $calendar))->assertOk()->assertJsonCount(0, 'areas');
         $active = CommonArea::factory()->create();
         CommonArea::factory()->create(['status' => 'inactive']);
         CommonArea::factory()->create(['status' => 'maintenance']);
-        $this->get(route('morador.common-areas.index'))->assertInertia(fn (Assert $page) => $page
-            ->has('areas', 1)->where('areas.0', ['id' => $active->id, 'name' => $active->name]));
+        $this->getJson(route('morador.reservations.calendar', $calendar))->assertOk()
+            ->assertJsonCount(2, 'areas')->assertJsonFragment(['id' => $active->id, 'name' => $active->name]);
     }
 
     public function test_area_contract_and_privacy_are_explicit_and_consultation_does_not_write(): void

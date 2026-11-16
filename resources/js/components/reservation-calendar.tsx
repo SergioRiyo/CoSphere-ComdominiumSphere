@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
     calendar as adminCalendar,
     manage as adminManage,
@@ -31,6 +32,7 @@ type Area = {
     available_until: string | null;
     max_reservation_minutes: number | null;
     rules: string | null;
+    description: string | null;
     requires_approval: boolean;
 };
 type Event = {
@@ -132,6 +134,60 @@ function availablePairs(
     return pairs;
 }
 
+function availablePeriods(
+    area: Area | undefined,
+    date: string,
+    data: Data | null,
+): [string, string][] {
+    if (!area || area.status !== 'active' || !data) {
+        return [];
+    }
+
+    const opening = date + ' ' + (area.available_from ?? '00:00:00');
+    const closing = date + ' ' + (area.available_until ?? '23:59:59');
+    let cursor = opening > data.now ? opening : data.now;
+
+    if (cursor >= closing) {
+        return [];
+    }
+
+    const occupied = [
+        ...data.reservations.filter(
+            (item) =>
+                item.area_id === area.id &&
+                (item.status === null ||
+                    ['pending', 'confirmed'].includes(item.status)),
+        ),
+        ...data.blocks.filter((item) => item.area_id === area.id),
+    ]
+        .filter((item) => item.start < closing && item.end > cursor)
+        .sort((a, b) => a.start.localeCompare(b.start));
+    const periods: [string, string][] = [];
+
+    for (const item of occupied) {
+        if (item.start > cursor) {
+            periods.push([cursor, item.start < closing ? item.start : closing]);
+        }
+
+        if (item.end > cursor) {
+            cursor = item.end;
+        }
+
+        if (cursor >= closing) {
+            break;
+        }
+    }
+
+    if (cursor < closing) {
+        periods.push([cursor, closing]);
+    }
+
+    return periods;
+}
+
+const displayTime = (value: string) =>
+    value.slice(17, 19) === '00' ? value.slice(11, 16) : value.slice(11, 19);
+
 export default function ReservationCalendar({
     admin = false,
 }: {
@@ -215,14 +271,8 @@ export default function ReservationCalendar({
     }, [admin, from, to, areaId, revision]);
 
     const area = data?.areas.find((item) => String(item.id) === areaId);
-    const pairs = availablePairs(area, selected, data);
-    const dayStarts = new Set(
-        availablePairs(area, dateKey(cursor), data).map(([first]) => first),
-    );
-    const starts = [...new Set(pairs.map(([first]) => first))];
-    const ends = pairs
-        .filter(([first]) => first === start)
-        .map(([, last]) => last);
+    const periods = availablePeriods(area, selected, data);
+    const dayPeriods = availablePeriods(area, dateKey(cursor), data);
     const eventsFor = (date: string) =>
         data?.reservations.filter((item) => overlapsDay(item, date)) ?? [];
     const blocksFor = (date: string) =>
@@ -259,10 +309,7 @@ export default function ReservationCalendar({
     async function reserve(event: FormEvent) {
         event.preventDefault();
 
-        if (
-            !area ||
-            !pairs.some(([first, last]) => first === start && last === end)
-        ) {
+        if (!area || !start || !end) {
             return;
         }
 
@@ -273,8 +320,12 @@ export default function ReservationCalendar({
         }));
 
         try {
-            await form.post(store.url());
-            toast.success('Reserva enviada com sucesso.');
+            const response = await form.post(store.url());
+            toast.success(
+                response.status === 'pending'
+                    ? 'Reserva enviada para aprovação.'
+                    : 'Reserva confirmada.',
+            );
             setStart('');
             setEnd('');
             setRevision((number) => number + 1);
@@ -342,6 +393,36 @@ export default function ReservationCalendar({
                         ))}
                     </select>
                 </label>
+                {!admin && area && (
+                    <section
+                        className="grid gap-2 rounded-xl border bg-card p-4 text-sm"
+                        aria-label="Informações da área"
+                    >
+                        <h2 className="text-base font-semibold">{area.name}</h2>
+                        {area.description && (
+                            <p className="whitespace-pre-wrap text-muted-foreground">
+                                {area.description}
+                            </p>
+                        )}
+                        <p>
+                            Funcionamento:{' '}
+                            {area.available_from?.slice(0, 5) ?? '00:00'} às{' '}
+                            {area.available_until?.slice(0, 5) ?? '23:59'}
+                        </p>
+                        <p>
+                            {area.max_reservation_minutes
+                                ? `Duração máxima: ${area.max_reservation_minutes} minutos.`
+                                : 'Sem duração máxima informada.'}{' '}
+                            {area.requires_approval
+                                ? 'Sujeita à aprovação da administração.'
+                                : 'Aprovação automática.'}
+                        </p>
+                        <p className="whitespace-pre-wrap">
+                            <strong>Regras de utilização:</strong>{' '}
+                            {area.rules || 'Sem regras adicionais.'}
+                        </p>
+                    </section>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
@@ -420,7 +501,7 @@ export default function ReservationCalendar({
                             <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={loading || error}
+                                disabled={loading || error || (!admin && !area)}
                                 onClick={() => openDay(dateKey(cursor))}
                             >
                                 Ver reservas e horários
@@ -474,13 +555,21 @@ export default function ReservationCalendar({
                                             day + ' ' + endTime + ':00' &&
                                         item.end > day + ' ' + begin + ':00',
                                 );
-                                const available = dayStarts.has(begin);
+                                const available = dayPeriods.some(
+                                    ([first, last]) =>
+                                        first < day + ' ' + endTime + ':00' &&
+                                        last > day + ' ' + begin + ':00',
+                                );
 
                                 return (
                                     <button
                                         type="button"
                                         key={begin}
-                                        disabled={loading || error}
+                                        disabled={
+                                            loading ||
+                                            error ||
+                                            (!admin && !area)
+                                        }
                                         onClick={() => openDay(day)}
                                         className="grid min-h-12 w-full grid-cols-[4.5rem_1fr] border-b text-left text-sm last:border-0 hover:bg-muted/40"
                                     >
@@ -582,7 +671,11 @@ export default function ReservationCalendar({
                                     <button
                                         type="button"
                                         key={day}
-                                        disabled={loading || error}
+                                        disabled={
+                                            loading ||
+                                            error ||
+                                            (!admin && !area)
+                                        }
                                         onClick={() => openDay(day)}
                                         className={
                                             'min-h-36 border-r border-b p-2 text-left align-top hover:bg-muted/40 ' +
@@ -604,6 +697,18 @@ export default function ReservationCalendar({
                                             {date.getDate()}
                                         </span>
                                         <span className="grid gap-1">
+                                            {!admin &&
+                                                area &&
+                                                area.status === 'active' &&
+                                                availablePeriods(
+                                                    area,
+                                                    day,
+                                                    data,
+                                                ).length === 0 && (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Indisponível
+                                                    </span>
+                                                )}
                                             {dayEvents
                                                 .slice(0, 3)
                                                 .map((item, position) => (
@@ -785,16 +890,27 @@ export default function ReservationCalendar({
                                         ))}
                                         <p>
                                             <strong>
-                                                Inícios disponíveis:
+                                                {admin
+                                                    ? 'Inícios disponíveis:'
+                                                    : 'Períodos disponíveis:'}
                                             </strong>{' '}
-                                            {freeStarts.length
-                                                ? freeStarts.join(', ')
-                                                : 'Nenhum horário disponível'}
+                                            {admin
+                                                ? freeStarts.length
+                                                    ? freeStarts.join(', ')
+                                                    : 'Nenhum horário disponível'
+                                                : periods.length
+                                                  ? periods
+                                                        .map(
+                                                            ([first, last]) =>
+                                                                `${displayTime(first)}–${displayTime(last)}`,
+                                                        )
+                                                        .join(', ')
+                                                  : 'Nenhum horário disponível'}
                                         </p>
                                     </section>
                                 );
                             })}
-                            {!admin && area && (
+                            {!admin && area && periods.length > 0 && (
                                 <section className="grid gap-3 border-t pt-4">
                                     <h3 className="font-semibold">
                                         Solicitar reserva
@@ -818,46 +934,27 @@ export default function ReservationCalendar({
                                     >
                                         <label className="grid gap-1 text-sm">
                                             Início
-                                            <select
+                                            <Input
+                                                type="time"
+                                                step="60"
                                                 required
-                                                className="h-10 rounded-md border bg-background px-3"
                                                 value={start}
-                                                onChange={(event) => {
-                                                    setStart(
-                                                        event.target.value,
-                                                    );
-                                                    setEnd('');
-                                                }}
-                                            >
-                                                <option value="">
-                                                    Selecione
-                                                </option>
-                                                {starts.map((value) => (
-                                                    <option key={value}>
-                                                        {value}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={(event) =>
+                                                    setStart(event.target.value)
+                                                }
+                                            />
                                         </label>
                                         <label className="grid gap-1 text-sm">
                                             Fim
-                                            <select
+                                            <Input
+                                                type="time"
+                                                step="60"
                                                 required
-                                                className="h-10 rounded-md border bg-background px-3"
                                                 value={end}
                                                 onChange={(event) =>
                                                     setEnd(event.target.value)
                                                 }
-                                            >
-                                                <option value="">
-                                                    Selecione
-                                                </option>
-                                                {ends.map((value) => (
-                                                    <option key={value}>
-                                                        {value}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                         </label>
                                         <Button
                                             disabled={

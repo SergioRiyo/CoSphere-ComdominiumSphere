@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,26 +16,39 @@ export default function ReportFilterSheet({
     open,
     onOpenChange,
     children,
+    mode = 'filter',
 }: {
     title: string;
     activeCount: number;
     open: boolean;
     onOpenChange: (open: boolean) => void;
     children: ReactNode;
+    mode?: 'filter' | 'search';
 }) {
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetTrigger asChild>
                 <Button type="button" variant="outline">
-                    <SlidersHorizontal className="size-4" />
-                    Filtros{activeCount > 0 ? ` (${activeCount})` : ''}
+                    {mode === 'search' ? (
+                        <Search className="size-4" />
+                    ) : (
+                        <SlidersHorizontal className="size-4" />
+                    )}
+                    {mode === 'search' ? 'Buscar encomenda' : 'Filtros'}
+                    {activeCount > 0 ? ` (${activeCount})` : ''}
                 </Button>
             </SheetTrigger>
             <SheetContent className="w-full overflow-y-auto sm:max-w-md">
                 <SheetHeader>
-                    <SheetTitle>Filtros de {title}</SheetTitle>
+                    <SheetTitle>
+                        {mode === 'search'
+                            ? 'Buscar encomenda'
+                            : `Filtros de ${title}`}
+                    </SheetTitle>
                     <SheetDescription>
-                        Selecione os critérios e aplique os filtros à listagem.
+                        {mode === 'search'
+                            ? 'Selecione a unidade ou informe o rastreio ou remetente para buscar.'
+                            : 'Selecione os critérios e aplique os filtros à listagem.'}
                     </SheetDescription>
                 </SheetHeader>
                 {children}

@@ -29,8 +29,9 @@ export default function VisitorQrCodeCard({
         codeResult?.authorizationId === authorizationId ? codeResult : null;
     const manualCode = currentResult?.code ?? null;
     const displayCode =
-        manualCode && /^[A-HJ-NP-Z2-9]{12}$/.test(manualCode)
-            ? manualCode.replace(/(.{4})(?=.)/g, '$1-')
+        manualCode &&
+        /^(?:[A-HJ-NP-Z2-9]{12}|M[A-HJ-NP-Z2-9]{12})$/.test(manualCode)
+            ? manualCode.replace(/^(.{4})(.{4})(.+)$/, '$1-$2-$3')
             : manualCode;
 
     useEffect(() => {

@@ -20,6 +20,31 @@ class OrderHistoryTest extends TestCase
         return array_map(fn (OrderStatus $status): array => [$status], OrderStatus::cases());
     }
 
+    public function test_resident_can_combine_history_filters_and_clear_them(): void
+    {
+        $resident = User::factory()->create();
+        $matching = Order::factory()->create([
+            'unit_id' => $resident->unit_id, 'resident_id' => $resident->id,
+            'status' => OrderStatus::WaitingDelivery, 'created_at' => '2026-08-10 12:00:00',
+            'sender' => 'Loja Central', 'description' => 'Livros', 'tracking_code' => 'BR123',
+        ]);
+        Order::factory()->create([
+            'unit_id' => $resident->unit_id, 'resident_id' => $resident->id,
+            'status' => OrderStatus::WaitingDelivery, 'created_at' => '2026-08-10 12:00:00',
+            'sender' => 'Outra loja', 'description' => 'Roupas', 'tracking_code' => 'BR999',
+        ]);
+        $this->actingAs($resident);
+        foreach (['central', 'livros', 'br123'] as $search) {
+            $this->get(route('morador.orders.index', [
+                'status' => OrderStatus::WaitingDelivery->value, 'date_from' => '2026-08-10',
+                'date_to' => '2026-08-10', 'search' => $search,
+            ]))->assertInertia(fn (Assert $page) => $page->has('orders.data', 1)
+                ->where('orders.data.0.id', $matching->id)->where('filters.search', $search));
+        }
+        $this->get(route('morador.orders.index'))->assertInertia(fn (Assert $page) => $page
+            ->has('orders.data', 2)->where('filters.search', ''));
+    }
+
     #[DataProvider('statuses')]
     public function test_period_uses_date_of_current_status_including_day_boundaries(OrderStatus $status): void
     {
@@ -129,6 +154,7 @@ class OrderHistoryTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->has('orders.data', 0));
         $this->get(route('morador.orders.show', $order))->assertInertia(fn (Assert $page) => $page->where('order.status_date', null));
         $this->actingAs(User::factory()->porteiro()->create())->get(route('portaria.order-history.index', ['unit_id' => 99999]))->assertSessionHasErrors('unit_id');
+        $this->get(route('portaria.order-history.index', ['date_from' => '2026-08-10', 'date_to' => '2026-08-09']))->assertSessionHasErrors('date_to');
     }
 
     public function test_deleted_and_missing_orders_are_not_exposed(): void

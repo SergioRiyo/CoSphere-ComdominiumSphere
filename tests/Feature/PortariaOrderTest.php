@@ -74,6 +74,26 @@ class PortariaOrderTest extends TestCase
             ->assertSessionHasErrors(['unit_id', 'page', 'search']);
     }
 
+    public function test_unit_filter_scopes_both_lists_and_enables_the_recipient_options(): void
+    {
+        $expected = $this->expectedOrder(['tracking_code' => 'BR123']);
+        $received = $this->expectedOrder([
+            'unit_id' => $expected->unit_id, 'resident_id' => $expected->resident_id,
+            'status' => OrderStatus::ReceivedAtGate, 'tracking_code' => 'BR123',
+        ]);
+        $this->expectedOrder(['tracking_code' => 'BR123']);
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->get(route('portaria.orders.index', ['unit_id' => $expected->unit_id, 'search' => 'BR123']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('filters.unit_id', $expected->unit_id)->where('filters.search', 'BR123')
+                ->has('orders.data', 1)->where('orders.data.0.id', $expected->id)
+                ->has('receivedOrders.data', 1)->where('receivedOrders.data.0.id', $received->id)
+                ->has('residentOptions', 1)->where('residentOptions.0.id', $expected->resident_id));
+        $this->get(route('portaria.orders.index'))->assertInertia(fn (Assert $page) => $page
+            ->where('filters.unit_id', null)->where('filters.search', '')
+            ->has('orders.data', 2)->has('receivedOrders.data', 1));
+    }
+
     #[DataProvider('trackingCodes')]
     public function test_expected_receipt_updates_same_record_and_notifies_once(?string $trackingCode): void
     {

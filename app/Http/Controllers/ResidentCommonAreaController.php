@@ -7,18 +7,13 @@ use App\Models\CommonArea;
 use App\Services\ReservationService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
-use Inertia\Inertia;
-use Inertia\Response;
+use Illuminate\Http\RedirectResponse;
 
 class ResidentCommonAreaController extends Controller
 {
-    public function index(): Response
+    public function index(): RedirectResponse
     {
-        return Inertia::render('morador/common-areas', [
-            'areas' => CommonArea::query()->where('status', 'active')->orderBy('name')->orderBy('id')
-                ->get(['id', 'name'])->map(fn (CommonArea $area): array => $area->only(['id', 'name'])),
-            'today' => now()->toDateString(),
-        ]);
+        return to_route('morador.reservations.index');
     }
 
     public function availability(CommonAreaAvailabilityRequest $request, CommonArea $commonArea, ReservationService $service): JsonResponse
