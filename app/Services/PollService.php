@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationType;
 use App\Enums\PollStatus;
+use App\Enums\UserRole;
 use App\Models\Poll;
 use App\Models\PollVote;
 use App\Models\User;
@@ -14,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class PollService
 {
+    public function __construct(private readonly NotificationService $notifications) {}
+
     /** @param array<string, mixed> $data */
     public function save(User $actor, array $data, ?Poll $poll = null): Poll
     {
@@ -56,6 +60,12 @@ class PollService
             $current->starts_at = $current->published_at;
             $current->ends_at = null;
             $current->saveOrFail();
+            User::query()->where('role', UserRole::Morador)->where('is_active', true)
+                ->whereNotNull('email_verified_at')->orderBy('id')->chunkById(100, function ($residents) use ($current): void {
+                    foreach ($residents as $resident) {
+                        $this->notifications->create($resident->id, 'Nova enquete disponível', $current->question, NotificationType::System);
+                    }
+                });
 
             return $current;
         });

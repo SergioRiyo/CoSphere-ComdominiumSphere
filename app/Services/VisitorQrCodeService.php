@@ -9,6 +9,8 @@ use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 
 class VisitorQrCodeService
 {
@@ -52,6 +54,35 @@ class VisitorQrCodeService
 
     public function manualCode(VisitorAuthorization $authorization): string
     {
-        return $this->payload($authorization);
+        $accessCode = $this->payload($authorization);
+
+        if (! str_starts_with($accessCode, 'csa_')) {
+            return $accessCode;
+        }
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                return DB::transaction(function () use ($authorization): string {
+                    $current = VisitorAuthorization::query()->lockForUpdate()->findOrFail($authorization->id);
+                    $this->payload($current);
+                    if ($current->manual_code === null) {
+                        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+                        $code = 'M';
+                        for ($index = 0; $index < 12; $index++) {
+                            $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+                        }
+                        $current->forceFill(['manual_code' => $code])->saveOrFail();
+                    }
+
+                    return $current->manual_code;
+                });
+            } catch (UniqueConstraintViolationException $exception) {
+                if ($attempt === 4) {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw new \LogicException('Não foi possível gerar o código manual.');
     }
 }

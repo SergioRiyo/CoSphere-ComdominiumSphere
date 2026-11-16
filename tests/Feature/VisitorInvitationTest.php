@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Enums\VisitorAuthorizationStatus;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Visitor;
 use App\Models\VisitorAuthorization;
+use App\Services\VisitorQrCodeService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
@@ -29,21 +31,50 @@ class VisitorInvitationTest extends TestCase
         $this->assertNotNull($authorization->invitation_token_hash);
         $token = str_repeat('A', 64);
         $authorization->forceFill(['invitation_token_hash' => hash('sha256', $token)])->save();
-        $this->get(route('visitor-invitations.show', $token))->assertOk();
+        $this->get(route('visitor-invitations.show', $token))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('visitor-invitations/show')
+                ->where('token', $token)
+                ->missing('resident')
+                ->missing('unit'));
         $payload = ['name' => 'Visitante Teste', 'cpf' => '52998224725', 'phone' => '65999999999', 'confirmed' => '1'];
         $this->post(route('visitor-invitations.complete', $token), $payload)
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('visitor-invitations/completed')
-                ->has('qr_svg'));
+                ->has('qr_svg')
+                ->where('access_code', fn (string $code): bool => preg_match('/\A[A-HJ-NP-Z2-9]{12}\z/', $code) === 1
+                    && $code === $authorization->fresh()->access_code));
         $authorization->refresh();
         $this->assertNotNull($authorization->visitor_id);
         $this->assertSame('529.982.247-25', $authorization->visitor->cpf);
         $this->assertSame('(65) 99999-9999', $authorization->visitor->phone);
         $this->assertNotNull($authorization->access_code);
+        $this->assertSame($authorization->access_code, app(VisitorQrCodeService::class)->payload($authorization));
         $this->assertNotNull($authorization->invitation_used_at);
         $this->assertNull($authorization->invitation_token_hash);
-        $this->post(route('visitor-invitations.complete', $token), $payload)->assertNotFound();
+        $this->post(route('visitor-invitations.complete', $token), $payload)
+            ->assertNotFound()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertInertia(fn (Assert $page) => $page->component('visitor-invitations/unavailable')->missing('token'));
+    }
+
+    public function test_malformed_invitation_link_shows_the_same_private_unavailable_page(): void
+    {
+        $this->get('/convites/link-invalido')
+            ->assertNotFound()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertInertia(fn (Assert $page) => $page->component('visitor-invitations/unavailable')->missing('token'));
+
+        $version = app(HandleInertiaRequests::class)->version(request());
+        $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])->get('/convites/link-invalido')
+            ->assertNotFound()
+            ->assertHeader('X-Inertia', 'true')
+            ->assertJsonPath('component', 'visitor-invitations/unavailable')
+            ->assertJsonMissingPath('props.token');
     }
 
     public function test_expired_revoked_and_invalid_invitations_are_unavailable(): void
@@ -72,12 +103,57 @@ class VisitorInvitationTest extends TestCase
                 'confirmed' => '0',
             ])
             ->assertRedirect(route('visitor-invitations.show', $token))
-            ->assertSessionHasErrors(['name', 'cpf', 'phone', 'vehicle_plate', 'confirmed']);
+            ->assertSessionHasErrors([
+                'name' => 'Informe seu nome completo.',
+                'cpf' => 'Informe um CPF com 11 dígitos.',
+                'phone' => 'Informe um telefone válido com DDD.',
+                'vehicle_plate' => 'Informe uma placa válida, como ABC-1D23.',
+                'confirmed' => 'Confirme que os dados estão corretos.',
+            ]);
 
         $authorization->refresh();
         $this->assertSame('pending_data', $authorization->status->value);
         $this->assertNull($authorization->visitor_id);
         $this->assertNull($authorization->invitation_used_at);
+    }
+
+    public function test_invalid_data_returns_to_invitation_without_a_referrer_even_when_session_has_another_previous_page(): void
+    {
+        $token = str_repeat('K', 64);
+        $authorization = VisitorAuthorization::factory()->pendingData($token)->create();
+        $resident = User::factory()->morador()->create();
+
+        $response = $this->actingAs($resident)
+            ->withSession(['_previous' => ['url' => route('morador.visitors.index')]])
+            ->post(route('visitor-invitations.complete', $token), [
+                ...$this->validVisitorData(),
+                'phone' => '123',
+            ]);
+
+        $this->assertSame(route('visitor-invitations.show', $token), $response->headers->get('Location'));
+        $response->assertSessionHasErrors('phone');
+
+        $this->assertSame(VisitorAuthorizationStatus::PendingData, $authorization->fresh()->status);
+        $this->assertNull($authorization->fresh()->invitation_used_at);
+    }
+
+    public function test_inertia_submission_with_valid_data_displays_the_qr_code_even_when_resident_is_signed_in(): void
+    {
+        $token = str_repeat('L', 64);
+        $authorization = VisitorAuthorization::factory()->pendingData($token)->create();
+        $resident = User::factory()->morador()->create();
+        $version = app(HandleInertiaRequests::class)->version(request());
+
+        $this->actingAs($resident)->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
+            ->post(route('visitor-invitations.complete', $token), $this->validVisitorData())
+            ->assertOk()
+            ->assertHeader('X-Inertia', 'true')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('component', 'visitor-invitations/completed')
+            ->assertJsonPath('props.qr_svg', fn (string $svg): bool => str_contains($svg, '<svg'));
+
+        $this->assertSame(VisitorAuthorizationStatus::Active, $authorization->fresh()->status);
+        $this->assertNotNull($authorization->fresh()->invitation_used_at);
     }
 
     public function test_completion_normalizes_the_vehicle_plate(): void

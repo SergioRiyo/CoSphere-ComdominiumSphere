@@ -3,6 +3,7 @@ import { Package } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { OrderPickupButton } from '@/components/order-pickup-button';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -72,6 +73,8 @@ export default function PortariaOrdersPage({
     errors = {},
 }: Props) {
     const [search, setSearch] = useState(filters.search);
+    const [unitId, setUnitId] = useState(String(filters.unit_id ?? ''));
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const [selected, setSelected] = useState<ExpectedOrder | null>(null);
     const [showUnexpected, setShowUnexpected] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -91,8 +94,10 @@ export default function PortariaOrdersPage({
             { unit_id: unitId || undefined, search: text || undefined },
             {
                 preserveScroll: true,
+                preserveState: true,
                 onStart: () => setBusy(true),
                 onFinish: () => setBusy(false),
+                onSuccess: () => setFiltersOpen(false),
                 onHttpException: handleFailure,
                 onNetworkError: handleFailure,
             },
@@ -126,16 +131,35 @@ export default function PortariaOrdersPage({
                         {requestError}
                     </p>
                 )}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Buscar encomenda prevista</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                        {filters.unit_id
+                            ? `Unidade selecionada: ${unitOptions.find((unit) => unit.id === filters.unit_id) ? unitLabel(unitOptions.find((unit) => unit.id === filters.unit_id)!) : 'não encontrada'}`
+                            : 'Todas as unidades'}
+                    </p>
+                    <ReportFilterSheet
+                        title="encomendas"
+                        mode="search"
+                        activeCount={
+                            [filters.unit_id, filters.search].filter(Boolean)
+                                .length
+                        }
+                        open={filtersOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                setUnitId(String(filters.unit_id ?? ''));
+                                setSearch(filters.search);
+                                setRequestError(null);
+                            }
+
+                            setFiltersOpen(open);
+                        }}
+                    >
                         <form
-                            className="grid gap-4 sm:grid-cols-2"
+                            className="grid gap-4 px-4 pb-4"
                             onSubmit={(event) => {
                                 event.preventDefault();
-                                visit(String(filters.unit_id ?? ''), search);
+                                visit(unitId, search);
                             }}
                         >
                             <div className="grid gap-2">
@@ -145,10 +169,10 @@ export default function PortariaOrdersPage({
                                 <select
                                     id="unit"
                                     className={selectClass}
-                                    value={filters.unit_id ?? ''}
+                                    value={unitId}
                                     disabled={busy}
                                     onChange={(event) =>
-                                        visit(event.target.value, search)
+                                        setUnitId(event.target.value)
                                     }
                                 >
                                     <option value="">Todas as unidades</option>
@@ -174,6 +198,14 @@ export default function PortariaOrdersPage({
                                 />
                                 <InputError message={errors.search} />
                             </div>
+                            {requestError && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {requestError}
+                                </p>
+                            )}
                             <div className="flex gap-2">
                                 <Button disabled={busy}>Buscar</Button>
                                 <Button
@@ -182,15 +214,16 @@ export default function PortariaOrdersPage({
                                     disabled={busy}
                                     onClick={() => {
                                         setSearch('');
+                                        setUnitId('');
                                         visit('', '');
                                     }}
                                 >
-                                    Limpar filtros
+                                    Limpar busca
                                 </Button>
                             </div>
                         </form>
-                    </CardContent>
-                </Card>
+                    </ReportFilterSheet>
+                </div>
 
                 <section
                     className="flex flex-col gap-4"

@@ -6,6 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CompleteVisitorInvitationRequest extends FormRequest
 {
+    protected function getRedirectUrl(): string
+    {
+        return route('visitor-invitations.show', ['token' => $this->route('token')]);
+    }
+
     protected function prepareForValidation(): void
     {
         $cpf = (string) preg_replace('/\D/', '', (string) $this->input('cpf'));
@@ -27,5 +32,20 @@ class CompleteVisitorInvitationRequest extends FormRequest
     public function rules(): array
     {
         return ['name' => ['required', 'string', 'max:255'], 'cpf' => ['required', 'regex:/^\d{3}\.\d{3}\.\d{3}-\d{2}$/'], 'phone' => ['required', 'regex:/^\(\d{2}\) \d{4,5}-\d{4}$/'], 'vehicle_plate' => ['nullable', 'regex:/^[A-Z]{3}-\d[A-Z0-9]\d{2}$/'], 'confirmed' => ['accepted']];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Informe seu nome completo.',
+            'name.max' => 'O nome deve ter no máximo 255 caracteres.',
+            'cpf.required' => 'Informe seu CPF.',
+            'cpf.regex' => 'Informe um CPF com 11 dígitos.',
+            'phone.required' => 'Informe seu telefone com DDD.',
+            'phone.regex' => 'Informe um telefone válido com DDD.',
+            'vehicle_plate.regex' => 'Informe uma placa válida, como ABC-1D23.',
+            'confirmed.accepted' => 'Confirme que os dados estão corretos.',
+        ];
     }
 }

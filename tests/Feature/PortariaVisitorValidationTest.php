@@ -100,6 +100,8 @@ class PortariaVisitorValidationTest extends TestCase
             ->assertJsonPath('authorization.unit.block', $unit->block)
             ->assertJsonPath('authorization.unit.number', $unit->number)
             ->assertJsonPath('authorization.vehicle_plate', 'ABC1D23')
+            ->assertJsonPath('authorization.start_date', $authorization->start_date->toIso8601String())
+            ->assertJsonPath('authorization.end_date', $authorization->end_date->toIso8601String())
             ->assertJsonPath('authorization.status', VisitorAuthorizationStatus::Active->value)
             ->assertJsonMissingPath('authorization.cpf')
             ->assertJsonMissingPath('authorization.phone')
@@ -201,6 +203,8 @@ class PortariaVisitorValidationTest extends TestCase
             'too long' => ['csa_'.str_repeat('A', 33)],
             'internal whitespace' => ['csa_'.str_repeat('A', 30).' B'],
             'punctuation' => ['csa_'.str_repeat('A', 31).'_'],
+            'short code with ambiguous characters' => ['ABCD1234EFGH'],
+            'short code with invalid separator' => ['ABCD/2345/EFGH'],
             'non ascii' => ['csa_'.str_repeat('A', 31).'é'],
             'oversized string' => [str_repeat('A', 10000)],
             'empty' => [''],
@@ -217,18 +221,20 @@ class PortariaVisitorValidationTest extends TestCase
         $authorization = VisitorAuthorization::factory()->active()->create(['access_code' => $code]);
         $qrPayload = app(VisitorQrCodeService::class)->payload($authorization);
 
-        $this->assertMatchesRegularExpression('/\Acsa_[A-Za-z0-9]{32}\z/', $code);
+        $this->assertMatchesRegularExpression('/\A[A-HJ-NP-Z2-9]{12}\z/', $code);
         $this->assertSame($code, $qrPayload);
+
+        $manualCode = strtolower(implode('-', str_split($code, 4)));
 
         $this->actingAs(User::factory()->porteiro()->create())
             ->postJson(route('portaria.visitor-authorizations.validate'), [
-                'access_code' => " \t{$qrPayload}\n ",
+                'access_code' => " \t{$manualCode}\n ",
             ])
             ->assertOk()
             ->assertJsonPath('allowed', true);
 
         $this->postJson(route('portaria.visitor-accesses.store'), [
-            'access_code' => " \t{$qrPayload}\n ",
+            'access_code' => $manualCode,
         ])->assertCreated();
 
         $this->assertSame($code, $authorization->refresh()->access_code);
@@ -248,6 +254,39 @@ class PortariaVisitorValidationTest extends TestCase
         $this->postJson(route('portaria.visitor-authorizations.validate'), [
             'access_code' => $code,
         ])->assertOk()->assertJsonPath('allowed', true);
+    }
+
+    public function test_short_manual_code_for_legacy_qr_validates_and_registers_the_same_authorization(): void
+    {
+        $authorization = VisitorAuthorization::factory()->active()->create();
+        $oldCode = $authorization->access_code;
+        $manualCode = app(VisitorQrCodeService::class)->manualCode($authorization);
+        $formatted = strtolower(substr($manualCode, 0, 4).'-'.substr($manualCode, 4, 4).'-'.substr($manualCode, 8));
+
+        $this->assertMatchesRegularExpression('/\AM[A-HJ-NP-Z2-9]{12}\z/', $manualCode);
+        $this->assertSame($oldCode, $authorization->fresh()->access_code);
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->postJson(route('portaria.visitor-authorizations.validate'), ['access_code' => $oldCode])
+            ->assertOk()->assertJsonPath('allowed', true);
+        $this
+            ->postJson(route('portaria.visitor-authorizations.validate'), ['access_code' => $formatted])
+            ->assertOk()->assertJsonPath('allowed', true);
+        $this->postJson(route('portaria.visitor-accesses.store'), ['access_code' => $formatted])->assertCreated();
+        $this->assertSame($authorization->id, VisitorAccess::query()->sole()->visitor_authorization_id);
+    }
+
+    public function test_short_manual_code_does_not_allow_a_cancelled_authorization(): void
+    {
+        $authorization = VisitorAuthorization::factory()->active()->create();
+        $manualCode = app(VisitorQrCodeService::class)->manualCode($authorization);
+        $authorization->forceFill(['status' => VisitorAuthorizationStatus::Canceled])->save();
+
+        $this->actingAs(User::factory()->porteiro()->create())
+            ->postJson(route('portaria.visitor-authorizations.validate'), ['access_code' => $manualCode])
+            ->assertOk()->assertJsonPath('allowed', false)->assertJsonPath('reason', 'canceled');
+        $this->postJson(route('portaria.visitor-accesses.store'), ['access_code' => $manualCode])
+            ->assertOk()->assertJsonPath('registered', false);
+        $this->assertDatabaseMissing('visitor_accesses', ['visitor_authorization_id' => $authorization->id, 'validation_status' => 'validated']);
     }
 
     public function test_guest_cannot_validate_an_authorization(): void

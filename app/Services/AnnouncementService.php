@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\UserRole;
+use App\Jobs\SendAnnouncementEmail;
 use App\Models\Announcement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,8 @@ class AnnouncementService
                 ->whereNotNull('email_verified_at')->orderBy('id')->chunkById(100, function ($residents) use ($current): void {
                     foreach ($residents as $resident) {
                         $this->notifications->createForAnnouncement($current->id, $resident->id, $current->title, $current->content);
+                        SendAnnouncementEmail::dispatch($current->id, $resident->id)
+                            ->onConnection('database')->onQueue('announcement-email');
                     }
                 });
 

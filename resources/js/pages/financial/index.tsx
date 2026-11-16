@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -60,18 +61,20 @@ export default function FinancialIndex({
     summary,
     units,
 }: Props) {
-    const { auth, errors } = usePage().props;
+    const { auth } = usePage().props;
     const admin = auth.user.role === 'admin';
     const index = admin ? adminIndex : residentIndex;
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editing, setEditing] = useState<Charge | null>(null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [clearingFilters, setClearingFilters] = useState(false);
     const form = useForm({
         unit_id: '',
         description: '',
         amount: '',
         due_date: '',
     });
-    const [filter, setFilter] = useState({
+    const filterForm = useForm({
         status: filters.status ?? '',
         unit_id: filters.unit_id ?? '',
         date_from: filters.date_from ?? '',
@@ -152,124 +155,183 @@ export default function FinancialIndex({
                         </p>
                     </div>
                 </section>
-                <form
-                    className="grid gap-4 rounded-xl border p-4 sm:grid-cols-2 xl:grid-cols-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        router.get(index.url(), filter, {
-                            preserveState: true,
-                            preserveScroll: true,
-                        });
-                    }}
-                >
-                    <label className="grid gap-2 text-sm">
-                        Situação
-                        <select
-                            className="h-10 rounded-md border bg-background px-3"
-                            value={filter.status}
-                            onChange={(event) =>
-                                setFilter({
-                                    ...filter,
-                                    status: event.target.value,
-                                })
-                            }
-                        >
-                            <option value="">Todas</option>
-                            <option value="open">Em aberto</option>
-                            <option value="overdue">Vencidas</option>
-                            <option value="paid">Pagas</option>
-                            <option value="cancelled">Canceladas</option>
-                        </select>
-                    </label>
-                    {admin && (
-                        <label className="grid gap-2 text-sm">
-                            Unidade
-                            <select
-                                className="h-10 rounded-md border bg-background px-3"
-                                value={filter.unit_id}
-                                onChange={(event) =>
-                                    setFilter({
-                                        ...filter,
-                                        unit_id: event.target.value,
-                                    })
-                                }
-                            >
-                                <option value="">Todas</option>
-                                {units.map((unit) => (
-                                    <option key={unit.id} value={unit.id}>
-                                        {unit.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                    )}
-                    <label className="grid gap-2 text-sm">
-                        Vencimento inicial
-                        <input
-                            type="date"
-                            className="h-10 rounded-md border bg-background px-3"
-                            value={filter.date_from}
-                            onChange={(event) =>
-                                setFilter({
-                                    ...filter,
-                                    date_from: event.target.value,
-                                })
-                            }
-                        />
-                    </label>
-                    <label className="grid gap-2 text-sm">
-                        Vencimento final
-                        <input
-                            type="date"
-                            className="h-10 rounded-md border bg-background px-3"
-                            value={filter.date_to}
-                            onChange={(event) =>
-                                setFilter({
-                                    ...filter,
-                                    date_to: event.target.value,
-                                })
-                            }
-                        />
-                    </label>
-                    <div className="flex gap-2 sm:col-span-2 xl:col-span-4">
-                        <Button>Aplicar filtros</Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                setFilter({
-                                    status: '',
-                                    unit_id: '',
-                                    date_from: '',
-                                    date_to: '',
-                                });
-                                router.get(index.url());
-                            }}
-                        >
-                            Limpar filtros
-                        </Button>
-                    </div>
-                    {(errors.status ||
-                        errors.unit_id ||
-                        errors.date_from ||
-                        errors.date_to) && (
-                        <p
-                            role="alert"
-                            className="text-sm text-destructive sm:col-span-2 xl:col-span-4"
-                        >
-                            {errors.status ||
-                                errors.unit_id ||
-                                errors.date_from ||
-                                errors.date_to}
-                        </p>
-                    )}
-                </form>
+
                 {admin && (
                     <p className="text-sm text-muted-foreground">
                         Para consultar a inadimplência, selecione “Vencidas”. Os
                         totais respeitam os filtros de unidade e vencimento.
                     </p>
                 )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h2 className="font-semibold">Cobranças</h2>
+                    <ReportFilterSheet
+                        title="financeiro"
+                        activeCount={
+                            [
+                                'status',
+                                ...(admin ? ['unit_id'] : []),
+                                'date_from',
+                                'date_to',
+                            ].filter((key) => Boolean(filters[key])).length
+                        }
+                        open={filtersOpen}
+                        onOpenChange={(open) => {
+                            if (open) {
+                                filterForm.setData({
+                                    status: filters.status ?? '',
+                                    unit_id: filters.unit_id ?? '',
+                                    date_from: filters.date_from ?? '',
+                                    date_to: filters.date_to ?? '',
+                                });
+                                filterForm.clearErrors();
+                            }
+
+                            setFiltersOpen(open);
+                        }}
+                    >
+                        <form
+                            className="grid gap-4 px-4 pb-6"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                filterForm.get(index.url(), {
+                                    preserveState: true,
+                                    preserveScroll: true,
+                                    onSuccess: () => setFiltersOpen(false),
+                                });
+                            }}
+                        >
+                            <label className="grid gap-2 text-sm">
+                                Situação
+                                <select
+                                    className="h-10 rounded-md border bg-background px-3"
+                                    value={filterForm.data.status}
+                                    onChange={(event) =>
+                                        filterForm.setData(
+                                            'status',
+                                            event.target.value,
+                                        )
+                                    }
+                                >
+                                    <option value="">Todas</option>
+                                    <option value="open">Em aberto</option>
+                                    <option value="overdue">Vencidas</option>
+                                    <option value="paid">Pagas</option>
+                                    <option value="cancelled">
+                                        Canceladas
+                                    </option>
+                                </select>
+                            </label>
+                            {admin && (
+                                <label className="grid gap-2 text-sm">
+                                    Unidade
+                                    <select
+                                        className="h-10 rounded-md border bg-background px-3"
+                                        value={filterForm.data.unit_id}
+                                        onChange={(event) =>
+                                            filterForm.setData(
+                                                'unit_id',
+                                                event.target.value,
+                                            )
+                                        }
+                                    >
+                                        <option value="">Todas</option>
+                                        {units.map((unit) => (
+                                            <option
+                                                key={unit.id}
+                                                value={unit.id}
+                                            >
+                                                {unit.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            )}
+                            <label className="grid gap-2 text-sm">
+                                Vencimento inicial
+                                <input
+                                    type="date"
+                                    className="h-10 rounded-md border bg-background px-3"
+                                    value={filterForm.data.date_from}
+                                    onChange={(event) =>
+                                        filterForm.setData(
+                                            'date_from',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <label className="grid gap-2 text-sm">
+                                Vencimento final
+                                <input
+                                    type="date"
+                                    className="h-10 rounded-md border bg-background px-3"
+                                    value={filterForm.data.date_to}
+                                    onChange={(event) =>
+                                        filterForm.setData(
+                                            'date_to',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    disabled={
+                                        filterForm.processing || clearingFilters
+                                    }
+                                >
+                                    Aplicar filtros
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    disabled={
+                                        filterForm.processing || clearingFilters
+                                    }
+                                    onClick={() => {
+                                        router.get(
+                                            index.url(),
+                                            {},
+                                            {
+                                                preserveScroll: true,
+                                                onStart: () =>
+                                                    setClearingFilters(true),
+                                                onSuccess: () => {
+                                                    filterForm.setData({
+                                                        status: '',
+                                                        unit_id: '',
+                                                        date_from: '',
+                                                        date_to: '',
+                                                    });
+                                                    filterForm.clearErrors();
+                                                    setFiltersOpen(false);
+                                                },
+                                                onFinish: () =>
+                                                    setClearingFilters(false),
+                                            },
+                                        );
+                                    }}
+                                >
+                                    Limpar filtros
+                                </Button>
+                            </div>
+                            {(filterForm.errors.status ||
+                                filterForm.errors.unit_id ||
+                                filterForm.errors.date_from ||
+                                filterForm.errors.date_to) && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {filterForm.errors.status ||
+                                        filterForm.errors.unit_id ||
+                                        filterForm.errors.date_from ||
+                                        filterForm.errors.date_to}
+                                </p>
+                            )}
+                        </form>
+                    </ReportFilterSheet>
+                </div>
                 <section className="grid gap-3" aria-label="Cobranças">
                     {charges.data.length === 0 && (
                         <p className="rounded-xl border p-6 text-center text-muted-foreground">

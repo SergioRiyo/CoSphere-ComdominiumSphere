@@ -1,12 +1,20 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Package } from 'lucide-react';
+import { Package, Plus } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { OrderHistoryFilterForm } from '@/components/order-history-filters';
 import { OrderPickupButton } from '@/components/order-pickup-button';
+import ReportFilterSheet from '@/components/report-filter-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { dashboard } from '@/routes/morador';
@@ -51,6 +59,8 @@ export default function OrdersPage({
     statusOptions,
 }: OrdersPageProps) {
     const [requestError, setRequestError] = useState<string | null>(null);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(false);
     const handleFailure = () => {
         setRequestError(
             'Não foi possível concluir a solicitação. Tente novamente.',
@@ -63,20 +73,32 @@ export default function OrdersPage({
         <>
             <Head title="Encomendas" />
             <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
-                <header className="flex flex-col gap-2">
-                    <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
-                        <Package aria-hidden="true" />
-                        Encomendas
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Informe uma encomenda aguardada para facilitar sua
-                        identificação na portaria.
-                    </p>
-                    {unit && (
-                        <p className="text-sm font-medium">
-                            {unit.block ? `Bloco ${unit.block} · ` : ''}Unidade{' '}
-                            {unit.number}
+                <header className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                        <h1 className="flex items-center gap-2 text-3xl font-semibold tracking-tight">
+                            <Package aria-hidden="true" />
+                            Encomendas
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Informe uma encomenda aguardada para facilitar sua
+                            identificação na portaria.
                         </p>
+                        {unit && (
+                            <p className="text-sm font-medium">
+                                {unit.block ? `Bloco ${unit.block} · ` : ''}
+                                Unidade {unit.number}
+                            </p>
+                        )}
+                    </div>
+                    {unit && (
+                        <Button
+                            onClick={() => {
+                                setRequestError(null);
+                                setCreateOpen(true);
+                            }}
+                        >
+                            <Plus /> Nova encomenda
+                        </Button>
                     )}
                 </header>
 
@@ -93,22 +115,35 @@ export default function OrdersPage({
                         administração.
                     </p>
                 ) : (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Cadastrar encomenda prevista</CardTitle>
-                        </CardHeader>
-                        <CardContent>
+                    <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+                            <DialogHeader>
+                                <DialogTitle>Nova encomenda</DialogTitle>
+                                <DialogDescription>
+                                    Informe uma encomenda aguardada para
+                                    facilitar sua identificação na portaria.
+                                </DialogDescription>
+                            </DialogHeader>
+                            {requestError && (
+                                <p
+                                    role="alert"
+                                    className="text-sm text-destructive"
+                                >
+                                    {requestError}
+                                </p>
+                            )}
                             <Form
                                 {...store.form()}
                                 resetOnSuccess
                                 options={{ preserveScroll: true }}
                                 onBefore={() => setRequestError(null)}
+                                onSuccess={() => setCreateOpen(false)}
                                 onHttpException={handleFailure}
                                 onNetworkError={handleFailure}
                             >
                                 {({ errors, processing }) => (
                                     <div className="flex flex-col gap-4">
-                                        <div className="grid gap-4 sm:grid-cols-3">
+                                        <div className="grid gap-4 sm:grid-cols-2">
                                             {(
                                                 [
                                                     [
@@ -202,22 +237,43 @@ export default function OrdersPage({
                                     </div>
                                 )}
                             </Form>
-                        </CardContent>
-                    </Card>
+                        </DialogContent>
+                    </Dialog>
                 )}
 
                 <section
                     className="flex flex-col gap-4"
                     aria-labelledby="orders-heading"
                 >
-                    <h2 id="orders-heading" className="text-xl font-semibold">
-                        Encomendas da unidade
-                    </h2>
-                    <OrderHistoryFilterForm
-                        action={index.url()}
-                        filters={filters}
-                        statusOptions={statusOptions}
-                    />
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2
+                            id="orders-heading"
+                            className="text-xl font-semibold"
+                        >
+                            Encomendas da unidade
+                        </h2>
+                        <ReportFilterSheet
+                            title="encomendas"
+                            activeCount={
+                                [
+                                    filters.status,
+                                    filters.date_from,
+                                    filters.date_to,
+                                    filters.search,
+                                ].filter(Boolean).length
+                            }
+                            open={filtersOpen}
+                            onOpenChange={setFiltersOpen}
+                        >
+                            <OrderHistoryFilterForm
+                                action={index.url()}
+                                filters={filters}
+                                statusOptions={statusOptions}
+                                inSheet
+                                onApplied={() => setFiltersOpen(false)}
+                            />
+                        </ReportFilterSheet>
+                    </div>
                     {orders.data.length === 0 ? (
                         <p className="rounded-lg border p-6 text-sm text-muted-foreground">
                             {Object.values(filters).some(Boolean)

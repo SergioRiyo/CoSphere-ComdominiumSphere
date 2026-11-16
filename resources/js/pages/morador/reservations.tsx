@@ -9,6 +9,6 @@ export default function ReservationsPage() {
 ReservationsPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Minhas reservas', href: index() },
+        { title: 'Reservas', href: index() },
     ],
 };

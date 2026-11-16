@@ -23,7 +23,7 @@ import {
 import { dashboard } from '@/routes/admin';
 import { create as announcementCreate } from '@/routes/admin/announcements';
 import { index as incidentsIndex } from '@/routes/admin/incidents';
-import { reservations as reportsIndex } from '@/routes/admin/reports';
+import { index as reportsIndex } from '@/routes/admin/reports';
 import {
     index as reservationsIndex,
     show as reservationShow,

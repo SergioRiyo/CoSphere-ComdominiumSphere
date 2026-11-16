@@ -111,6 +111,14 @@ class ResidentVisitorListTest extends TestCase
                     ->where('filters.date_to', '2026-09-15'));
         }
 
+        $this->get(route('morador.visitors.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('authorizations.data', 2)
+                ->where('filters.search', '')
+                ->where('filters.status', '')
+                ->where('filters.date_from', '')
+                ->where('filters.date_to', ''));
+
         VisitorAuthorization::factory()->active()->count(11)->create([
             'unit_id' => $unit->id,
             'resident_id' => $resident->id,

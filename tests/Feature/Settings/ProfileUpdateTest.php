@@ -72,6 +72,12 @@ class ProfileUpdateTest extends TestCase
         $this->assertSame('test@example.com', $user->email);
         $this->assertSame('(65) 98888-7777', $user->phone);
         $this->assertNull($user->email_verified_at);
+
+        $this->get(route('profile.edit'))->assertInertia(fn (Assert $page) => $page
+            ->component('settings/profile')
+            ->where('profile.name', 'Test User')
+            ->where('profile.email', 'test@example.com')
+            ->where('profile.phone', '(65) 98888-7777'));
     }
 
     public function test_phone_can_be_cleared(): void

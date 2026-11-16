@@ -1,5 +1,5 @@
 import { Check, Copy, Download, QrCode } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,17 +20,67 @@ export default function VisitorQrCodeCard({
     const [, copy] = useClipboard();
     const [isCopying, setIsCopying] = useState(false);
     const [wasCopied, setWasCopied] = useState(false);
+    const [attempt, setAttempt] = useState(0);
+    const [codeResult, setCodeResult] = useState<{
+        authorizationId: number;
+        code: string | null;
+    } | null>(null);
+    const currentResult =
+        codeResult?.authorizationId === authorizationId ? codeResult : null;
+    const manualCode = currentResult?.code ?? null;
+    const displayCode =
+        manualCode &&
+        /^(?:[A-HJ-NP-Z2-9]{12}|M[A-HJ-NP-Z2-9]{12})$/.test(manualCode)
+            ? manualCode.replace(/^(.{4})(.{4})(.+)$/, '$1-$2-$3')
+            : manualCode;
+
+    useEffect(() => {
+        const controller = new AbortController();
+
+        const loadCode = async () => {
+            try {
+                const response = await fetch(accessCode.url(authorizationId), {
+                    credentials: 'same-origin',
+                    headers: { Accept: 'text/plain' },
+                    cache: 'no-store',
+                    signal: controller.signal,
+                });
+
+                if (
+                    !response.ok ||
+                    !response.headers
+                        .get('content-type')
+                        ?.startsWith('text/plain')
+                ) {
+                    throw new Error('Código indisponível');
+                }
+
+                const code = (await response.text()).trim();
+
+                if (!code) {
+                    throw new Error('Código indisponível');
+                }
+
+                if (!controller.signal.aborted) {
+                    setCodeResult({ authorizationId, code });
+                }
+            } catch {
+                if (!controller.signal.aborted) {
+                    setCodeResult({ authorizationId, code: null });
+                }
+            }
+        };
+
+        void loadCode();
+
+        return () => controller.abort();
+    }, [authorizationId, attempt]);
 
     const copyManualCode = async () => {
         setIsCopying(true);
 
         try {
-            const response = await fetch(accessCode.url(authorizationId), {
-                credentials: 'same-origin',
-                headers: { Accept: 'text/plain' },
-            });
-
-            if (!response.ok || !(await copy(await response.text()))) {
+            if (!manualCode || !(await copy(manualCode))) {
                 throw new Error('Não foi possível copiar o código.');
             }
 
@@ -64,6 +114,40 @@ export default function VisitorQrCodeCard({
                     />
                 </div>
                 <div className="grid gap-3">
+                    <div
+                        className="rounded-xl border bg-background/70 p-4"
+                        aria-live="polite"
+                    >
+                        <p className="text-sm font-medium">
+                            Código para a portaria
+                        </p>
+                        {displayCode ? (
+                            <p className="mt-2 font-mono text-xl font-semibold tracking-wider break-all">
+                                {displayCode}
+                            </p>
+                        ) : currentResult ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <p className="text-sm text-destructive">
+                                    Não foi possível carregar o código.
+                                </p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setCodeResult(null);
+                                        setAttempt((value) => value + 1);
+                                    }}
+                                >
+                                    Tentar novamente
+                                </Button>
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-sm text-muted-foreground">
+                                Carregando código...
+                            </p>
+                        )}
+                    </div>
                     <p className="text-sm text-muted-foreground">
                         O QR Code contém somente um identificador de acesso, sem
                         dados pessoais do visitante.
@@ -83,7 +167,7 @@ export default function VisitorQrCodeCard({
                         type="button"
                         variant="secondary"
                         onClick={copyManualCode}
-                        disabled={isCopying}
+                        disabled={isCopying || !manualCode}
                     >
                         {wasCopied ? <Check /> : <Copy />}
                         {isCopying
