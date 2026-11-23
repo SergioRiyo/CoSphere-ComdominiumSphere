@@ -39,6 +39,22 @@ class LostFoundTest extends TestCase
         $this->actingAs(User::factory()->porteiro()->create())->get(route('morador.lost-found.photo', $item))->assertForbidden();
     }
 
+    public function test_photo_uses_the_configured_private_disk(): void
+    {
+        config(['filesystems.lost_found_disk' => 'demo_uploads']);
+        Storage::fake('demo_uploads');
+
+        $this->actingAs(User::factory()->morador()->create())->post(route('morador.lost-found.store'), [
+            'type' => 'found', 'description' => 'Chave', 'condition' => 'Boa',
+            'location' => 'Portaria', 'event_date' => today()->toDateString(),
+            'photo' => UploadedFile::fake()->image('item.png'),
+        ])->assertRedirect();
+
+        $item = LostFoundItem::query()->sole();
+        Storage::disk('demo_uploads')->assertExists($item->photo_path);
+        $this->get(route('morador.lost-found.photo', $item))->assertOk();
+    }
+
     public function test_admin_can_create_an_item_and_resident_can_consult_it(): void
     {
         $admin = User::factory()->admin()->create(['name' => 'Administrador']);

@@ -67,9 +67,9 @@ class LostFoundController extends Controller
     public function photo(Request $request, LostFoundItem $lostFoundItem, LostFoundService $service): StreamedResponse
     {
         $service->authorizeUser($request->user());
-        abort_unless($lostFoundItem->photo_path && Storage::disk('local')->exists($lostFoundItem->photo_path), 404);
+        abort_unless($lostFoundItem->photo_path && Storage::disk(config('filesystems.lost_found_disk'))->exists($lostFoundItem->photo_path), 404);
 
-        return Storage::disk('local')->response($lostFoundItem->photo_path, null, [
+        return Storage::disk(config('filesystems.lost_found_disk'))->response($lostFoundItem->photo_path, null, [
             'Content-Type' => $lostFoundItem->photo_mime, 'Cache-Control' => 'private, no-store',
             'X-Content-Type-Options' => 'nosniff', 'Content-Security-Policy' => "default-src 'none'",
         ]);

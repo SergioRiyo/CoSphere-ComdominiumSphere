@@ -15,6 +15,10 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'incident_disk' => env('INCIDENT_ATTACHMENTS_DISK', 'incident_attachments'),
+    'lost_found_disk' => env('LOST_FOUND_DISK', 'local'),
+    'supabase_s3' => env('SUPABASE_S3', false),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks
@@ -64,6 +68,7 @@ return [
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
             'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
+            'visibility' => 'private',
             'throw' => false,
             'report' => false,
         ],

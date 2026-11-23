@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use LogicException;
 
 class UserSeeder extends Seeder
 {
@@ -14,6 +15,10 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->isProduction()) {
+            throw new LogicException('O seeder de usuários de desenvolvimento não pode ser executado em produção.');
+        }
+
         $unit = Unit::query()->first() ?? Unit::factory()->create();
 
         User::query()->firstOrCreate(

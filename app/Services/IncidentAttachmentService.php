@@ -65,7 +65,7 @@ class IncidentAttachmentService
                 $name = Str::uuid().'.'.self::FORMATS[$mime][0];
                 $directory = 'incidents/'.$current->id;
                 $path = $directory.'/'.$name;
-                $stored = Storage::disk(self::DISK)->putFileAs($directory, $file, $name, ['visibility' => 'private']);
+                $stored = Storage::disk(config('filesystems.incident_disk'))->putFileAs($directory, $file, $name, ['visibility' => 'private']);
                 if ($stored === false) {
                     throw new RuntimeException('Não foi possível armazenar o anexo privado.');
                 }
@@ -87,7 +87,7 @@ class IncidentAttachmentService
             return $attachment;
         } catch (Throwable $exception) {
             if ($path !== null) {
-                Storage::disk(self::DISK)->delete($path);
+                Storage::disk(config('filesystems.incident_disk'))->delete($path);
             }
             throw $exception;
         }
@@ -101,7 +101,7 @@ class IncidentAttachmentService
             ->filter(fn (DatabaseTransactionRecord $transaction): bool => $transaction->connection === $connection)
             ->each(function (DatabaseTransactionRecord $transaction) use ($path): void {
                 $transaction->addCallbackForRollback(static function () use ($path): void {
-                    Storage::disk(self::DISK)->delete($path);
+                    Storage::disk(config('filesystems.incident_disk'))->delete($path);
                 });
             });
     }
@@ -111,9 +111,9 @@ class IncidentAttachmentService
         $current = IncidentAttachment::query()->findOrFail($attachment->getKey());
         $actor = $this->resolveActor($actor);
         Gate::forUser($actor)->authorize('view', $current);
-        abort_unless(Storage::disk(self::DISK)->exists($current->path), 404);
+        abort_unless(Storage::disk(config('filesystems.incident_disk'))->exists($current->path), 404);
 
-        return Storage::disk(self::DISK)->download(
+        return Storage::disk(config('filesystems.incident_disk'))->download(
             $current->path,
             str_replace(["\r", "\n"], '', $current->original_name),
             ['Content-Type' => $current->mime_type, 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store'],

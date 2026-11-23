@@ -45,6 +45,19 @@ class IncidentAttachmentTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_attachment_uses_the_configured_private_disk(): void
+    {
+        config(['filesystems.incident_disk' => 'demo_uploads']);
+        Storage::fake('demo_uploads');
+        $incident = Incident::factory()->create();
+
+        $attachment = app(IncidentAttachmentService::class)->store(
+            $incident->resident, $incident, $this->upload('evidencia.pdf', $this->pdf()),
+        );
+
+        Storage::disk('demo_uploads')->assertExists($attachment->path);
+    }
+
     #[DataProvider('allowedFormats')]
     public function test_real_raster_images_and_pdf_are_stored_privately_with_generated_names(string $extension, string $expectedMime): void
     {

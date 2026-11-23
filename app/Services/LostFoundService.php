@@ -18,8 +18,6 @@ use Throwable;
 
 class LostFoundService
 {
-    private const DISK = 'local';
-
     /** @param array<string, mixed> $filters
      * @return array<string, mixed>
      */
@@ -100,7 +98,7 @@ class LostFoundService
             return $item;
         } catch (Throwable $exception) {
             if ($newPath) {
-                Storage::disk(self::DISK)->delete($newPath);
+                Storage::disk(config('filesystems.lost_found_disk'))->delete($newPath);
             }
             throw $exception;
         }
@@ -129,7 +127,7 @@ class LostFoundService
                 $item->save();
                 $this->record($item, $user, 'updated', $before);
                 if ($oldPath && $oldPath !== $item->photo_path) {
-                    DB::afterCommit(fn () => Storage::disk(self::DISK)->delete($oldPath));
+                    DB::afterCommit(fn () => Storage::disk(config('filesystems.lost_found_disk'))->delete($oldPath));
                 }
             });
             if ($newPath) {
@@ -137,7 +135,7 @@ class LostFoundService
             }
         } catch (Throwable $exception) {
             if ($newPath) {
-                Storage::disk(self::DISK)->delete($newPath);
+                Storage::disk(config('filesystems.lost_found_disk'))->delete($newPath);
             }
             throw $exception;
         }
@@ -202,7 +200,7 @@ class LostFoundService
             'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'
         };
         $path = 'lost-found/'.Str::uuid().'.'.$extension;
-        if (! Storage::disk(self::DISK)->putFileAs('lost-found', $photo, basename($path), ['visibility' => 'private'])) {
+        if (! Storage::disk(config('filesystems.lost_found_disk'))->putFileAs('lost-found', $photo, basename($path), ['visibility' => 'private'])) {
             throw new RuntimeException('Não foi possível salvar a foto.');
         }
 
@@ -215,7 +213,7 @@ class LostFoundService
         app('db.transactions')->getPendingTransactions()
             ->filter(fn (DatabaseTransactionRecord $transaction): bool => $transaction->connection === $connection)
             ->each(fn (DatabaseTransactionRecord $transaction) => $transaction->addCallbackForRollback(
-                static fn () => Storage::disk(self::DISK)->delete($path),
+                static fn () => Storage::disk(config('filesystems.lost_found_disk'))->delete($path),
             ));
     }
 
