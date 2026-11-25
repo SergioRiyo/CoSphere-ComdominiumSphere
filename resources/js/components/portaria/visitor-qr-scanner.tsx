@@ -129,7 +129,12 @@ export default function VisitorQrScanner({
                     highlightCodeOutline: true,
                     returnDetailedScanResult: true,
                     onDecodeError: (error) => {
-                        if (disposed || error === QrScanner.NO_QR_CODE_FOUND) {
+                        // qr-scanner prefixes empty-frame errors from the native BarcodeDetector.
+                        if (
+                            disposed ||
+                            error === QrScanner.NO_QR_CODE_FOUND ||
+                            error === `Scanner error: ${QrScanner.NO_QR_CODE_FOUND}`
+                        ) {
                             return;
                         }
 
