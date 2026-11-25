@@ -30,6 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { formatVisitorDateTime } from '@/lib/visitor-date-time';
 import { dashboard } from '@/routes/portaria';
 import { store as storeEntry } from '@/routes/portaria/visitor-accesses';
 import { validate, validation } from '@/routes/portaria/visitor-authorizations';
@@ -39,17 +40,11 @@ import type {
     PortariaValidationResult,
 } from '@/types';
 
-type VisitorValidationPageProps = {
-    timezone: string;
-};
-
 type ValidationFormData = {
     access_code: string;
 };
 
-export default function VisitorValidationPage({
-    timezone,
-}: VisitorValidationPageProps) {
+export default function VisitorValidationPage() {
     const { transform, submit, processing, errors, clearErrors, cancel } =
         useHttp<ValidationFormData, PortariaValidationResult>({
             access_code: '',
@@ -392,7 +387,6 @@ export default function VisitorValidationPage({
                                     authorization={result.authorization}
                                     message={entryResult.message}
                                     entryTime={entryResult.entry.entry_time}
-                                    timezone={timezone}
                                 />
                             ) : entryResult ? (
                                 <EntryDeniedResult
@@ -401,7 +395,6 @@ export default function VisitorValidationPage({
                             ) : result?.allowed ? (
                                 <AllowedResult
                                     authorization={result.authorization}
-                                    timezone={timezone}
                                     onRegisterEntry={registerEntry}
                                     entryProcessing={entryProcessing}
                                 />
@@ -451,12 +444,10 @@ function InitialResult() {
 
 function AllowedResult({
     authorization,
-    timezone,
     onRegisterEntry,
     entryProcessing,
 }: {
     authorization: PortariaValidatedAuthorization;
-    timezone: string;
     onRegisterEntry: () => void;
     entryProcessing: boolean;
 }) {
@@ -501,15 +492,12 @@ function AllowedResult({
                     <ResultDetail
                         icon={CalendarClock}
                         label="Início"
-                        value={formatDateTime(
-                            authorization.start_date,
-                            timezone,
-                        )}
+                        value={formatVisitorDateTime(authorization.start_date)}
                     />
                     <ResultDetail
                         icon={CalendarClock}
                         label="Término"
-                        value={formatDateTime(authorization.end_date, timezone)}
+                        value={formatVisitorDateTime(authorization.end_date)}
                         className="sm:col-span-2"
                     />
                 </dl>
@@ -548,12 +536,10 @@ function EntryRegisteredResult({
     authorization,
     message,
     entryTime,
-    timezone,
 }: {
     authorization: PortariaValidatedAuthorization;
     message: string;
     entryTime: string;
-    timezone: string;
 }) {
     return (
         <Card className="min-w-0 border-emerald-500/35 bg-emerald-50/60 shadow-sm dark:bg-emerald-950/15">
@@ -590,7 +576,7 @@ function EntryRegisteredResult({
                     <ResultDetail
                         icon={Clock3}
                         label="Horário da entrada"
-                        value={formatDateTime(entryTime, timezone)}
+                        value={formatVisitorDateTime(entryTime)}
                         className="sm:col-span-2"
                     />
                 </dl>
@@ -661,14 +647,6 @@ function formatUnit(unit: PortariaValidatedAuthorization['unit']) {
     return unit.block
         ? `Bloco ${unit.block} · Unidade ${unit.number}`
         : `Unidade ${unit.number}`;
-}
-
-function formatDateTime(value: string, timezone: string) {
-    return new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'long',
-        timeStyle: 'short',
-        timeZone: timezone,
-    }).format(new Date(value));
 }
 
 VisitorValidationPage.layout = {

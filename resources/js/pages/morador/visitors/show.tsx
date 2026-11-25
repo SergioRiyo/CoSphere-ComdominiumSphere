@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { VisitorAccessStatusBadge } from '@/components/visitor-access-status-badge';
 import { VisitorStatusBadge } from '@/components/visitor-status-badge';
+import { formatVisitorDateTime } from '@/lib/visitor-date-time';
 import { dashboard } from '@/routes/morador';
 import { destroy, index } from '@/routes/morador/visitors';
 import type { VisitorAuthorizationDetails } from '@/types';
@@ -148,14 +149,14 @@ export default function VisitorDetailsPage({
                                 <Detail
                                     icon={CalendarClock}
                                     label="Início"
-                                    value={formatDateTime(
+                                    value={formatVisitorDateTime(
                                         authorization.start_date,
                                     )}
                                 />
                                 <Detail
                                     icon={CalendarClock}
                                     label="Término"
-                                    value={formatDateTime(
+                                    value={formatVisitorDateTime(
                                         authorization.end_date,
                                     )}
                                 />
@@ -346,15 +347,8 @@ function Detail({
     );
 }
 
-function formatDateTime(value: string) {
-    return new Intl.DateTimeFormat('pt-BR', {
-        dateStyle: 'long',
-        timeStyle: 'short',
-    }).format(new Date(value));
-}
-
 function formatOptionalDateTime(value: string | null) {
-    return value === null ? 'Não registrada' : formatDateTime(value);
+    return value === null ? 'Não registrada' : formatVisitorDateTime(value);
 }
 
 VisitorDetailsPage.layout = {

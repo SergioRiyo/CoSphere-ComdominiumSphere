@@ -19,9 +19,7 @@ class PortariaVisitorValidationController extends Controller
     {
         Gate::forUser($request->user())->authorize('viewAny', VisitorAccess::class);
 
-        return Inertia::render('portaria/visitor-validation', [
-            'timezone' => config('app.timezone'),
-        ]);
+        return Inertia::render('portaria/visitor-validation');
     }
 
     public function __invoke(ValidateVisitorAuthorizationRequest $request): JsonResponse

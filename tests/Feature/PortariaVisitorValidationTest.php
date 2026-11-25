@@ -28,7 +28,7 @@ class PortariaVisitorValidationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('portaria/visitor-validation')
-                ->where('timezone', config('app.timezone'))
+                ->missing('timezone')
                 ->missing('authorization')
                 ->missing('visitor')
                 ->missing('access_code'));
