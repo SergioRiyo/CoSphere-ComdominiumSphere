@@ -32,7 +32,7 @@ export default function VisitorQrScanner({
     const [restartAttempt, setRestartAttempt] = useState(0);
     const [cameraState, setCameraState] = useState<CameraState>('requesting');
     const [cameraError, setCameraError] = useState<string | null>(null);
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const [video, setVideo] = useState<HTMLVideoElement | null>(null);
     const detectionLockedRef = useRef(false);
     const onDetectedRef = useRef(onDetected);
 
@@ -41,13 +41,7 @@ export default function VisitorQrScanner({
     }, [onDetected]);
 
     useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        const video = videoRef.current;
-
-        if (!video) {
+        if (!open || !video) {
             return;
         }
 
@@ -203,7 +197,7 @@ export default function VisitorQrScanner({
             detectionLockedRef.current = true;
             stopCamera();
         };
-    }, [open, restartAttempt]);
+    }, [open, restartAttempt, video]);
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -237,7 +231,7 @@ export default function VisitorQrScanner({
                     aria-live="polite"
                 >
                     <video
-                        ref={videoRef}
+                        ref={setVideo}
                         muted
                         playsInline
                         aria-label="Visualização da câmera para leitura do QR Code"
